@@ -43,14 +43,14 @@
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
     }
-    // 战场边框
+    // 战场视觉底层铺满画布；部署范围仍由 u.field 限定。
     var f = u.field;
-    D.roundRect(f.x, f.y, f.w, f.h, 16, D.color('#0d1526', 1));
+    D.rect(0, 0, u.w, u.h, D.color('#0d1526', 0.25));
     for (var i = 1; i < u.lanes.length; i++) {
       var x = (u.lanes[i - 1] + u.lanes[i]) / 2;
-      D.rect(x - 0.5, f.y + 8, 1, f.h - 16, COL.laneLine);
+      D.rect(x - 0.5, 0, 1, u.h, COL.laneLine);
     }
-    D.strokeRect(f.x, f.y, f.w, f.h, 1, COL.fieldLine);
+    D.strokeRect(0, 0, u.w, u.h, 1, COL.fieldLine);
     // 顶部生成区指示
     D.hGradient(f.x + 1, f.y + 1, f.w - 2, 34, D.color('#2a1140', 0.6), D.color('#0d1526', 0), 8);
   }

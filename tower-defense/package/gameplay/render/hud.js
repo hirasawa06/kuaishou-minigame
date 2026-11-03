@@ -113,7 +113,7 @@
   function drawTray() {
     var u = L.ui;
     var t = u.tray;
-    D.vGradient(0, t.y, t.w, t.h, D.color('#0d1527'), D.color('#070c17'), 10);
+    D.vGradient(0, t.y, u.w, u.h - t.y, D.color('#0d1527'), D.color('#070c17'), 10);
     D.rect(0, t.y, t.w, 1, D.color('#24365a'));
     drawEnergy();
 

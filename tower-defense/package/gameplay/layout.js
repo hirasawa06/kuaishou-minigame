@@ -43,6 +43,7 @@
     var h = L.h || C.designH;
     var metrics = systemMetrics(w, h);
     var st = metrics.systemTop;
+    // 以下边界仅约束可点击内容和命中区；全屏背景使用 L.w / L.h 绘制。
     var contentTop = st + TOP_GAP + PLATFORM_H;
     var contentBottom = metrics.safeBottom;
     var contentH = Math.max(1, contentBottom - contentTop);
