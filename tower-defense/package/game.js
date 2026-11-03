@@ -45,7 +45,7 @@ require("./kwaiOpenApi/kwai-ad.js"); // 广告
 require("./kwaiOpenApi/kwai-repost.js"); // 转发分享
 require("./kwaiOpenApi/kwai-ui.js"); // Toast / Modal / Loading
 // ↓ 其他平台能力模块按需引入
-// require("./kwaiOpenApi/kwai-base.js");
+require("./kwaiOpenApi/kwai-base.js"); // 系统安全区 / 生命周期
 require("./kwaiOpenApi/kwai-render.js"); // 图片 / 字体加载
 // require("./kwaiOpenApi/kwai-network.js");
 // require("./kwaiOpenApi/kwai-storage.js");

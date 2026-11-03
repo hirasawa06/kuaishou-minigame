@@ -49,6 +49,15 @@
     A.Render.setRes(L.w || C.designW, L.h || C.designH);
   }
 
+  function refreshLayout() {
+    var u = L.ui;
+    if (u.ready && u.w === L.w && u.h === L.h && u.safeTop === (L.safeTop || 0)) return;
+    u.ready = false;
+    L.calc();
+    if (S.slots && S.slots.length && S.reflowSlots) S.reflowSlots();
+    syncViewport();
+  }
+
   function start() {
     L.ui.ready = false;
     L.calc();
@@ -182,6 +191,7 @@
         A.Render.endFrame();
         return;
       }
+      refreshLayout();
       var now = A._now();
       if (!lastNow) lastNow = now;
       var dt = (now - lastNow) / 1000;

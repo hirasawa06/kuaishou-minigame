@@ -27,6 +27,8 @@
 ### 渲染
 - 只使用 WebGL 1.0：`gameplay/render/gl.js` 是唯一的批渲染器（单 shader、顶点色、mode 0=圆角矩形/圆、1=纹理、2=圆环）
 - 禁止 canvas 2D：中文全部走离屏烘焙的字形图集（`res/Image/font-48|28|18.png` + `gameplay/data/font-atlas.js`）
+- `gameplay/layout.js` 通过 `KwaiBase.getSystemInfo()` 读取完整安全边界，统一计算 `contentTop/contentBottom`；顶部无控件矩形时保守预留 32px 间距和 64px 平台控制带
+- HUD、暂停按钮、战场、卡牌和菜单按钮必须从同一布局结果派生，绘制与命中不得各自维护坐标
 - 纹理对象不带宽高，`draw.texture(tex, texW, texH, sx, sy, sw, sh, ...)` 必须显式传纹理尺寸
 - 纹理上传后必须调用 `A.Render.invalidateTexture()`，否则批渲染器的绑定缓存会失效
 - `kwaiStandard/main.js` 的 `draw()`（脚手架唯一允许替换的占位绘制）已改为调用 `AIGCUtils.GameLoop.frame()`
@@ -55,6 +57,7 @@ python3 tools/gen-home-asset.py    # 首页渲染图
 ### 验证
 ```bash
 node tools/sim.mjs --seconds 400    # 无浏览器玩法仿真（虚拟时钟，验证数值与状态机）
+node tools/layout-check.mjs         # iOS / Android / H5 安全区与交互区域布局合同
 node tools/shot.mjs                 # CDP 驱动真实 Chrome：截图 + 拖拽/丢卡/暂停/结算用例
 node tools/anim-shot.mjs            # 定格动画帧：待机/蓄力/出手/受击/死亡逐帧截图
 node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
@@ -79,7 +82,7 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 
 ## 待办
 
-- 真机验证：iOS / Android 的安全区、刘海避让、音效播放、60fps
+- 真机验证：iOS / Android 的平台按钮实际占位、安全区、刘海与底部手势避让、音效播放、60fps
 - 广告接入：复活 / 加倍奖励位（`kwaiStandard/core/kwai-ad-config.js` 占位，上传阶段替换）
 - 存档：最佳波次 / 通关次数（`KwaiStorage`，当前未接入）
 - 动画：其余 7 个单位仍用整图图标，待逐个接分件动画
@@ -114,5 +117,6 @@ tools/
   sim.mjs              无浏览器玩法仿真
   shot.mjs             CDP 截图与交互用例
   anim-shot.mjs        定格动画帧截图（待机/攻击/受击/死亡）
+  layout-check.mjs     iOS / Android / H5 安全区布局合同测试
   src/                 素材源：柴犬正视图、旧图标图集
 ```

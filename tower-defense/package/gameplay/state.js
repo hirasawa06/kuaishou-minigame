@@ -82,6 +82,15 @@
     }
   };
 
+  S.reflowSlots = function () {
+    var L = A.Layout;
+    var step = L.ui.cardW + L.ui.cardGap;
+    for (var i = 0; i < S.slots.length; i++) {
+      S.slots[i].x = i * step;
+      S.slots[i].target = i * step;
+    }
+  };
+
   S.reset = function () {
     S.phase = 'playing';
     S.time = 0;
