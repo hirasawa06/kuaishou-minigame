@@ -110,6 +110,8 @@
     ui.contentTop = contentTop;
     ui.contentBottom = contentBottom;
     ui.contentH = contentH;
+    // 唯一的交互边界：渲染层可使用整屏，输入层必须先通过这里。
+    ui.interactiveRect = { x: metrics.safeLeft, y: contentTop, w: safeW, h: contentH };
     ui.adaptationError = adaptationError;
     ui.pad = pad;
     ui.hudH = hudH;
@@ -152,7 +154,7 @@
     };
     ui.btnRect = function (kind) {
       var y = ui.btnY[kind];
-      return { x: w * 0.5 - ui.btnW / 2, y: y, w: ui.btnW, h: ui.btnH };
+      return { x: metrics.safeLeft + (safeW - ui.btnW) / 2, y: y, w: ui.btnW, h: ui.btnH };
     };
     ui.overlayBtn = ui.btnRect('menu');
     ui.ready = true;

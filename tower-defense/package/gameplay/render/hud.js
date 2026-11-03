@@ -20,7 +20,7 @@
     var u = L.ui;
     var h = u.hud;
     D.vGradient(0, 0, u.w, h.y + h.h + 8, D.color('#16244a', 0.95), D.color('#0d1628', 0.6), 10);
-    var pad = u.pad;
+    var pad = u.safeLeft + u.pad;
     // HUD 已由 Layout 放入平台控件预留区下方，绘制与命中共用同一坐标。
     var top = h.y + 8;
 
@@ -190,13 +190,13 @@
     var u = L.ui;
     var w = u.btnW;
     var h = u.btnH;
-    var x = u.w / 2 - w / 2;
+    var x = u.safeLeft + (u.safeRight - u.safeLeft - w) / 2;
     D.roundRect(x, y, w, h, h / 2,
       primary ? D.color('#2f7fe0') : D.color('#1f2d4a'));
     if (primary) {
       D.roundRect(x + 2, y + 2, w - 4, h * 0.45, h / 2, D.color('#6cb6ff', 0.35));
     }
-    D.text(label, u.w / 2, y + (h - 22) / 2, 28, COL.textMain, 1);
+    D.text(label, x + w / 2, y + (h - 22) / 2, 28, COL.textMain, 1);
   }
 
   function drawMenu() {

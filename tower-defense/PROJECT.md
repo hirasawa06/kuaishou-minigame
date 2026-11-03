@@ -29,6 +29,7 @@
 - 禁止 canvas 2D：中文全部走离屏烘焙的字形图集（`res/Image/font-48|28|18.png` + `gameplay/data/font-atlas.js`）
 - `gameplay/layout.js` 通过 `KwaiBase.getSystemInfo()` 读取完整安全边界，统一计算可交互内容的 `contentTop/contentBottom`；顶部无控件矩形时保守预留 32px 间距和 64px 平台控制带。背景、战场视觉底层、托盘底色等非交互美术铺满整个画布；按钮、卡牌、部署范围及其触摸命中区须位于安全区内。预览调试层仅标边界，不遮盖美术。
 - HUD、暂停按钮、战场、卡牌和菜单按钮必须从同一布局结果派生，绘制与命中不得各自维护坐标
+- `Layout.ui.interactiveRect` 是触摸交互的总边界；`Input` 在按钮、卡牌和拖放处理前校验该边界，卡牌还需落在 `ui.cards` 内。战斗部署同时校验交互边界和战场范围。全屏视觉层不参与命中判断。
 - H5 Demo 通过 `gameplay/render/safe-area-debug.js` 默认展示 A–E 五区和 iOS 44/68 参考边界；快手容器默认关闭该调试层并读取真机数据
 - 纹理对象不带宽高，`draw.texture(tex, texW, texH, sx, sy, sw, sh, ...)` 必须显式传纹理尺寸
 - 纹理上传后必须调用 `A.Render.invalidateTexture()`，否则批渲染器的绑定缓存会失效

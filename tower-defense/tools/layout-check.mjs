@@ -38,6 +38,9 @@ function check(name, input, expected) {
   assert(ui.systemTop === expected.systemTop, `${name}: systemTop ${ui.systemTop}`)
   assert(ui.contentTop === expected.contentTop, `${name}: contentTop ${ui.contentTop}`)
   assert(ui.contentBottom === expected.contentBottom, `${name}: contentBottom ${ui.contentBottom}`)
+  assert(ui.interactiveRect.x === ui.safeLeft && ui.interactiveRect.y === ui.contentTop, `${name}: interactive origin`)
+  assert(ui.interactiveRect.x + ui.interactiveRect.w === ui.safeRight, `${name}: interactive right edge`)
+  assert(ui.interactiveRect.y + ui.interactiveRect.h === ui.contentBottom, `${name}: interactive bottom edge`)
   assert(ui.platformBand.y >= ui.systemTop + 32, `${name}: platform gap`)
   assert(ui.platformBand.h >= 64, `${name}: platform band height`)
   assert(ui.hud.y >= ui.contentTop, `${name}: HUD entered reserved top area`)
@@ -47,6 +50,11 @@ function check(name, input, expected) {
   assert(ui.cards.y + ui.cards.h <= ui.contentBottom, `${name}: cards entered bottom safe area`)
   assert(ui.field.y >= ui.hud.y + ui.hud.h, `${name}: field overlaps HUD`)
   assert(ui.field.y + ui.field.h <= ui.tray.y, `${name}: field overlaps tray`)
+  for (const kind of ['menu', 'paused', 'result']) {
+    const button = ui.btnRect(kind)
+    assert(button.x >= ui.safeLeft && button.x + button.w <= ui.safeRight, `${name}: ${kind} button outside safe width`)
+    assert(button.y >= ui.contentTop && button.y + button.h <= ui.contentBottom, `${name}: ${kind} button outside safe height`)
+  }
   console.log(`${name}: ok`, {
     content: [ui.contentTop, ui.contentBottom],
     field: [ui.field.y, ui.field.h],
