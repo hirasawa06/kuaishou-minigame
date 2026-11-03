@@ -29,6 +29,7 @@
 - 禁止 canvas 2D：中文全部走离屏烘焙的字形图集（`res/Image/font-48|28|18.png` + `gameplay/data/font-atlas.js`）
 - `gameplay/layout.js` 通过 `KwaiBase.getSystemInfo()` 读取完整安全边界，统一计算 `contentTop/contentBottom`；顶部无控件矩形时保守预留 32px 间距和 64px 平台控制带
 - HUD、暂停按钮、战场、卡牌和菜单按钮必须从同一布局结果派生，绘制与命中不得各自维护坐标
+- H5 Demo 通过 `gameplay/render/safe-area-debug.js` 默认展示 A–E 五区和 iOS 44/68 参考边界；快手容器默认关闭该调试层并读取真机数据
 - 纹理对象不带宽高，`draw.texture(tex, texW, texH, sx, sy, sw, sh, ...)` 必须显式传纹理尺寸
 - 纹理上传后必须调用 `A.Render.invalidateTexture()`，否则批渲染器的绑定缓存会失效
 - `kwaiStandard/main.js` 的 `draw()`（脚手架唯一允许替换的占位绘制）已改为调用 `AIGCUtils.GameLoop.frame()`
@@ -58,6 +59,7 @@ python3 tools/gen-home-asset.py    # 首页渲染图
 ```bash
 node tools/sim.mjs --seconds 400    # 无浏览器玩法仿真（虚拟时钟，验证数值与状态机）
 node tools/layout-check.mjs         # iOS / Android / H5 安全区与交互区域布局合同
+node tools/assets-check.mjs         # 资源404/纹理上传失败时必须阻止进入游戏
 node tools/shot.mjs                 # CDP 驱动真实 Chrome：截图 + 拖拽/丢卡/暂停/结算用例
 node tools/anim-shot.mjs            # 定格动画帧：待机/蓄力/出手/受击/死亡逐帧截图
 node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
@@ -104,6 +106,7 @@ gameplay/
   render/draw.js       矩形/圆角/圆环/纹理/文字原语
   render/scene.js      战场绘制
   render/hud.js        HUD、卡槽、说明、菜单、暂停、结算
+  render/safe-area-debug.js  H5 五区安全区域调试层（正式容器默认关闭）
   anim/rig.js          分件关键帧采样与绘制
   anim/defs.js         单位动画表（状态、关键帧、支点）
   data/font-atlas.js   字形图集元数据（生成）
@@ -118,5 +121,6 @@ tools/
   shot.mjs             CDP 截图与交互用例
   anim-shot.mjs        定格动画帧截图（待机/攻击/受击/死亡）
   layout-check.mjs     iOS / Android / H5 安全区布局合同测试
+  assets-check.mjs     资源加载失败门禁测试
   src/                 素材源：柴犬正视图、旧图标图集
 ```

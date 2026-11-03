@@ -78,6 +78,7 @@ require("./gameplay/play/battle.js"); // 核心玩法
 require("./gameplay/input.js"); // 触摸输入
 require("./gameplay/render/scene.js"); // 战场绘制
 require("./gameplay/render/hud.js"); // HUD 与界面
+require("./gameplay/render/safe-area-debug.js"); // H5 安全区调试层
 require("./gameplay/game.js"); // 主循环装配
 
 window.canvas = kshelper.GetMainCanvas("canvas");

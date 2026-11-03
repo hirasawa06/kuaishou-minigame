@@ -17,11 +17,15 @@
     if (typeof KwaiBase !== 'undefined' && KwaiBase.getSystemInfo) {
       try { info = KwaiBase.getSystemInfo() || {}; } catch (e) { info = {}; }
     }
+    var preview = window.__safeAreaPreview || null;
     var safe = info.safeArea || {};
-    var systemTop = Math.max(0, finite(safe.top, finite(info.statusBarHeight, L.safeTop || 0)));
-    var safeLeft = Math.max(0, finite(safe.left, 0));
-    var safeRight = Math.min(w, finite(safe.right, w));
-    var safeBottom = Math.min(h, finite(safe.bottom, h));
+    var systemTop = Math.max(0, finite(safe.top,
+      finite(info.statusBarHeight, preview ? preview.top : (L.safeTop || 0))));
+    var safeLeft = Math.max(0, finite(safe.left, preview ? (preview.left || 0) : 0));
+    var safeRight = Math.min(w, finite(safe.right,
+      preview && preview.rightInset ? w - preview.rightInset : w));
+    var safeBottom = Math.min(h, finite(safe.bottom,
+      preview && preview.bottomInset ? h - preview.bottomInset : h));
     if (safeRight <= safeLeft) { safeLeft = 0; safeRight = w; }
     if (safeBottom <= systemTop) safeBottom = h;
     return {
@@ -94,6 +98,7 @@
     ui.h = h;
     ui.metricKey = metricKey;
     ui.safeTop = st;
+    ui.sourceSafeTop = L.safeTop || 0;
     ui.systemTop = st;
     ui.safeLeft = metrics.safeLeft;
     ui.safeRight = metrics.safeRight;

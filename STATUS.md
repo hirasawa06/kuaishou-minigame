@@ -9,6 +9,7 @@
 - 已知待核对项：`tower-defense/package/kwaiStandard/main.js` 与随仓库 Skill 的模板不同；平台真机兼容、只读适配层要求与预检结果尚未在本次迁移中验证。
 - 已建立并实现屏幕安全区、平台按钮保守预留、触摸一致性与真机验收口径；本地布局、玩法仿真和浏览器交互回归通过，仍不代表真机平台适配已验收。
 - 本地验证命令：`node tools/layout-check.mjs`、`node tools/sim.mjs --seconds 400`、`node tools/shot.mjs --port 8099`、`validate-package.mjs --dir .`；结果提交以本分支最终 Git SHA 为证据。
+- 预览服务必须指向本仓库 `tower-defense/package/`；资源404会被门禁阻断，可用 `node tools/assets-check.mjs` 回归。
 
 ## 策划衔接
 

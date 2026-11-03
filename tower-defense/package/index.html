@@ -165,6 +165,9 @@
 
 <script>
 window.canvas = document.getElementById('game');
+// H5 Demo 默认展示设计规范五区；快手容器不设置这些调试变量。
+window.__safeAreaDebug = true;
+window.__safeAreaPreview = { top: 44, bottomInset: 68 };
 
 // 将固定分辨率写入 html 属性，供 kwaiStandard/main.js 浏览器调试时读取
 var _debugHtml = document.documentElement;
@@ -231,6 +234,7 @@ function toggleOrientation() {
 <script src="gameplay/input.js?v=1"></script>
 <script src="gameplay/render/scene.js?v=1"></script>
 <script src="gameplay/render/hud.js?v=1"></script>
+<script src="gameplay/render/safe-area-debug.js?v=1"></script>
 <script src="gameplay/game.js?v=1"></script>
 <script src="kwaiStandard/main.js?v=1"></script>
 </body>

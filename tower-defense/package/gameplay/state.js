@@ -37,6 +37,7 @@
     shake: 0,
     hitstop: 0,
     cardsPlaced: 0,
+    assetErrors: [],
   };
 
   function shuffle(a) {
@@ -114,6 +115,7 @@
     S.inspectT = 0;
     S.shake = 0;
     S.hitstop = 0;
+    S.assetErrors.length = 0;
     S.slotSeq = 0;
     S.deck = S.newDeck();
     S.initSlots();
