@@ -219,14 +219,14 @@ function frames_run(n) {
 }
 
 frames_run(1)
-console.log('menu frame ok, sprites loaded:', !!A.Assets.sprite('enemy-grunt'))
+console.log('menu frame ok, sprites loaded:', !!A.Assets.sprite('enemy-small'))
 
 // 开始游戏（按钮点击链路由 tools/shot.mjs 覆盖，这里直接进玩法）
 A.Game.start()
 frames_run(1)
-console.log('slots:', S.slots.map((s) => s.cardId), 'energy', S.energy)
+console.log('shop:', S.shop.map((x) => x.cardId).join(','), 'gold', S.gold, 'cap', S.heroCap)
 
-// 自动出牌：每 2 秒挑一张能付得起的卡，拖到基地前沿
+// 自动买英雄：按阵容缺口挑卡，买不起就攒；席位满了先扩建
 let placed = 0
 const report = []
 let lastLog = -1
@@ -237,57 +237,61 @@ for (let i = 0; i < totalFrames; i++) {
   simTime += step
   if (S.phase !== 'playing' && S.phase !== 'paused') break
 
-  // 每 40 帧尝试出牌：按缺口选牌，按最佳位置落子
-  if (i % 40 === 0 && S.phase === 'playing') {
+  if (i % 30 === 0 && S.phase === 'playing') {
     const u = L.ui
-    const cap = A.Config.UNIT_CAP || 11
-    if (S.units.length < cap) {
-      // 统计当前阵容缺口
-      let tanks = 0, melee = 0, ranged = 0
-      for (const un of S.units) {
-        if (un.def.cls === 'tank') tanks++
-        else if (un.def.cls === 'warrior') melee++
-        else ranged++
-      }
-      // 想要的下一张：前 3 张必须能挡，之后补远程
-      const want = tanks < 2 ? 'tank' : ranged < 4 ? 'ranged' : melee < 2 ? 'warrior' : 'any'
-      // 选最合适的牌（能付得起、且在视野里）
+
+    // 阵容缺口：先 2 盾，再补远程，最后近战
+    let tanks = 0, melee = 0, ranged = 0
+    for (const un of S.units) {
+      if (un.dead) continue
+      if (un.def.cls === 'tank') tanks++
+      else if (un.def.cls === 'warrior') melee++
+      else ranged++
+    }
+    const want = tanks < 2 ? 'tank' : ranged < 4 ? 'ranged' : melee < 2 ? 'warrior' : 'any'
+
+    if (S.liveUnits() >= S.heroCap) {
+      S.buyCap()
+    } else {
       let pick = null
-      for (const slot of S.slots) {
-        if (!slot.cardId) continue
-        if (u.cards.x + slot.x < u.cards.x - 10) continue
-        const def = S.cardById(slot.cardId)
-        if (!def || S.energy < def.cost) continue
+      for (let k = 0; k < S.shop.length; k++) {
+        const slot = S.shop[k]
+        if (!slot || slot.sold) continue
+        const def = S.heroById(slot.cardId)
+        if (!def || S.gold < def.cost) continue
         let score = 0
         if (want === 'tank' && def.cls === 'tank') score += 10
         if (want === 'ranged' && (def.cls === 'archer' || def.cls === 'mage')) score += 10
         if (want === 'warrior' && def.cls === 'warrior') score += 10
         score -= def.cost * 0.5
-        if (!pick || score > pick.score) pick = { slot, def, score }
+        if (!pick || score > pick.score) pick = { index: k, def, score }
       }
+      let fielded = false
       if (pick) {
         const def = pick.def
         const front = def.cls === 'tank' || def.cls === 'warrior'
-        // 前排在基地前 30~90px，后排在 110~200px；横向挑人少的位置
         const laneXs = [0.16, 0.36, 0.56, 0.78]
-        let bestX = laneXs[0], bestScore = -1
+        let bestX = u.field.x + u.field.w * laneXs[0]
+        let bestScore = -1
         for (const lx of laneXs) {
           const x = u.field.x + u.field.w * lx
           let crowd = 0
           for (const un of S.units) {
             if (Math.abs(un.x - x) < 40 && Math.abs(un.y - (u.base.y - 60)) < 120) crowd++
           }
-          const s2 = 1 / (1 + crowd)
-          if (s2 > bestScore) { bestScore = s2; bestX = x }
+          const sc = 1 / (1 + crowd)
+          if (sc > bestScore) { bestScore = sc; bestX = x }
         }
         const y = front
           ? u.base.y - 40 - Math.random() * 40
           : u.base.y - 120 - Math.random() * 70
-        if (A.Battle.tryDeploy(def, bestX, y)) {
-          A.Battle.removeSlot(pick.slot)
+        if (A.Battle.buyCard(pick.index, bestX, y)) {
           placed++
+          fielded = true
         }
       }
+      // 卡池空了或买不起，就花钱刷新（金币充裕时）
+      if (!fielded && S.gold > S.refreshCost + 10) S.refreshShop()
     }
   }
 
@@ -305,9 +309,10 @@ for (let i = 0; i < totalFrames; i++) {
       phase: S.phase,
       wave: S.waveIndex + 1,
       waveState: S.waveState,
-      energy: +S.energy.toFixed(1),
+      gold: Math.round(S.gold),
+      cap: S.heroCap,
       baseHp: Math.round(S.baseHp),
-      units: S.units.length,
+      units: S.liveUnits(),
       enemies: S.enemies.length,
       kills: S.kills,
     })
@@ -316,7 +321,7 @@ for (let i = 0; i < totalFrames; i++) {
 
 console.log('\n时间线:')
 for (const r of report) {
-  console.log(`  t=${String(r.t).padStart(3)}s wave=${r.wave} ${r.waveState.padEnd(9)} energy=${String(r.energy).padStart(4)} base=${String(r.baseHp).padStart(3)} units=${r.units} enemies=${r.enemies} kills=${r.kills}`)
+  console.log(`  t=${String(r.t).padStart(3)}s wave=${r.wave} ${r.waveState.padEnd(9)} gold=${String(r.gold).padStart(4)} cap=${r.cap} base=${String(r.baseHp).padStart(3)} units=${r.units} enemies=${r.enemies} kills=${r.kills}`)
 }
 
 console.log('\n结果:', {
@@ -325,8 +330,11 @@ console.log('\n结果:', {
   kills: S.kills,
   placed,
   cardsPlaced: S.cardsPlaced,
+  goldLeft: Math.round(S.gold),
+  goldEarned: S.goldEarned,
+  cap: S.heroCap,
   baseHp: Math.round(S.baseHp),
-  unitsAlive: S.units.length,
+  unitsAlive: S.liveUnits(),
   simSeconds: Math.round(simTime),
   frames,
 })

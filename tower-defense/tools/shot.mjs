@@ -189,74 +189,80 @@ async function main() {
   record('start -> playing', playing === 'playing', playing)
   await shot('02-start')
 
-  // 3) 拖一张完整可见的卡到战场（传送带会滚动，取当前几何）
+  // 3) 从卡池拖一张英雄到战场
   const geo = await evaluate(`(function(){
-    var A=window.AIGCUtils, u=A.Layout.ui;
+    var A=window.AIGCUtils, L=A.Layout, S=A.State;
+    S.gold = 120;
     var pick=null;
-    for (var i=0;i<A.State.slots.length;i++){
-      var s=A.State.slots[i];
-      if (u.cards.x+s.x >= u.cards.x && u.cards.x+s.x+u.cardW <= u.cards.x+u.cards.w) { pick=s; break; }
+    for (var i=0;i<S.shop.length;i++){
+      var slot=S.shop[i];
+      if (!slot || slot.sold) continue;
+      var r=L.shopRect(i);
+      pick={index:i, x:r.x+r.w/2, y:r.y+r.h/2, cardId:slot.cardId};
+      break;
     }
     if (!pick) return null;
-    return {cardX:u.cards.x+pick.x+u.cardW/2, cardY:u.cards.y+u.cardH/2,
-            cardId:pick.cardId,
-            fieldX:u.field.x+u.field.w*0.5, fieldY:u.field.y+u.field.h*0.55,
-            slots:A.State.slots.map(function(x){return [x.cardId, Math.round(x.x)]})}
+    return {cardX:pick.x, cardY:pick.y, cardId:pick.cardId,
+            fieldX:L.ui.field.x+L.ui.field.w*0.5, fieldY:L.ui.field.y+L.ui.field.h*0.55,
+            shop:S.shop.map(function(x){return x.cardId})}
   })()`)
-  if (!geo) throw new Error('传送带上没有完整可见的卡牌')
+  if (!geo) throw new Error('卡池为空')
   await drag(geo.cardX, geo.cardY, geo.fieldX, geo.fieldY)
-  const afterDeploy = await evaluate(`(function(){var S=AIGCUtils.State;return {units:S.units.length, energy:+S.energy.toFixed(1), placed:S.cardsPlaced}})()`)
-  record('drag card -> deploy', afterDeploy.units === 1, JSON.stringify(afterDeploy))
+  const afterDeploy = await evaluate(`(function(){var S=AIGCUtils.State;return {units:S.liveUnits(), gold:S.gold, placed:S.cardsPlaced}})()`)
+  record('drag hero -> deploy', afterDeploy.units === 1, JSON.stringify(afterDeploy))
   await shot('03-placed')
 
-  // 4) 左右滑动丢卡
-  await sleep(300)
-  const beforeSwipe = await evaluate(`(function(){
-    var A=window.AIGCUtils,u=A.Layout.ui;
-    var pick=null;
-    for (var i=0;i<A.State.slots.length;i++){
-      var s=A.State.slots[i];
-      if (u.cards.x+s.x >= u.cards.x && u.cards.x+s.x+u.cardW <= u.cards.x+u.cards.w) { pick=s; break; }
+  // 4) 点卡自动落地
+  const beforeTap = await evaluate(`(function(){
+    var A=window.AIGCUtils, L=A.Layout, S=A.State;
+    S.gold = 120;
+    for (var i=0;i<S.shop.length;i++){
+      if (S.shop[i] && !S.shop[i].sold){
+        var r=L.shopRect(i);
+        return {x:r.x+r.w/2, y:r.y+r.h/2, units:S.liveUnits()};
+      }
     }
-    return pick ? {x:u.cards.x+pick.x+u.cardW/2, y:u.cards.y+u.cardH/2, uid:pick.uid, n:A.State.slots.length} : null;
+    return null;
   })()`)
-  await drag(beforeSwipe.x, beforeSwipe.y, beforeSwipe.x + 130, beforeSwipe.y + 4, 10)
-  const afterDiscard = await evaluate(`(function(){
-    var S=AIGCUtils.State;
-    return {gone: !S.slots.some(function(s){return s.uid===${beforeSwipe.uid}}), n:S.slots.length};
-  })()`)
-  record('swipe -> discard', afterDiscard.gone, JSON.stringify(afterDiscard))
-  await shot('04-discarded')
+  if (beforeTap) {
+    const v = await toViewport(beforeTap.x, beforeTap.y)
+    await tap(v.x, v.y)
+    const afterTap = await evaluate(`(function(){var S=AIGCUtils.State;return {units:S.liveUnits()}})()`)
+    record('tap card -> auto deploy', afterTap.units === beforeTap.units + 1,
+      JSON.stringify({before: beforeTap.units, after: afterTap.units}))
+  }
+  await shot('04-tap-deploy')
 
-  // 4.5) 传送带必须自己滚动
-  const scroll = await evaluate(`(function(){
-    var S=AIGCUtils.State;
-    window.__x0 = S.slots.map(function(s){return s.x});
-    return window.__x0;
+  // 4.5) 刷新卡池要扣金币并换一批
+  const refresh = await evaluate(`(function(){
+    var A=window.AIGCUtils, L=A.Layout, S=A.State;
+    var before = S.shop.map(function(x){return x.cardId});
+    var gold = S.gold, cost = S.refreshCost;
+    var r = L.ui.refreshBtn;
+    S.refreshShop();
+    return {before:before, after:S.shop.map(function(x){return x.cardId}),
+            goldBefore:gold, goldAfter:S.gold, cost:cost};
   })()`)
-  await sleep(1200)
-  const scroll2 = await evaluate(`(function(){
-    var S=AIGCUtils.State;
-    return S.slots.map(function(s){return s.x});
-  })()`)
-  const moved = scroll2.some((x, i) => typeof scroll[i] === 'number' && Math.abs(x - scroll[i]) > 3)
-  record('cards keep scrolling', moved, JSON.stringify({before: scroll.map(Math.round), after: scroll2.map(Math.round)}))
+  record('refresh shop spends gold', refresh.goldAfter === refresh.goldBefore - refresh.cost,
+    JSON.stringify(refresh))
 
   // 5) 快进战斗：直接推进战斗状态机
   await evaluate(`(function(){
     var A=window.AIGCUtils, S=A.State, u=A.Layout.ui;
-    S.energy = 10;
-    var picks = ['tank-a','war-a','arch-a','mage-a','tank-b','war-b','arch-b','mage-b'];
+    var picks = ['tank','war','arch','mage','war','arch','tank','mage'];
+    S.gold = 200;
+    S.heroCap = 8;
     for (var i=0;i<8;i++){
-      var def = S.cardById(picks[i]);
-      S.energy = 10;
-      A.Battle.tryDeploy(def, u.field.x + u.field.w*(0.2+0.08*i), u.field.y + u.field.h*(0.55 + (i%3)*0.12));
+      var def = S.heroById(picks[i]);
+      A.Battle.placeHero(def, u.field.x + u.field.w*(0.2+0.08*i), u.field.y + u.field.h*(0.55 + (i%3)*0.12));
+      S.units[S.units.length-1].spawnT = 0;
     }
     S.waveTimer = 0;
-    return S.units.length;
+    S.waveState = 'prep';
+    return S.liveUnits();
   })()`)
   await sleep(6000)
-  const mid = await evaluate(`(function(){var S=AIGCUtils.State;return {phase:S.phase,wave:S.waveIndex+1,enemies:S.enemies.length,kills:S.kills,baseHp:Math.round(S.baseHp),units:S.units.length}})()`)
+  const mid = await evaluate(`(function(){var S=AIGCUtils.State;return {phase:S.phase,wave:S.waveIndex+1,enemies:S.enemies.length,kills:S.kills,baseHp:Math.round(S.baseHp),units:S.liveUnits(),gold:Math.round(S.gold)}})()`)
   record('wave spawns enemies', mid.enemies > 0 || mid.kills > 0, JSON.stringify(mid))
   await shot('05-battle')
 
@@ -275,7 +281,7 @@ async function main() {
   const restart = await evaluate(`(function(){var b=AIGCUtils.Layout.ui.btnRect('paused');return {x:b.x+b.w/2,y:b.y+b.h/2}})()`)
   { const v = await toViewport(restart.x, restart.y); await tap(v.x, v.y) }
   await sleep(300)
-  const afterRestart = await evaluate(`(function(){var S=AIGCUtils.State;return {phase:S.phase, wave:S.waveIndex+1, units:S.units.length}})()`)
+  const afterRestart = await evaluate(`(function(){var S=AIGCUtils.State;return {phase:S.phase, wave:S.waveIndex+1, units:S.liveUnits()}})()`)
   record('restart from pause', afterRestart.phase === 'playing' && afterRestart.wave === 1, JSON.stringify(afterRestart))
   await shot('07b-restarted')
 
@@ -314,7 +320,7 @@ async function main() {
   record('render stats', perf.quads > 0, JSON.stringify(perf))
   const spr = await evaluate(`(function(){
     var A=window.AIGCUtils;
-    var sp=A.Assets.sprite('unit-war-1');
+    var sp=A.Assets.sprite('enemy-normal');
     return {has:!!sp, texKeys:Object.keys(A.Assets ? {a:1} : {}),
       spritesEntry: !!(A.Assets.entry && A.Assets.entry('game')),
       entrySize: A.Assets.entry('game') ? [A.Assets.entry('game').w, A.Assets.entry('game').h] : null,

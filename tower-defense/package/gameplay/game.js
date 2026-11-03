@@ -62,7 +62,7 @@
     if (u.ready && u.w === L.w && u.h === L.h && u.sourceSafeTop === (L.safeTop || 0)) return;
     u.ready = false;
     L.calc();
-    if (S.slots && S.slots.length && S.reflowSlots) S.reflowSlots();
+    // 商店固定 4 格，布局变化时无需重排；保留钩子给后续滚动型卡池
     syncViewport();
   }
 

@@ -1,11 +1,9 @@
-/* gameplay/play/battle.js — 核心玩法：能量、卡槽、单位、敌人、投射物、波次 */
+/* gameplay/play/battle.js — 核心玩法：金币、卡池、英雄、敌人、投射物、波次 */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
   var S = A.State;
   var L = A.Layout;
-
-  var REFILL_DELAY = 0.45;
 
   // ── 波次 ───────────────────────────────────────────────────
   function buildWave(index) {
@@ -16,7 +14,6 @@
     for (var gi = 0; gi < wave.groups.length; gi++) {
       var g = wave.groups[gi];
       for (var n = 0; n < g[1]; n++) {
-        // 同一组内轻微错开 hp，避免完全一致
         var jitter = 0.94 + Math.random() * 0.12;
         queue.push({ id: g[0], hp: hpScale * jitter, atk: atkScale });
       }
@@ -76,16 +73,16 @@
       animT: 0,
       pendingHit: -1,
       pendingTarget: 0,
+      taunted: 0,
     };
     S.enemies.push(e);
   }
 
-  // ── 单位 ───────────────────────────────────────────────────
-  function placeUnit(card, x, y) {
+  // ── 英雄 ───────────────────────────────────────────────────
+  function placeHero(card, x, y) {
     var u = L.ui;
     x = S.clamp(x, u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
     y = S.clamp(y, u.placeTop, u.placeBottom);
-    // 与已有单位保持最小间距；同点重叠时随机给一个方向，避免来回推成 NaN
     var minGap = C.UNIT_MIN_GAP;
     for (var pi = 0; pi < S.units.length; pi++) {
       var other = S.units[pi];
@@ -109,6 +106,9 @@
       def: card,
       x: x,
       y: y,
+      homeX: x,
+      homeY: y,
+      facing: 1,
       hp: card.hp,
       maxHp: card.hp,
       atkTimer: 0.3,
@@ -118,14 +118,15 @@
       dead: false,
       anim: 'idle',
       animT: 0,
-      pendingHit: -1,     // 攻击动作到达出手帧的剩余时间；<0 表示无待结算
+      pendingHit: -1,
       pendingTarget: 0,
+      tauntPulse: 0,
     };
     S.units.push(unit);
     return unit;
   }
 
-  function canAfford(card) { return S.energy >= card.cost; }
+  function canAfford(def) { return S.gold >= def.cost; }
 
   function tryDeploy(card, x, y) {
     var u = L.ui;
@@ -135,22 +136,42 @@
     if (x < u.field.x || x > u.field.x + u.field.w) return false;
     if (y < u.field.y - 24 || y > u.base.y + 10) return false;
     if (!canAfford(card)) {
-      S.toastMsg('能量不足', 0.9);
+      S.toastMsg('金币不足', 0.9);
       return false;
     }
-    // 死亡动画中的单位不算占位，否则尸体卡住上场名额
-    var liveCount = 0;
-    for (var ci = 0; ci < S.units.length; ci++) if (!S.units[ci].dead) liveCount++;
-    if (liveCount >= C.UNIT_CAP) {
-      S.toastMsg('上场单位已满', 1.0);
+    // 死亡动画中的英雄不算占位
+    if (S.liveUnits() >= S.heroCap) {
+      S.toastMsg('上场席位已满（' + S.heroCap + '），可花金币扩建', 1.3);
       return false;
     }
-    S.energy -= card.cost;
+    S.gold -= card.cost;
     S.cardsPlaced++;
-    placeUnit(card, x, y);
+    placeHero(card, x, y);
     S.addEffect({ type: 'ring', x: x, y: y, r: card.radius + 4, r2: card.radius + 26, life: 0.36, max: 0.36, color: card.color });
-    S.addFloat(x, y - card.radius - 14, '-' + card.cost, '#7fe3ff');
+    S.addFloat(x, y - card.radius - 14, '-' + card.cost, '#ffd166');
     return true;
+  }
+
+  // 从卡池买下第 i 张：成功返回 true，卡位留空等刷新
+  function buyCard(index, x, y) {
+    var slot = S.shop[index];
+    if (!slot || slot.sold) return false;
+    var def = S.heroById(slot.cardId);
+    if (!def) return false;
+    if (!tryDeploy(def, x, y)) return false;
+    slot.sold = true;
+    return true;
+  }
+
+  // 点卡（不拖拽）时直接以卡为中心落地放
+  function buyCardAtCenter(index) {
+    var slot = S.shop[index];
+    if (!slot || slot.sold) return false;
+    var u = L.ui;
+    var rect = L.shopRect(index);
+    var x = u.field.x + u.field.w * 0.5;
+    var y = u.placeBottom - 10;
+    return buyCard(index, x, y);
   }
 
   // ── 伤害 ───────────────────────────────────────────────────
@@ -165,9 +186,12 @@
     if (e.hp <= 0) {
       e.dead = true;
       S.kills++;
-      S.energy = Math.min(C.ENERGY_MAX, S.energy + C.KILL_ENERGY);
+      var g = e.def.gold || 2;
+      S.gold += g;
+      S.goldEarned += g;
+      S.addFloat(e.x, e.y - e.def.radius - 20, '+' + g, '#ffd166');
       S.addEffect({ type: 'pop', x: e.x, y: e.y, r: e.def.radius, life: 0.42, max: 0.42, color: e.def.color });
-      if (e.def.id === 'boss') onBossDeath(e);
+      if (e.def.tier === 'boss') onBossDeath(e);
     }
   }
 
@@ -212,8 +236,8 @@
       x: unit.x, y: unit.y - 6,
       tx: target.x, ty: target.y,
       targetUid: target.uid,
-      speed: def.cls === 'archer' ? 640 : 400,
-      kind: def.cls === 'archer' ? 'arrow' : (def.id === 'mage-b' ? 'ice' : 'fire'),
+      speed: def.cls === 'archer' ? 680 : 420,
+      kind: def.cls === 'archer' ? 'arrow' : 'fire',
       dmg: def.atk,
       splash: def.splash || 0,
       slow: def.slow || null,
@@ -232,7 +256,7 @@
         e.slowT = Math.max(e.slowT, p.slow.duration);
         e.slowFactor = Math.min(e.slowFactor, p.slow.factor);
       }
-      damageEnemy(e, p.dmg * 0.6, true);
+      damageEnemy(e, p.dmg, true);
     }
     S.addEffect({
       type: 'ring', x: cx, y: cy, r: p.splash * 0.35, r2: p.splash,
@@ -240,65 +264,12 @@
     });
   }
 
-  // ── 卡牌传送带 ─────────────────────────────────────────────
-  // 每张卡有 x（当前屏幕位置）与 target（目标位置）：
-  //   · target 持续以固定速度左移 → 整条带稳定滚动
-  //   · 用掉/丢弃一张卡后，它右侧的卡 target 左移一格 → 立即补位，不留空洞
-  //   · 拖动卡牌时整条带暂停，松手继续
-  function updateSlots(dt) {
-    var u = L.ui;
-    var step = u.cardW + u.cardGap;
-    var speed = C.CARD_SCROLL_SPEED;
-    var dragging = S.dragging && S.dragging.active;
-
-    if (!dragging) {
-      for (var i = 0; i < S.slots.length; i++) {
-        if (S.slots[i] === (S.dragging && S.dragging.slot)) continue;
-        S.slots[i].target -= speed * dt;
-      }
-
-      // 右侧补牌：保证整条带始终铺满可视宽度
-      var guard = 0;
-      while (guard++ < 8) {
-        var last = S.slots[S.slots.length - 1];
-        var nextTarget = last ? last.target + step : 0;
-        if (nextTarget + u.cardW < u.cards.w + step * 0.35) {
-          S.slots.push({
-            uid: ++S.slotSeq,
-            cardId: S.drawCardId(),
-            x: nextTarget + step * 0.5,
-            target: nextTarget,
-          });
-        } else break;
-      }
-    }
-
-    // 平滑靠拢 target，并淘汰彻底滑出左侧的卡
-    var keep = [];
-    for (var k = 0; k < S.slots.length; k++) {
-      var slot = S.slots[k];
-      var k2 = 1 - Math.pow(0.0002, dt);
-      slot.x += (slot.target - slot.x) * k2;
-      if (Math.abs(slot.target - slot.x) < 0.2) slot.x = slot.target;
-      var isHeld = S.dragging && S.dragging.slot === slot;
-      if (slot.x + u.cardW < -10 && !isHeld) continue;
-      keep.push(slot);
-    }
-    S.slots = keep;
-  }
-
-  // 用掉/丢弃一张卡：移除它，并把右侧的牌整体左移一格补位
-  function removeSlot(slot) {
-    var u = L.ui;
-    var step = u.cardW + u.cardGap;
-    var idx = -1;
-    for (var i = 0; i < S.slots.length; i++) {
-      if (S.slots[i] === slot) { idx = i; break; }
-    }
-    if (idx < 0) return;
-    S.slots.splice(idx, 1);
-    for (var j = idx; j < S.slots.length; j++) {
-      S.slots[j].target -= step;
+  // ── 卡池（固定 4 格，不再滚动）──────────────────────────────
+  function updateShop(dt) {
+    // 占位：卡池静止，刷新由玩家触发；此处只推进新抽卡的出现动画
+    for (var i = 0; i < S.shop.length; i++) {
+      var sl = S.shop[i];
+      if (sl.born !== undefined) sl.age = S.time - sl.born;
     }
   }
 
@@ -313,17 +284,15 @@
       return;
     }
     S.time += dt;
-    S.energy = Math.min(C.ENERGY_MAX, S.energy + C.ENERGY_REGEN * dt);
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt);
     if (S.hitstop > 0) S.hitstop = Math.max(0, S.hitstop - dt);
-    // 命中停顿：只压缩战斗推进，不影响特效衰减，否则闪点会一起卡住
     var battleDt = S.hitstop > 0 ? dt * 0.18 : dt;
     if (S.toast) {
       S.toast.life -= dt;
       if (S.toast.life <= 0) S.toast = null;
     }
 
-    updateSlots(dt);
+    updateShop(dt);
     updateWaves(dt);
     updateUnits(battleDt);
     updateEnemies(battleDt);
@@ -362,17 +331,50 @@
       }
       S.waveState = 'prep';
       S.waveTimer = C.waveGap;
-      S.energy = Math.min(C.ENERGY_MAX, S.energy + 1.5);
-      S.toastMsg('波次清除  +1.5 能量', 1.5);
+      S.gold += C.WAVE_GOLD_BONUS;
+      S.goldEarned += C.WAVE_GOLD_BONUS;
+      S.toastMsg('波次清除  +' + C.WAVE_GOLD_BONUS + ' 金币', 1.5);
+    }
+  }
+
+  // ── 嘲讽 ───────────────────────────────────────────────────
+  // 盾位不输出，但会把范围内的敌人拉向自己，为后排创造输出窗口
+  function updateTaunt(dt) {
+    for (var i = 0; i < S.enemies.length; i++) {
+      var e = S.enemies[i];
+      if (e.dead) continue;
+      var best = null;
+      var bestD = Infinity;
+      for (var j = 0; j < S.units.length; j++) {
+        var un = S.units[j];
+        if (un.dead || un.def.cls !== 'tank' || !un.def.taunt) continue;
+        var d2 = S.dist2(un.x, un.y, e.x, e.y);
+        if (d2 <= un.def.taunt * un.def.taunt && d2 < bestD) {
+          bestD = d2;
+          best = un;
+        }
+      }
+      if (best) {
+        e.taunted = Math.max(e.taunted, 0.4);
+        // 向盾位方向横向吸附，纵向仍朝基地推进，避免被卡死在原地
+        var dx = best.x - e.x;
+        var dy = best.y - e.y;
+        var len = Math.sqrt(dx * dx + dy * dy) || 1;
+        var pull = Math.min(1, 90 * dt / Math.max(1, len));
+        e.x += dx * pull * 0.9;
+        e.y += dy * pull * 0.25;
+      } else if (e.taunted > 0) {
+        e.taunted -= dt;
+      }
     }
   }
 
   function updateUnits(dt) {
+    updateTaunt(dt);
     var alive = [];
     for (var i = 0; i < S.units.length; i++) {
       var un = S.units[i];
 
-      // 死亡动画播完再移除，避免单位凭空消失
       if (un.dead) {
         un.animT += dt;
         un.dieT -= dt;
@@ -381,6 +383,7 @@
       }
       if (un.spawnT > 0) un.spawnT -= dt;
       if (un.hitFlash > 0) un.hitFlash -= dt;
+      if (un.tauntPulse > 0) un.tauntPulse -= dt;
 
       var def = un.def;
       un.animT += dt;
@@ -389,7 +392,31 @@
         un.animT = 0;
       }
 
-      // 攻击动作到达出手帧，才真正结算伤害（前摇/出手/后摇）
+      // 战士主动寻敌：有目标就走过去，没目标回原位
+      if (def.cls === 'warrior' && def.moveSpeed > 0) {
+        var chase = nearestEnemy(un, def.aggro || 240);
+        var tx = un.homeX;
+        var ty = un.homeY;
+        if (chase) {
+          tx = chase.x;
+          ty = chase.y - def.range * 0.55;
+        }
+        var dx = tx - un.x;
+        var dy = ty - un.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d > 4) {
+          var step = Math.min(d, def.moveSpeed * dt);
+          un.x += dx / d * step;
+          un.y += dy / d * step;
+          un.facing = dx >= 0 ? 1 : -1;
+          if (un.anim === 'idle') un.animT += dt;
+        }
+        var uu = L.ui;
+        un.x = S.clamp(un.x, uu.field.x + def.radius, uu.field.x + uu.field.w - def.radius);
+        un.y = S.clamp(un.y, uu.placeTop, uu.placeBottom);
+      }
+
+      // 攻击动作到达出手帧才结算
       if (un.pendingHit >= 0) {
         un.pendingHit -= dt;
         if (un.pendingHit < 0) {
@@ -410,6 +437,14 @@
         }
       }
 
+      // 盾位不攻击：只按嘲讽范围周期性脉动一次视觉
+      if (def.cls === 'tank') {
+        if (un.tauntPulse <= -1.2 / Math.max(0.2, def.interval)) un.tauntPulse = 0.45;
+        un.tauntPulse -= dt;
+        alive.push(un);
+        continue;
+      }
+
       un.atkTimer -= dt;
       if (un.atkTimer <= 0) {
         var best = findTarget(un);
@@ -417,14 +452,26 @@
           un.atkTimer = def.interval;
           un.anim = 'atk';
           un.animT = 0;
-          // 出手帧：柴犬的盾击中点在 0.17s，其余单位手感偏快
-          un.pendingHit = def.id === 'tank-a' ? 0.17 : 0.07;
+          un.pendingHit = def.id === 'tank' ? 0.17 : 0.07;
           un.pendingTarget = best.uid;
+          un.facing = best.x >= un.x ? 1 : -1;
         }
       }
       alive.push(un);
     }
     if (alive.length !== S.units.length) S.units = alive;
+  }
+
+  function nearestEnemy(un, maxRange) {
+    var best = null;
+    var bestD = maxRange * maxRange;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var e = S.enemies[i];
+      if (e.dead) continue;
+      var d2 = S.dist2(un.x, un.y, e.x, e.y);
+      if (d2 < bestD) { bestD = d2; best = e; }
+    }
+    return best;
   }
 
   function findTarget(un) {
@@ -449,29 +496,17 @@
 
   function resolveAttack(un, best) {
     var def = un.def;
-    if (def.cls === 'tank' || def.cls === 'warrior') {
+    if (def.cls === 'warrior') {
       damageEnemy(best, def.atk, false);
       var mx = (un.x + best.x) / 2, my = (un.y + best.y) / 2;
       S.addEffect({
         type: 'slash', x: un.x, y: un.y, tx: best.x, ty: best.y,
         life: 0.18, max: 0.18, color: def.color,
       });
-      // 命中闪点：贴在受击点，加法混合下会明显发亮
       S.addEffect({
-        type: 'glow', x: mx, y: my, r: 7, life: 0.15, max: 0.15,
-        color: def.id === 'tank-a' ? '#ffe3b8' : def.color,
+        type: 'glow', x: mx, y: my, r: 7, life: 0.15, max: 0.15, color: def.color,
       });
-      if (def.cls === 'tank') {
-        for (var k = 0; k < S.enemies.length; k++) {
-          var e2 = S.enemies[k];
-          if (e2 === best || e2.dead) continue;
-          var reach2 = def.range + e2.def.radius;
-          if (S.dist2(un.x, un.y, e2.x, e2.y) <= reach2 * reach2) {
-            damageEnemy(e2, def.atk * 0.32, true);
-          }
-        }
-      }
-      S.hitstop = Math.max(S.hitstop, def.cls === 'tank' ? 0.055 : 0.04);
+      S.hitstop = Math.max(S.hitstop, 0.04);
     } else {
       fireProjectile(un, best);
       S.addEffect({
@@ -498,7 +533,6 @@
       }
       if (e.atkTimer > 0) e.atkTimer -= dt;
 
-      // 抬手结束：落刀结算
       if (e.pendingHit >= 0) {
         e.pendingHit -= dt;
         if (e.pendingHit < 0) {
@@ -524,7 +558,6 @@
         }
       }
 
-      // 找正下方最近的阻挡单位
       var blocker = null;
       var bestDy = Infinity;
       for (var j = 0; j < S.units.length; j++) {
@@ -538,8 +571,7 @@
       }
 
       var atBase = e.y >= u.baseStopY;
-      if (atBase && e.def.id === 'boss') {
-        // 首领压基地时对周围单位造成范围伤害，迫使玩家把火力集中在它身上
+      if (atBase && e.def.tier === 'boss') {
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
           S.baseHp -= e.def.baseDamage;
@@ -565,7 +597,6 @@
       } else if (blocker) {
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
-          // 先抬手 0.18s 再落刀：给玩家看见危险、读到节奏的机会
           e.anim = 'atk';
           e.animT = 0;
           e.pendingHit = 0.18;
@@ -576,6 +607,7 @@
         e.y += sp * dt;
         if (e.y > u.baseStopY) e.y = u.baseStopY;
       }
+      e.x = S.clamp(e.x, u.field.x + e.def.radius, u.field.x + u.field.w - e.def.radius);
       alive.push(e);
     }
     if (alive.length !== S.enemies.length) S.enemies = alive;
@@ -628,6 +660,7 @@
     for (var i = 0; i < S.effects.length; i++) {
       var e = S.effects[i];
       e.life -= dt;
+      if (e.life <= 0) continue;
       if (e.type === 'spark') {
         e.x += (e.vx || 0) * dt;
         e.y += (e.vy || 0) * dt;
@@ -637,7 +670,7 @@
         e.y -= 14 * dt;
         e.r = (e.r || 10) * (1 + dt * 0.9);
       }
-      if (e.life > 0) alive.push(e);
+      alive.push(e);
     }
     S.effects = alive;
 
@@ -645,19 +678,24 @@
     for (var k = 0; k < S.floats.length; k++) {
       var f = S.floats[k];
       f.life -= dt;
-      f.y -= 34 * dt;
+      f.y -= 26 * dt;
       if (f.life > 0) fl.push(f);
     }
     S.floats = fl;
+  }
+
+  function remainingEnemies() {
+    return S.enemies.length + S.spawnQueue.length;
   }
 
   A.Battle = {
     update: update,
     tryDeploy: tryDeploy,
     canAfford: canAfford,
-    damageEnemy: damageEnemy,
-    refillDelay: REFILL_DELAY,
-    removeSlot: removeSlot,
-    remainingEnemies: function () { return S.enemies.length + S.spawnQueue.length; },
+    buyCard: buyCard,
+    buyCardAtCenter: buyCardAtCenter,
+    remainingEnemies: remainingEnemies,
+    findTarget: findTarget,
+    placeHero: placeHero,
   };
 })();

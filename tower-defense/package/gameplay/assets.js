@@ -78,6 +78,9 @@
     // 战斗图集（单位、特效、继承图标都在这张里）
     if (A.GameAtlas && A.GameAtlas.src) manifest.push(['game', A.GameAtlas.src]);
     manifest.push(['home-bg', 'res/home-asset/home-bg.png']);
+    // 首页美术（进入游戏前的客厅场景与章节卡）
+    manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
+    manifest.push(['menu-card', 'res/Menu/menu-card.png']);
     pending = manifest.length;
     for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);
     if (pending === 0) check();

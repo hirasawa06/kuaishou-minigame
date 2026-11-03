@@ -36,23 +36,27 @@
 
   function drawBackground() {
     var u = L.ui;
-    // 首页渲染图（主包 res/home-asset，首帧即可用）铺满全屏，避免首帧纯色
-    var bg = Assets.entry('home-bg');
+    // 客厅背景铺满全屏（与首页同一张），避免换场景时跳色
+    var bg = Assets.entry('menu-bg') || Assets.entry('home-bg');
     if (bg) {
       D.texture(bg.tex, bg.w, bg.h, 0, 0, bg.w, bg.h, 0, 0, u.w, u.h);
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
     }
-    // 战场视觉底层铺满画布；部署范围仍由 u.field 限定。
+    // 战场压暗，让敌人和英雄从客厅背景里浮出来
     var f = u.field;
-    D.rect(0, 0, u.w, u.h, D.color('#0d1526', 0.25));
-    for (var i = 1; i < u.lanes.length; i++) {
-      var x = (u.lanes[i - 1] + u.lanes[i]) / 2;
-      D.rect(x - 0.5, 0, 1, u.h, COL.laneLine);
+    D.vGradient(0, 0, u.w, u.h, D.color('#141018', 0.58), D.color('#0d0b10', 0.72), 18);
+    // 三条通道
+    for (var i = 0; i < u.lanes.length; i++) {
+      D.rect(u.lanes[i] - f.w * 0.15, f.y, f.w * 0.30, f.h, D.color('#3a2c22', 0.16));
     }
-    D.strokeRect(0, 0, u.w, u.h, 1, COL.fieldLine);
+    for (var k = 1; k < u.lanes.length; k++) {
+      var x = (u.lanes[k - 1] + u.lanes[k]) / 2;
+      D.rect(x - 0.5, f.y, 1, f.h, D.color('#6b5442', 0.28));
+    }
+    D.strokeRect(f.x, f.y, f.w, f.h, 1, D.color('#a8845e', 0.35));
     // 顶部生成区指示
-    D.hGradient(f.x + 1, f.y + 1, f.w - 2, 34, D.color('#2a1140', 0.6), D.color('#0d1526', 0), 8);
+    D.hGradient(f.x + 1, f.y + 1, f.w - 2, 34, D.color('#5a2b44', 0.55), D.color('#0d1526', 0), 8);
   }
 
   function drawBase(dt) {
@@ -156,12 +160,21 @@
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
     var rig = A.Rigs && A.Rigs[d.id];
     D.circle(un.x, un.y + r * 0.9, r * 0.85, D.color('#000000', 0.16));
+
+    // 盾位：嘲讽范围常驻淡蓝光晕，脉动一下表示嘲讽在生效
+    if (d.cls === 'tank' && d.taunt) {
+      var pulse = un.tauntPulse > 0 ? un.tauntPulse / 0.45 : 0;
+      A.Render.setAdditive(true);
+      additiveGlow(un.x, un.y, d.taunt * 1.9, '#4f7fd0', 0.10 + pulse * 0.16, 0);
+      A.Render.setAdditive(false);
+      D.ring(un.x, un.y, d.taunt * (0.55 + 0.45 * (1 - pulse)), 2.2,
+        D.color('#8fc0ff', 0.22 + pulse * 0.5));
+    }
+
     if (rig) {
-      // 分件动画：底盘保留队伍色，方便在密集阵型里分出单位类型
       D.circle(un.x, un.y, r + 3, D.color(d.color, 0.20));
       D.ring(un.x, un.y, r + 2, 1.3, D.color(d.color, 0.6));
-      if (un.def.id === 'tank-a') {
-        // 呼吸光晕：待机时贴地一圈淡蓝，攻击时更亮
+      if (d.id === 'tank') {
         var a = un.anim === 'atk' ? 0.5 : 0.22;
         A.Render.setAdditive(true);
         additiveGlow(un.x, un.y + r * 0.2, r * 3.2, '#7fb2ff', a, 0);
@@ -183,6 +196,16 @@
       icon(d.icon, un.x, un.y, r * 2.35 * (0.8 + 0.2 * spawn), alpha);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
+
+    // 战士出击时脚下留一条回到驻点的虚线，便于读出动线
+    if (d.cls === 'warrior' && d.moveSpeed > 0) {
+      var dx = un.x - un.homeX, dy = un.y - un.homeY;
+      if (dx * dx + dy * dy > 900) {
+        D.ring(un.homeX, un.homeY, 8, 1.2, D.color(d.color, 0.35));
+        D.rect(un.homeX - 1, un.homeY - 1, 2, 2, D.color(d.color, 0.45));
+      }
+    }
+
     var w = Math.max(22, r * 2.1);
     var ratio = Math.max(0, un.hp / un.maxHp);
     var col = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
@@ -298,29 +321,44 @@
   function drawDragGhost() {
     var drag = S.dragging || (A.Input && A.Input.getDrag && A.Input.getDrag());
     if (!drag || !drag.active) return;
-    if (drag.swiped) {
-      // 滑动丢弃：卡片跟随手指并变红，松手即丢
-      icon(drag.def.icon, drag.x, drag.y, 72, 0.85);
-      D.roundRect(drag.x - 40, drag.y - 46, 80, 92, 12, D.color('#ff4d6a', 0.22));
-      D.ring(drag.x, drag.y, 42, 2, D.color('#ff6b7f', 0.8));
-      return;
-    }
     var u = L.ui;
     var def = drag.def;
     if (!def) return;
     var overField = drag.y < u.tray.y;
     var x = drag.x, y = drag.y;
-    // 放置范围圆
-    if (overField) {
-      var ok = A.Battle.canAfford(def) && y > u.field.y - 30 && y < u.base.y;
-      var col = ok ? '#6ff0a8' : '#ff6b7f';
-      D.circle(x, y, def.range, D.color(col, 0.10));
+    if (!overField) {
+      // 手指还在商店里：卡片跟手，不显示落地预览
+      D.roundRect(x - 52, y - 34, 104, 68, 12, D.color('#0d1220', 0.55));
+      icon(def.icon, x - 20, y, 40, 0.96);
+      D.text(def.name, x + 4, y - 20, 18, D.color('#ffffff', 0.95), 0);
+      D.text(def.cost + ' 金币', x + 4, y + 2, 18, D.color('#ffd166', 0.95), 0);
+      return;
+    }
+    var live = S.liveUnits();
+    var ok = A.Battle.canAfford(def) && live < S.heroCap &&
+      y > u.field.y - 30 && y < u.base.y;
+    var col = ok ? '#6ff0a8' : '#ff6b7f';
+
+    // 攻击半径（盾位无攻击，改画嘲讽半径）
+    if (def.cls === 'tank' && def.taunt) {
+      D.circle(x, y, def.taunt, D.color('#5b8bd0', 0.10));
+      D.ring(x, y, def.taunt, 1.6, D.color('#7fb2ff', 0.55));
+      D.text('嘲讽', x, y - def.taunt - 16, 18, D.color('#9ec6ff', 0.85), 1);
+    } else if (def.range) {
+      D.circle(x, y, def.range, D.color(col, 0.09));
       D.ring(x, y, def.range, 1.4, D.color(col, 0.5));
-      D.circle(x, y, def.radius + 4, D.color(col, 0.22));
-      D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
-      icon(def.icon, x, y, def.radius * 2.2, 0.9);
-    } else {
-      icon(def.icon, x, y - 46, 60, 0.95);
+    }
+    // 群攻范围
+    if (def.splash) {
+      D.circle(x, y, def.splash, D.color('#a583f0', 0.08));
+      D.ring(x, y, def.splash, 1.2, D.color('#b79cff', 0.45));
+    }
+    D.circle(x, y, def.radius + 4, D.color(col, 0.22));
+    D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
+    icon(def.icon, x, y, def.radius * 2.2, 0.94);
+    if (!ok) {
+      D.text(live >= S.heroCap ? '席位已满' : '金币不足', x, y + def.radius + 12, 18,
+        D.color('#ff9aa8', 0.95), 1);
     }
   }
 

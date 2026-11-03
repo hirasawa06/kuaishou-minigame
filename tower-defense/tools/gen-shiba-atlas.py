@@ -43,6 +43,12 @@ LEGACY_ICONS = [
     "ui-heart", "ui-bolt", "ui-pause", "ui-play",
 ]
 
+# 本脚本自绘的新图标（按四档敌人与金币重做，不依赖旧图集）
+NEW_ICONS = [
+    "enemy-small", "enemy-normal", "enemy-elite", "ui-coin",
+    "ui-setting", "ui-rank", "ui-lock",
+]
+
 
 # ─────────────────────────────────────────── 柴犬分件
 def split_shiba():
@@ -211,6 +217,131 @@ def make_smoke(size=96):
     return out
 
 
+# ─────────────────────────────────────────── 新图标（2x 绘制）
+def _new(size=120):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    return img, ImageDraw.Draw(img)
+
+
+def icon_enemy(tier):
+    """四档敌人：体型与花纹逐级升级，颜色对应 config 里的色板。"""
+    img, d = _new()
+    base, accent = {
+        "small": ((143, 208, 106), (96, 160, 70)),
+        "normal": ((217, 160, 90), (166, 112, 60)),
+        "elite": ((168, 111, 224), (114, 66, 168)),
+        "boss": ((224, 78, 110), (150, 38, 70)),
+    }[tier]
+    cx, cy = 60, 66
+    r = {"small": 26, "normal": 33, "elite": 40, "boss": 47}[tier]
+
+    # 影子
+    d.ellipse((cx - r * 0.8, cy + r * 0.75, cx + r * 0.8, cy + r * 0.98),
+              fill=(0, 0, 0, 40))
+    # 角（精英 / 首领）
+    if tier in ("elite", "boss"):
+        for sx in (-1, 1):
+            d.polygon([(cx + sx * r * 0.55, cy - r * 0.62),
+                       (cx + sx * r * 0.82, cy - r * 1.28),
+                       (cx + sx * r * 0.18, cy - r * 0.86)], fill=accent)
+    # 身体
+    d.ellipse((cx - r, cy - r * 0.92, cx + r, cy + r * 0.96), fill=base)
+    d.ellipse((cx - r * 0.78, cy - r * 0.70, cx + r * 0.10, cy + r * 0.20),
+              fill=(255, 255, 255, 46))
+    # 眼睛：越高级越凶
+    eyeY = cy - r * 0.02
+    ew = r * 0.20
+    for sx in (-1, 1):
+        d.ellipse((cx + sx * r * 0.38 - ew, eyeY - ew * 1.05,
+                   cx + sx * r * 0.38 + ew, eyeY + ew * 1.05),
+                  fill=(255, 255, 255, 255))
+        d.ellipse((cx + sx * r * 0.38 - ew * 0.45, eyeY - ew * 0.6,
+                   cx + sx * r * 0.38 + ew * 0.45, eyeY + ew * 0.7),
+                  fill=(38, 28, 36, 255))
+    if tier in ("elite", "boss"):
+        # 眉毛压在眼睛上沿之外，避免盖住眼白变成“半张脸”
+        for sx in (-1, 1):
+            d.line([(cx + sx * r * 0.60, eyeY - r * 0.34),
+                    (cx + sx * r * 0.22, eyeY - r * 0.22)],
+                   fill=(48, 30, 34, 255), width=4)
+    # 嘴
+    mouthY = cy + r * 0.42
+    if tier == "boss":
+        d.polygon([(cx - r * 0.34, mouthY), (cx + r * 0.34, mouthY),
+                   (cx, mouthY + r * 0.34)], fill=(40, 24, 30, 255))
+        # 王冠
+        d.polygon([(cx - r * 0.66, cy - r * 0.92), (cx - r * 0.42, cy - r * 1.30),
+                   (cx - r * 0.12, cy - r * 1.02), (cx + r * 0.18, cy - r * 1.34),
+                   (cx + r * 0.46, cy - r * 1.02), (cx + r * 0.68, cy - r * 0.92)],
+                  fill=(255, 214, 90, 255))
+    else:
+        d.arc((cx - r * 0.30, mouthY - r * 0.18, cx + r * 0.30, mouthY + r * 0.26),
+              10, 170, fill=(48, 30, 34, 255), width=5)
+    return img
+
+
+def icon_coin():
+    img, d = _new()
+    cx, cy, r = 60, 60, 42
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(214, 150, 40, 255))
+    d.ellipse((cx - r + 5, cy - r + 5, cx + r - 5, cy + r - 5), fill=(255, 205, 90, 255))
+    d.ellipse((cx - r + 13, cy - r + 11, cx + r - 20, cy + 6), fill=(255, 238, 170, 255))
+    # 爪印
+    d.ellipse((cx - 13, cy - 4, cx + 13, cy + 20), fill=(196, 128, 30, 255))
+    for ox, oy in ((-22, -20), (-8, -30), (8, -30), (22, -20)):
+        d.ellipse((cx + ox - 8, cy + oy - 8, cx + ox + 8, cy + oy + 8),
+                  fill=(196, 128, 30, 255))
+    return img
+
+
+def icon_setting():
+    img, d = _new()
+    cx, cy = 60, 60
+    for i in range(8):
+        a = i * math.pi / 4
+        x1 = cx + math.cos(a) * 34
+        y1 = cy + math.sin(a) * 34
+        x2 = cx + math.cos(a) * 50
+        y2 = cy + math.sin(a) * 50
+        d.line([(x1, y1), (x2, y2)], fill=(122, 86, 56, 255), width=16)
+    d.ellipse((cx - 38, cy - 38, cx + 38, cy + 38), fill=(122, 86, 56, 255))
+    d.ellipse((cx - 26, cy - 26, cx + 26, cy + 26), fill=(247, 236, 220, 255))
+    return img
+
+
+def icon_rank():
+    img, d = _new()
+    # 奖杯
+    d.polygon([(30, 26), (90, 26), (84, 66), (36, 66)], fill=(240, 180, 64, 255))
+    d.ellipse((18, 26, 46, 52), outline=(240, 180, 64, 255), width=7)
+    d.ellipse((74, 26, 102, 52), outline=(240, 180, 64, 255), width=7)
+    d.rectangle((54, 64, 66, 84), fill=(214, 150, 48, 255))
+    d.rounded_rectangle((38, 84, 82, 96), 6, fill=(214, 150, 48, 255))
+    # 爪印
+    d.ellipse((52, 38, 68, 54), fill=(255, 245, 214, 255))
+    return img
+
+
+def icon_lock():
+    img, d = _new()
+    d.arc((34, 18, 86, 74), 180, 360, fill=(190, 196, 210, 255), width=10)
+    d.rounded_rectangle((26, 52, 94, 104), 12, fill=(214, 220, 232, 255))
+    d.ellipse((54, 68, 66, 80), fill=(120, 130, 150, 255))
+    d.rectangle((57, 76, 63, 92), fill=(120, 130, 150, 255))
+    return img
+
+
+NEW_BUILDERS = {
+    "enemy-small": lambda: icon_enemy("small"),
+    "enemy-normal": lambda: icon_enemy("normal"),
+    "enemy-elite": lambda: icon_enemy("elite"),
+    "ui-coin": icon_coin,
+    "ui-setting": icon_setting,
+    "ui-rank": icon_rank,
+    "ui-lock": icon_lock,
+}
+
+
 def build():
     body, shield, meta = split_shiba()
     sh_bbox, body_bbox, src_size = meta
@@ -260,6 +391,8 @@ def build():
     cell("fx-slash", make_slash(), 4, 0)
     cell("fx-smoke", make_smoke(), 5, 0)
     cell("fx-ring", make_glow(), 6, 0)
+    for i, name in enumerate(NEW_ICONS):
+        cell(name, NEW_BUILDERS[name](), i, 1)
 
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")

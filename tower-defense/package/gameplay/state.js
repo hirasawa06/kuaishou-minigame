@@ -14,7 +14,7 @@
   var S = {
     phase: 'loading',  // loading / menu / playing / paused / win / lose / error
     time: 0,
-    energy: C.ENERGY_START,
+    gold: C.GOLD_START,
     baseHp: C.BASE_HP,
     waveIndex: 0,
     waveState: 'prep',
@@ -22,6 +22,7 @@
     spawnQueue: [],
     spawnTimer: 0,
     kills: 0,
+    goldEarned: 0,
     uid: 1,
     units: [],
     enemies: [],
@@ -29,8 +30,11 @@
     effects: [],
     floats: [],
     toast: null,
-    slots: [],         // 卡槽：{ cardId, x, entering }
-    deck: [],
+    shop: [],          // 4 张随机英雄卡：{ cardId, sold }
+    refreshCost: C.REFRESH_COST,
+    heroCap: C.UNIT_CAP_START,
+    capCost: C.CAP_COST,
+    drag: null,
     dragging: null,
     inspect: null,
     inspectT: 0,
@@ -50,76 +54,66 @@
 
   S.shuffleDeck = shuffle;
 
-  S.newDeck = function () {
-    return shuffle(C.CARDS.slice());
-  };
-
-  S.drawCardId = function () {
-    if (!S.deck || S.deck.length === 0) S.deck = S.newDeck();
-    return S.deck.pop().id;
-  };
-
-  S.cardById = function (id) {
-    for (var i = 0; i < C.CARDS.length; i++) if (C.CARDS[i].id === id) return C.CARDS[i];
+  S.heroById = function (id) {
+    for (var i = 0; i < C.HEROES.length; i++) if (C.HEROES[i].id === id) return C.HEROES[i];
     return null;
   };
 
-  // 初始化卡牌传送带：铺满可视宽度 + 右侧一张待入场
-  S.initSlots = function () {
-    var L = A.Layout;
-    var gap = L.ui.cardGap;
-    var w = L.ui.cardW;
-    var step = w + gap;
-    S.slots.length = 0;
-    S.slotSeq = 0;
-    var max = Math.ceil(L.ui.cards.w / step) + 1;
-    for (var i = 0; i <= max; i++) {
-      S.slots.push({
-        uid: ++S.slotSeq,
-        cardId: S.drawCardId(),
-        x: i * step,
-        target: i * step,
-      });
+  // 兼容旧调用名
+  S.cardById = S.heroById;
+
+  // 卡池随机可重复：每次独立抽 4 张
+  S.rollShop = function () {
+    S.shop = [];
+    for (var i = 0; i < C.cardCount; i++) {
+      var h = C.HEROES[randInt(C.HEROES.length)];
+      S.shop.push({ cardId: h.id, sold: false, born: S.time });
     }
   };
 
-  S.reflowSlots = function () {
-    var L = A.Layout;
-    var step = L.ui.cardW + L.ui.cardGap;
-    for (var i = 0; i < S.slots.length; i++) {
-      S.slots[i].x = i * step;
-      S.slots[i].target = i * step;
+  // 花金币刷新卡池，价格逐次上浮
+  S.refreshShop = function () {
+    if (S.gold < S.refreshCost) {
+      S.toastMsg('金币不足', 0.9);
+      return false;
     }
+    S.gold -= S.refreshCost;
+    S.refreshCost = Math.min(C.REFRESH_COST_MAX, S.refreshCost + C.REFRESH_COST_STEP);
+    S.rollShop();
+    S.addFloat(S.shopAnchorX || 0, S.shopAnchorY || 0, '刷新 -' + (S.refreshCost - C.REFRESH_COST_STEP), '#ffd166');
+    return true;
   };
 
-  S.reset = function () {
-    S.phase = 'playing';
-    S.time = 0;
-    S.energy = C.ENERGY_START;
-    S.baseHp = C.BASE_HP;
-    S.waveIndex = 0;
-    S.waveState = 'prep';
-    S.waveTimer = C.firstWaveDelay;
-    S.spawnQueue = [];
-    S.spawnTimer = 0;
-    S.kills = 0;
-    S.cardsPlaced = 0;
-    S.uid = 1;
-    S.units.length = 0;
-    S.enemies.length = 0;
-    S.projectiles.length = 0;
-    S.effects.length = 0;
-    S.floats.length = 0;
-    S.toast = null;
-    S.inspect = null;
-    S.inspectT = 0;
-    S.shake = 0;
-    S.hitstop = 0;
-    S.assetErrors.length = 0;
-    S.slotSeq = 0;
-    S.deck = S.newDeck();
-    S.initSlots();
+  S.capUpgradeCost = function () {
+    return S.capCost;
   };
+
+  S.buyCap = function () {
+    if (S.heroCap >= C.UNIT_CAP_MAX) {
+      S.toastMsg('上场席位已满级', 1.0);
+      return false;
+    }
+    if (S.gold < S.capCost) {
+      S.toastMsg('金币不足', 0.9);
+      return false;
+    }
+    S.gold -= S.capCost;
+    S.heroCap = Math.min(C.UNIT_CAP_MAX, S.heroCap + C.UNIT_CAP_STEP);
+    S.capCost += C.CAP_COST_STEP;
+    S.toastMsg('上场席位 +' + C.UNIT_CAP_STEP + '，当前 ' + S.heroCap, 1.2);
+    return true;
+  };
+
+  S.liveUnits = function () {
+    var n = 0;
+    for (var i = 0; i < S.units.length; i++) if (!S.units[i].dead) n++;
+    return n;
+  };
+
+  S.randInt = randInt;
+  S.rand = rand;
+  S.clamp = clamp;
+  S.dist2 = dist2;
 
   S.addFloat = function (x, y, text, color) {
     S.floats.push({ x: x, y: y, text: text, color: color || '#ffffff', life: 0.85, max: 0.85 });
@@ -135,10 +129,42 @@
     S.toast = { text: text, life: life || 1.4, max: life || 1.4 };
   };
 
-  S.randInt = randInt;
-  S.rand = rand;
-  S.clamp = clamp;
-  S.dist2 = dist2;
+  S.reflowSlots = function () {
+    // 新版本卡池固定 4 格，不再滚动，这里保留空实现兼容布局热更新
+  };
+
+  S.reset = function () {
+    S.phase = 'playing';
+    S.time = 0;
+    S.gold = C.GOLD_START;
+    S.baseHp = C.BASE_HP;
+    S.waveIndex = 0;
+    S.waveState = 'prep';
+    S.waveTimer = C.firstWaveDelay;
+    S.spawnQueue.length = 0;
+    S.spawnTimer = 0;
+    S.kills = 0;
+    S.goldEarned = 0;
+    S.heroCap = C.UNIT_CAP_START;
+    S.capCost = C.CAP_COST;
+    S.refreshCost = C.REFRESH_COST;
+    S.cardsPlaced = 0;
+    S.uid = 1;
+    S.units.length = 0;
+    S.enemies.length = 0;
+    S.projectiles.length = 0;
+    S.effects.length = 0;
+    S.floats.length = 0;
+    S.toast = null;
+    S.inspect = null;
+    S.inspectT = 0;
+    S.shake = 0;
+    S.hitstop = 0;
+    S.drag = null;
+    S.dragging = null;
+    S.assetErrors.length = 0;
+    S.rollShop();
+  };
 
   A.State = S;
 })();

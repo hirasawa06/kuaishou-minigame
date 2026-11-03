@@ -1,5 +1,6 @@
-/* gameplay/config.js — 全部数值、卡牌、敌人、波次配置 */
-// 单位长度：逻辑像素；速度：逻辑像素/秒；时间：秒
+/* gameplay/config.js — 全部数值：英雄、敌人、波次、金币经济
+ * 单位长度：逻辑像素；速度：逻辑像素/秒；时间：秒
+ */
 (function () {
   var A = window.AIGCUtils;
 
@@ -7,121 +8,127 @@
     // ── 屏幕与区域（竖屏，布局在 layout.js 里按实际尺寸计算）──
     designW: 414,
     designH: 896,
-    hudH: 92,          // 顶部 HUD 高度
-    trayH: 186,        // 底部卡牌托盘高度
-    energyBarH: 30,    // 能量条高度
+    hudH: 76,
+    trayH: 200,
     cardGap: 10,
     cardCount: 4,
     laneCount: 3,
 
-    // ── 资源 ──
-    ENERGY_MAX: 10,
-    ENERGY_START: 5,
-    ENERGY_REGEN: 1.25,     // 每秒回复（攒满约 8 秒）
+    // ── 经济 ──
+    GOLD_START: 30,
     BASE_HP: 100,
-    UNIT_CAP: 11,           // 同时在场上限
-    KILL_ENERGY: 0.22,      // 每击杀回能
-    UNIT_MIN_GAP: 34,       // 单位部署最小间距
-    CARD_SCROLL_SPEED: 26,  // 卡牌传送带左移速度（约 4 秒走完一张卡）
-    WAVE_ENERGY_BONUS: 1.0, // 清波回能
+    UNIT_CAP_START: 4,      // 初始可上场英雄数
+    UNIT_CAP_MAX: 10,       // 上限
+    UNIT_CAP_STEP: 1,       // 每次购买 +1
+    UNIT_MIN_GAP: 32,
 
-    // ── 卡牌（4 类 × 2 种）──
-    // range 为对左侧放方向的可攻击半径；speed 为攻击间隔
-    CARDS: [
+    // 卡池刷新：每次刷新后价格上浮，形成节奏
+    REFRESH_COST: 2,
+    REFRESH_COST_STEP: 1,
+    REFRESH_COST_MAX: 8,
+    // 买人口：每次涨价
+    CAP_COST: 15,
+    CAP_COST_STEP: 10,
+
+    // 清波奖励
+    WAVE_GOLD_BONUS: 6,
+
+    // ── 四英雄（卡池随机可重复）──
+    // atk: 攻击力  hp: 生命  interval: 攻击间隔(=攻速)  range: 攻击半径
+    // moveSpeed: 移动速度（0=驻守）  splash: 群体攻击范围  taunt: 嘲讽范围
+    HEROES: [
       {
-        id: 'tank-a', name: '铁盾卫', cls: 'tank', clsName: '坦克',
-        icon: 'unit-tank-1', cost: 4, hp: 700, atk: 24, interval: 1.2,
-        range: 74, radius: 17, color: '#5b8bd0', desc: '高血量的前排肉盾',
+        id: 'tank', name: '铁盾柴犬', cls: 'tank', clsName: '盾',
+        icon: 'unit-tank-1', cost: 8,
+        hp: 900, atk: 0, interval: 1.0,
+        range: 0, radius: 17, moveSpeed: 0,
+        taunt: 96, splash: 0,
+        color: '#5b8bd0',
+        desc: '嘲讽周围敌人，只会格挡，不造成伤害',
       },
       {
-        id: 'tank-b', name: '石像守卫', cls: 'tank', clsName: '坦克',
-        icon: 'unit-tank-2', cost: 6, hp: 1260, atk: 30, interval: 1.5,
-        range: 78, radius: 19, color: '#7c92be', desc: '极硬，慢速反击',
+        id: 'war', name: '冲锋犬', cls: 'warrior', clsName: '战',
+        icon: 'unit-war-1', cost: 6,
+        hp: 420, atk: 42, interval: 0.8,
+        range: 46, radius: 15, moveSpeed: 52,
+        taunt: 0, splash: 0,
+        aggro: 260,
+        color: '#e07a3a',
+        desc: '主动出击寻敌，中血量近战输出',
       },
       {
-        id: 'war-a', name: '剑士', cls: 'warrior', clsName: '战士',
-        icon: 'unit-war-1', cost: 3, hp: 350, atk: 38, interval: 0.82,
-        range: 62, radius: 15, color: '#e07a3a', desc: '性价比近战输出',
+        id: 'arch', name: '游侠猫', cls: 'archer', clsName: '射手',
+        icon: 'unit-arch-1', cost: 7,
+        hp: 180, atk: 96, interval: 1.15,
+        range: 260, radius: 14, moveSpeed: 0,
+        taunt: 0, splash: 0,
+        color: '#3fbf78',
+        desc: '射程最远，血量最少，单体高伤',
       },
       {
-        id: 'war-b', name: '狂战士', cls: 'warrior', clsName: '战士',
-        icon: 'unit-war-2', cost: 5, hp: 500, atk: 60, interval: 0.92,
-        range: 64, radius: 16, color: '#ff9a4a', desc: '高攻速高爆发',
-      },
-      {
-        id: 'arch-a', name: '弓手', cls: 'archer', clsName: '射手',
-        icon: 'unit-arch-1', cost: 3, hp: 190, atk: 33, interval: 0.87,
-        range: 230, radius: 14, color: '#46c47a', desc: '远程单体',
-      },
-      {
-        id: 'arch-b', name: '连弩手', cls: 'archer', clsName: '射手',
-        icon: 'unit-arch-2', cost: 5, hp: 260, atk: 24, interval: 0.44,
-        range: 205, radius: 15, color: '#35a864', desc: '高速连射单体',
-      },
-      {
-        id: 'mage-a', name: '火法师', cls: 'mage', clsName: '法师',
-        icon: 'unit-mage-1', cost: 5, hp: 210, atk: 50, interval: 1.6,
-        range: 215, radius: 14, color: '#d8623c', splash: 62, desc: '范围伤害',
-      },
-      {
-        id: 'mage-b', name: '冰法师', cls: 'mage', clsName: '法师',
-        icon: 'unit-mage-2', cost: 4, hp: 220, atk: 29, interval: 1.38,
-        range: 215, radius: 14, color: '#5ab6e8', splash: 58,
-        slow: { factor: 0.45, duration: 1.8 }, desc: '范围减速',
+        id: 'mage', name: '魔法猫', cls: 'mage', clsName: '法师',
+        icon: 'unit-mage-1', cost: 9,
+        hp: 150, atk: 54, interval: 1.5,
+        range: 170, radius: 14, moveSpeed: 0,
+        taunt: 0, splash: 70,
+        color: '#a583f0',
+        desc: '中距离范围伤害，全场血量最少',
       },
     ],
 
-    // ── 敌人 ──
-    // guardRange：可攻击我方单位的距离；stopRange：被单位阻挡时停下
+    // ── 敌人四档 ──
+    // small 血少量多 / normal 标准 / elite 精英 / boss 首领
     ENEMIES: {
-      grunt: {
-        id: 'grunt', name: '小怪', icon: 'enemy-grunt',
-        hp: 180, atk: 16, interval: 0.95, speed: 38,
-        radius: 15, color: '#6fbf6f', baseDamage: 3,
+      small: {
+        id: 'small', name: '小怪', tier: 'small', icon: 'enemy-small',
+        hp: 70, atk: 8, interval: 0.9, speed: 62,
+        radius: 11, color: '#8fd06a', baseDamage: 2, gold: 2,
       },
-      runner: {
-        id: 'runner', name: '疾行兵', icon: 'enemy-runner',
-        hp: 115, atk: 11, interval: 0.78, speed: 72,
-        radius: 13, color: '#e8c95a', baseDamage: 2,
+      normal: {
+        id: 'normal', name: '普通怪', tier: 'normal', icon: 'enemy-normal',
+        hp: 240, atk: 16, interval: 1.0, speed: 38,
+        radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
       },
-      brute: {
-        id: 'brute', name: '重甲兵', icon: 'enemy-brute',
-        hp: 660, atk: 42, interval: 1.28, speed: 28,
-        radius: 19, color: '#b06a5a', baseDamage: 5,
+      elite: {
+        id: 'elite', name: '精英怪', tier: 'elite', icon: 'enemy-elite',
+        hp: 900, atk: 34, interval: 1.2, speed: 30,
+        radius: 19, color: '#a86fe0', baseDamage: 8, gold: 16,
       },
       boss: {
-        id: 'boss', name: '首领', icon: 'enemy-boss',
-        hp: 3000, atk: 82, interval: 1.4, speed: 19,
-        radius: 25, color: '#d05a8a', baseDamage: 10, splash: 70,
+        id: 'boss', name: '首领', tier: 'boss', icon: 'enemy-boss',
+        hp: 4200, atk: 70, interval: 1.35, speed: 21,
+        radius: 25, color: '#e04e6e', baseDamage: 14, gold: 60, splash: 90,
       },
     },
 
     // 每波敌人血量 / 攻击成长
-    waveHpScale: 1.14,
-    waveAtkScale: 1.09,
-    spawnGap: 0.85,        // 同一波内刷怪间隔
-    waveGap: 5.0,          // 波间准备时间
-    firstWaveDelay: 4.0,
+    waveHpScale: 1.13,
+    waveAtkScale: 1.08,
+    spawnGap: 0.75,
+    waveGap: 6.0,
+    firstWaveDelay: 5.0,
 
     // ── 波次表 ──
-    // groups: [敌人 id, 数量]，按顺序生成
+    // groups: [敌人 id, 数量]
     WAVES: [
-      { groups: [['grunt', 6]] },
-      { groups: [['grunt', 7], ['runner', 4]] },
-      { groups: [['grunt', 9], ['runner', 5]] },
-      { groups: [['brute', 3], ['grunt', 8]] },
-      { groups: [['runner', 8], ['brute', 3], ['grunt', 5]] },
-      { groups: [['brute', 5], ['grunt', 10]] },
-      { groups: [['runner', 10], ['brute', 4]] },
-      { groups: [['grunt', 11], ['brute', 5], ['runner', 5]] },
-      { groups: [['brute', 6], ['runner', 9]] },
-      { groups: [['boss', 1], ['brute', 3], ['grunt', 7], ['runner', 6]] },
+      { groups: [['small', 8]] },
+      { groups: [['small', 10], ['normal', 3]] },
+      { groups: [['normal', 6], ['small', 6]] },
+      { groups: [['elite', 1], ['small', 12]] },
+      { groups: [['normal', 9], ['elite', 1]] },
+      { groups: [['elite', 2], ['small', 14]] },
+      { groups: [['normal', 10], ['elite', 2], ['small', 10]] },
+      { groups: [['elite', 3], ['normal', 12]] },
+      { groups: [['elite', 4], ['small', 16]] },
+      { groups: [['boss', 1], ['elite', 3], ['normal', 8]] },
     ],
   };
 
-  // 敌人基础半径与停止距离（与单位半径相加）
   C.ENEMY_STOP_PAD = 6;
   C.ENEMY_GUARD_PAD = 46;
+
+  // 兼容旧字段名（部分绘制/校验脚本仍在读）
+  C.UNIT_CAP = C.UNIT_CAP_START;
 
   A.Config = C;
 })();

@@ -14,13 +14,18 @@
 
 ## 玩法概要
 
-竖屏单机塔防 + 卡牌：屏幕下方能量条持续积攒能量（上限 10），下方 4 个卡槽滚动出牌；
-按住卡牌拖到战场任意位置即可消耗能量放置单位，向左右滑动卡牌可立即丢弃（0.45s 后补新牌）。
+竖屏单机塔防 + 自走棋式商店：金币来自击杀与清波，下方固定 4 格英雄卡池随机出卡（可重复），
+花钱刷新卡池、扩建上场席位；点卡自动落地，拖卡可指定战场位置。
 
-- 单位分 4 类：坦克（高血量近战、附带小范围溅射）、战士（近战高输出）、射手（远程单体、高速箭矢）、法师（远程范围伤害 / 减速）
-- 敌人自上而下三条通道推进，会攻击挡在前面的单位；无人阻挡时直扑基地并持续扣基地血量
-- 共 10 波，第 10 波首领（范围压血）登场；能量上限 10，击杀回能 0.3，清波回能 1.5
-- 单位上场上限 12；基地血量 100
+- 只有 4 个英雄：
+  - 盾（铁盾柴犬）：高血量，嘲讽半径 96，零攻击，只格挡
+  - 战（冲锋犬）：中血量近战，移动速度 52，会主动出击寻敌
+  - 射手（游侠猫）：射程 260，单体高伤，血量最少
+  - 法师（魔法猫）：射程 170，群攻半径 70，血量全场最少
+- 敌人四档：小怪（血少、数量多、快）、普通怪、精英怪、首领（范围压血）
+- 敌人自上而下三条通道推进；被嘲讽会横向吸附到盾位，无人阻挡时直扑基地
+- 共 10 波；金币：击杀 2/5/16/60，清波 +6；初始席位 4，上限 10
+- 基地血量 100；进入游戏前有独立首页（体力/设置/排行榜/章节卡/开始按钮）
 
 ## 项目特有约定
 
@@ -63,6 +68,7 @@ node tools/layout-check.mjs         # iOS / Android / H5 安全区与交互区�
 node tools/assets-check.mjs         # 资源404/纹理上传失败时必须阻止进入游戏
 node tools/shot.mjs                 # CDP 驱动真实 Chrome：截图 + 拖拽/丢卡/暂停/结算用例
 node tools/anim-shot.mjs            # 定格动画帧：待机/蓄力/出手/受击/死亡逐帧截图
+node tools/menu-shot.mjs            # 首页、商店、战场截图
 node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 ```
 
@@ -79,16 +85,18 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 - 旋转与翻转在 `gl.push` 的 CPU 端处理（`opts.rot` / `opts.flipX`），不改 shader、不扩顶点格式
 
 ### 数值调整入口
-- 单位 / 敌人 / 波次：`gameplay/config.js`（`CARDS`、`ENEMIES`、`WAVES`、`waveHpScale`、`waveAtkScale`）
-- 能量与基地：`ENERGY_MAX` / `ENERGY_START` / `ENERGY_REGEN` / `KILL_ENERGY` / `BASE_HP`
-- 布局：`gameplay/layout.js`（HUD 76、托盘约 21% 屏高、4 卡等分）
+- 英雄 / 敌人 / 波次：`gameplay/config.js`（`HEROES`、`ENEMIES`、`WAVES`、`waveHpScale`、`waveAtkScale`）
+- 经济与席位：`GOLD_START` / `REFRESH_COST*` / `CAP_COST*` / `UNIT_CAP_START` / `UNIT_CAP_MAX` / `BASE_HP`
+- 布局：`gameplay/layout.js`（HUD 76、商店托盘约 27% 屏高、卡池 2×2，`L.shopRect(i)` 同时供绘制与命中使用）
 
 ## 待办
 
 - 真机验证：iOS / Android 的平台按钮实际占位、安全区、刘海与底部手势避让、音效播放、60fps
 - 广告接入：复活 / 加倍奖励位（`kwaiStandard/core/kwai-ad-config.js` 占位，上传阶段替换）
 - 存档：最佳波次 / 通关次数（`KwaiStorage`，当前未接入）
-- 动画：其余 7 个单位仍用整图图标，待逐个接分件动画
+- 动画：战 / 射手 / 法师仍是整图图标，只有盾位接了分件动画
+- 数值：金币产出、席位与刷新价格曲线尚未做长期仿真调平
+- 商店：卡池有重复卡，暂未做保底或锁定
 - 特效：法师/射手投射物仍是几何图形，待接 `fx-glow` 拖尾
 
 ## 文件清单

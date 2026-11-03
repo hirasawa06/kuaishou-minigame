@@ -165,9 +165,10 @@
 
 <script>
 window.canvas = document.getElementById('game');
-// H5 Demo 默认展示设计规范五区；快手容器不设置这些调试变量。
-window.__safeAreaDebug = true;
-window.__safeAreaPreview = { top: 44, bottomInset: 68 };
+// 安全区调试层默认关闭，避免遮挡首页美术；需要时在地址栏加 ?debug=safe
+var _q = new URLSearchParams(window.location.search);
+window.__safeAreaDebug = _q.get('debug') === 'safe';
+window.__safeAreaPreview = window.__safeAreaDebug ? { top: 44, bottomInset: 68 } : null;
 
 // 将固定分辨率写入 html 属性，供 kwaiStandard/main.js 浏览器调试时读取
 var _debugHtml = document.documentElement;

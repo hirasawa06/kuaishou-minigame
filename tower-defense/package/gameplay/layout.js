@@ -128,6 +128,62 @@
     ui.cardW = cardW;
     ui.cardH = cardH;
     ui.cardGap = gap;
+
+    // ── 商店托盘：金币条 + 两块功能按钮 + 4 格英雄卡池 ──
+    var shopTop = tray.y + Math.max(8, Math.round(trayH * 0.045));
+    var headH = Math.max(26, Math.round(trayH * 0.14));
+    var goldBar = {
+      x: metrics.safeLeft + pad,
+      y: shopTop,
+      w: Math.round(safeW * 0.44),
+      h: headH,
+    };
+    var btnGap = Math.round(Math.max(6, pad * 0.55));
+    var btnW2 = Math.round((safeW - pad * 2 - btnGap) / 2);
+    ui.shopBtnH = headH;
+    ui.refreshBtn = {
+      x: metrics.safeLeft + pad,
+      y: goldBar.y + headH + 6,
+      w: btnW2,
+      h: headH,
+    };
+    ui.capBtn = {
+      x: ui.refreshBtn.x + btnW2 + btnGap,
+      y: ui.refreshBtn.y,
+      w: safeW - pad * 2 - btnW2 - btnGap,
+      h: headH,
+    };
+    var gridTop = ui.refreshBtn.y + headH + 10;
+    var cardGap2 = Math.round(Math.max(6, pad * 0.6));
+    var gridW = safeW - pad * 2;
+    var cellW = Math.round((gridW - cardGap2) / 2);
+    // 底部留一行提示的位置，2 行卡片均分剩余高度
+    var shopFooter = 24;
+    var cellH = Math.max(44, Math.round((contentBottom - shopFooter - gridTop - cardGap2) / 2));
+    ui.goldBar = goldBar;
+    ui.shop = {
+      x: metrics.safeLeft + pad,
+      y: gridTop,
+      w: gridW,
+      h: cellH * 2 + cardGap2,
+      cellW: cellW,
+      cellH: cellH,
+      gap: cardGap2,
+      cols: 2,
+      footer: shopFooter,
+    };
+    // 卡池 4 格（2×2），供绘制与命中共用
+    L.shopRect = function (i) {
+      var s = ui.shop;
+      var col = i % s.cols;
+      var row = (i - col) / s.cols;
+      return {
+        x: s.x + col * (s.cellW + s.gap),
+        y: s.y + row * (s.cellH + s.gap),
+        w: s.cellW,
+        h: s.cellH,
+      };
+    };
     ui.lanes = [
       field.x + field.w * 0.2,
       field.x + field.w * 0.5,
@@ -152,7 +208,54 @@
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
     };
+    // ── 进入游戏前的首页（参考图：头像 / 体力 / 设置 / 排行榜 / 章节卡 / 开始按钮）──
+    var mTop = contentTop;
+    var mH = contentH;
+    var av = Math.round(Math.max(46, Math.min(66, safeW * 0.15)));
+    ui.menu = {
+      avatar: { x: metrics.safeLeft + pad, y: mTop + 6, w: av, h: av },
+      stamina: {
+        x: metrics.safeLeft + pad + av + 10,
+        y: mTop + 12,
+        w: Math.min(180, safeW - av - pad * 2 - 10),
+        h: Math.round(av * 0.46),
+      },
+      settings: {
+        x: metrics.safeRight - pad - 62,
+        y: mTop + 8,
+        w: 62,
+        h: 62,
+      },
+      rank: {
+        x: metrics.safeLeft + pad,
+        y: mTop + av + 14,
+        w: 62,
+        h: 62,
+      },
+      banner: {
+        x: metrics.safeLeft + pad,
+        y: mTop + Math.round(Math.max(96, mH * 0.185)),
+        h: 56,
+      },
+      card: {
+        x: metrics.safeLeft + pad,
+        y: 0, // 依赖 banner，下面计算
+        h: 0,
+      },
+      start: { w: Math.round(Math.min(300, safeW - pad * 2)), h: 66 },
+    };
+    ui.menu.banner.w = safeW - pad * 2;
+    ui.menu.card.w = safeW - pad * 2;
+    ui.menu.card.y = ui.menu.banner.y + ui.menu.banner.h + 10;
+    var startY = Math.min(contentBottom - 26 - ui.menu.start.h, ui.menu.card.y + Math.round(mH * 0.52));
+    ui.menu.card.h = Math.max(120, startY - ui.menu.card.y - 14);
+    ui.menu.start.x = metrics.safeLeft + (safeW - ui.menu.start.w) / 2;
+    ui.menu.start.y = startY;
+
     ui.btnRect = function (kind) {
+      if (kind === 'menu') return ui.menu.start;
+      if (kind === 'shopRefresh') return ui.refreshBtn;
+      if (kind === 'shopCap') return ui.capBtn;
       var y = ui.btnY[kind];
       return { x: metrics.safeLeft + (safeW - ui.btnW) / 2, y: y, w: ui.btnW, h: ui.btnH };
     };

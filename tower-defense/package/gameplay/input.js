@@ -1,4 +1,4 @@
-/* gameplay/input.js — 触摸 / 鼠标：拖拽放卡、左右滑动弃卡、按钮点击 */
+/* gameplay/input.js — 触摸 / 鼠标：商店买英雄、拖到战场、长按看详情、按钮点击 */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
@@ -9,7 +9,7 @@
   var down = false;
   var drag = null;
   var MOVE_TOL = 6;
-  var SWIPE_X = 46;
+  var LONG_PRESS = 0.22;   // 按住不动超过这个时间显示详情
 
   function toLocal(clientX, clientY) {
     var r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
@@ -25,7 +25,7 @@
 
   function pointIn(rect, x, y, pad) {
     pad = pad || 0;
-    return x >= rect.x - pad && x <= rect.x + rect.w + pad &&
+    return rect && x >= rect.x - pad && x <= rect.x + rect.w + pad &&
       y >= rect.y - pad && y <= rect.y + rect.h + pad;
   }
 
@@ -37,17 +37,15 @@
     return inInteractiveArea(x, y) && pointIn(rect, x, y, pad);
   }
 
-  // 命中检测：传送带卡牌按屏幕位置判定，返回卡牌对象本身
-  function slotAt(x, y) {
+  // 命中商店卡：返回卡片索引与矩形
+  function shopAt(x, y) {
     var u = L.ui;
-    if (!inInteractiveArea(x, y) || !pointIn(u.cards, x, y, 0)) return null;
-    for (var i = 0; i < S.slots.length; i++) {
-      var slot = S.slots[i];
-      if (slot.delay > 0 || !slot.cardId) continue;
-      var left = u.cards.x + slot.x;
-      if (left < u.cards.x - 2) continue;          // 已被左侧裁掉的部分不响应
-      var rect = { x: left, y: u.cards.y, w: u.cardW, h: u.cardH };
-      if (hitControl(rect, x, y, 2)) return { slot: slot, rect: rect };
+    if (!inInteractiveArea(x, y)) return null;
+    for (var i = 0; i < C.cardCount; i++) {
+      var rect = L.shopRect(i);
+      var slot = S.shop[i];
+      if (!slot || slot.sold) continue;
+      if (pointIn(rect, x, y, 2)) return { index: i, rect: rect, slot: slot };
     }
     return null;
   }
@@ -56,18 +54,19 @@
     down = inInteractiveArea(px, py);
     if (!down) return;
     if (S.phase !== 'playing') return;
-    var hit = slotAt(px, py);
+    var hit = shopAt(px, py);
     if (!hit) return;
-    var def = S.cardById(hit.slot.cardId);
+    var def = S.heroById(hit.slot.cardId);
     if (!def) return;
     drag = {
+      index: hit.index,
       slot: hit.slot,
       def: def,
       x: px, y: py,
       startX: px, startY: py,
       active: false,
-      swiped: false,
-      dir: 0,
+      holdT: 0,
+      rect: hit.rect,
     };
     S.dragging = drag;
   }
@@ -79,15 +78,7 @@
     var dx = px - drag.startX;
     var dy = py - drag.startY;
     if (!drag.active && Math.abs(dx) + Math.abs(dy) > MOVE_TOL) drag.active = true;
-    if (drag.active) {
-      S.dragging = drag;
-      if (Math.abs(dx) > SWIPE_X && Math.abs(dy) < Math.abs(dx) * 0.8) {
-        drag.swiped = true;
-        drag.dir = dx > 0 ? 1 : -1;
-      } else {
-        drag.swiped = false;
-      }
-    }
+    if (drag.active) S.dragging = drag;
   }
 
   function onUp(px, py) {
@@ -112,59 +103,63 @@
     var u = L.ui;
     var d = drag;
     if (!d.def) return;
-    if (!inInteractiveArea(px, py)) return;
-    if (d.active && d.swiped) {
-      discard(d.slot);
-      return;
-    }
-    if (d.active && py < u.tray.y + 2) {
-      if (!A.Battle.canAfford(d.def)) {
-        S.toastMsg('能量不足', 0.9);
-        return;
-      }
-      if (A.Battle.tryDeploy(d.def, px, py)) {
-        consume(d.slot);
+
+    // 拖到战场：直接部署
+    if (d.active && py < u.tray.y - 4 && inInteractiveArea(px, py)) {
+      if (A.Battle.buyCard(d.index, px, py)) {
         A.GameAudio && A.GameAudio.play('place');
       }
       return;
     }
-    if (!d.active) {
+    // 拖回商店区域松手：什么都不做
+    if (d.active) return;
+
+    // 点一下：默认放到战场中下方（省一次拖拽）
+    if (A.Battle.buyCardAtCenter(d.index)) {
+      A.GameAudio && A.GameAudio.play('place');
+    } else {
       S.inspect = d.def;
-      S.inspectT = 2.2;
+      S.inspectT = 2.4;
+      S.inspectX = d.rect.x;
+      S.inspectY = d.rect.y - 140;
     }
-  }
-
-  // 用掉的卡直接从传送带移除，后面的牌继续左移
-  function consume(slot) {
-    if (!slot) return;
-    A.Battle.removeSlot(slot);
-  }
-
-  function discard(slot) {
-    if (!slot) return;
-    A.Battle.removeSlot(slot);
-    S.toastMsg('已丢弃', 0.7);
-    A.GameAudio && A.GameAudio.play('discard');
   }
 
   function tap(px, py) {
     var u = L.ui;
     if (!inInteractiveArea(px, py)) return;
-    if (S.phase === 'menu' || S.phase === 'win' || S.phase === 'lose') {
-      var kind = S.phase === 'menu' ? 'menu' : 'result';
-      if (hitControl(u.btnRect(kind), px, py, 12)) A.Game.start();
+
+    if (S.phase === 'menu') {
+      // 首页按钮：开始 / 设置 / 排行榜（后两者暂无功能，仅提示）
+      if (hitControl(u.btnRect('menu'), px, py, 12)) { A.Game.start(); return; }
+      if (u.menu && hitControl(u.menu.settings, px, py, 6)) { S.toastMsg('设置开发中', 1.0); return; }
+      if (u.menu && hitControl(u.menu.rank, px, py, 6)) { S.toastMsg('排行榜开发中', 1.0); return; }
+      return;
+    }
+    if (S.phase === 'win' || S.phase === 'lose') {
+      if (hitControl(u.btnRect('result'), px, py, 12)) A.Game.start();
       return;
     }
     if (S.phase === 'paused') {
-      if (hitControl(u.btnRect('paused'), px, py, 12)) {
-        A.Game.start();
-        return;
-      }
+      if (hitControl(u.btnRect('paused'), px, py, 12)) { A.Game.start(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
       return;
     }
     if (S.phase === 'playing') {
-      if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
+      if (hitControl(u.pauseBtn, px, py, 10)) { A.Game.togglePause(); return; }
+      if (hitControl(u.refreshBtn, px, py, 4)) {
+        S.refreshShop();
+        A.GameAudio && A.GameAudio.play('discard');
+        return;
+      }
+      if (hitControl(u.capBtn, px, py, 4)) {
+        S.buyCap();
+        A.GameAudio && A.GameAudio.play('start');
+        return;
+      }
+      // 点战场空白处：收起详情
+      S.inspect = null;
+      S.inspectT = 0;
     }
   }
 

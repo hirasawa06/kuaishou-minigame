@@ -55,7 +55,8 @@
     },
   };
 
+  // 盾位：柴犬分件动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
-    'tank-a': shiba,
+    tank: shiba,
   };
 })();
