@@ -33,12 +33,20 @@
     A.Input.bind(canvas);
     S.phase = 'loading';
     A.GameAudio && A.GameAudio.init();
-    A.Assets.init(function () {
-      L.ui.ready = false;
-      L.calc();
-      // 资源就绪时若已经开局（极端情况），不要覆盖当前阶段
-      if (S.phase === 'loading') S.phase = 'menu';
-    });
+    A.Assets.init(applyAssetResult);
+  }
+
+  function applyAssetResult(assetResult) {
+    L.ui.ready = false;
+    L.calc();
+    if (!assetResult || !assetResult.ok) {
+      S.assetErrors = assetResult && assetResult.failed ? assetResult.failed : [];
+      S.phase = 'error';
+      return false;
+    }
+    // 资源就绪时若已经开局（极端情况），不要覆盖当前阶段
+    if (S.phase === 'loading') S.phase = 'menu';
+    return true;
   }
 
   function syncViewport() {
@@ -47,6 +55,15 @@
     var gl = A.Render.gl;
     if (gl.viewport) gl.viewport(0, 0, canvas.width, canvas.height);
     A.Render.setRes(L.w || C.designW, L.h || C.designH);
+  }
+
+  function refreshLayout() {
+    var u = L.ui;
+    if (u.ready && u.w === L.w && u.h === L.h && u.sourceSafeTop === (L.safeTop || 0)) return;
+    u.ready = false;
+    L.calc();
+    if (S.slots && S.slots.length && S.reflowSlots) S.reflowSlots();
+    syncViewport();
   }
 
   function start() {
@@ -109,6 +126,7 @@
     drawBackdrop();
     if (S.phase === 'loading' || S.phase === 'error') {
       Hud.drawLoading();
+      if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
       A.Render.endFrame();
       return;
     }
@@ -116,6 +134,7 @@
     if (S.phase === 'menu') {
       drawBattleIdle();
       Hud.drawMenu();
+      if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
       A.Render.endFrame();
       return;
     }
@@ -131,6 +150,7 @@
     else if (S.phase === 'win') Hud.drawResult(true);
     else if (S.phase === 'lose') Hud.drawResult(false);
 
+    if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
     A.Render.endFrame();
   }
 
@@ -169,6 +189,7 @@
     render: render,
     loop: loop,
     syncViewport: syncViewport,
+    applyAssetResult: applyAssetResult,
     isBooted: function () { return booted; },
     isGlReady: function () { return glReady; },
   };
@@ -182,6 +203,7 @@
         A.Render.endFrame();
         return;
       }
+      refreshLayout();
       var now = A._now();
       if (!lastNow) lastNow = now;
       var dt = (now - lastNow) / 1000;

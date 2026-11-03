@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process'
 const args = process.argv.slice(2)
 const outDir = args[args.indexOf('--out') + 1] || '/tmp/tdshot'
 const port = Number(args[args.indexOf('--port') + 1]) || 8099
+const dpr = Number(args[args.indexOf('--dpr') + 1]) || 1
 const debugPort = 9333
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -26,6 +27,7 @@ const chrome = spawn(CHROME, [
   '--use-angle=swiftshader',
   '--hide-scrollbars',
   '--window-size=500,1050',
+  `--force-device-scale-factor=${dpr}`,
   `--remote-debugging-port=${debugPort}`,
   `--user-data-dir=${profile}`,
   `http://localhost:${port}/index.html`,
@@ -101,6 +103,16 @@ async function evaluate(expr) {
   return res.result.value
 }
 
+async function waitForBoot(timeoutMs = 8000) {
+  const end = Date.now() + timeoutMs
+  while (Date.now() < end) {
+    const phase = await evaluate(`window.AIGCUtils && AIGCUtils.State ? AIGCUtils.State.phase : 'booting'`)
+    if (phase !== 'loading' && phase !== 'booting') return phase
+    await sleep(100)
+  }
+  return evaluate(`window.AIGCUtils && AIGCUtils.State ? AIGCUtils.State.phase : 'booting'`)
+}
+
 async function shot(name) {
   await sleep(260)
   const box = await evaluate(`(function(){
@@ -162,7 +174,7 @@ async function main() {
   const url = await getTarget()
   await connect(url)
   hookLogs()
-  await sleep(1800)
+  await waitForBoot()
 
   // 1) 菜单
   const menu = await evaluate(`(function(){var A=window.AIGCUtils;return {phase:A.State.phase,w:A.Layout.w,h:A.Layout.h,ui:A.Layout.ui.ready}})()`)
@@ -310,6 +322,19 @@ async function main() {
   })()`)
   record('sprite atlas available', !!(spr && spr.has && spr.entrySize), JSON.stringify(spr))
 
+  const textureState = await evaluate(`(function(){
+    var A=window.AIGCUtils, gl=A.Render.gl;
+    var ids=['font-18','font-28','font-48','game'];
+    var result={};
+    for(var i=0;i<ids.length;i++){
+      var item=A.Assets.entry(ids[i]);
+      result[ids[i]]={present:!!item,valid:!!(item&&item.tex&&gl&&gl.isTexture(item.tex))};
+    }
+    return result;
+  })()`)
+  const texturesValid = Object.keys(textureState).every((key) => textureState[key].present && textureState[key].valid)
+  record('font and sprite textures valid', texturesValid, JSON.stringify(textureState))
+
   const audioErrs = logs.filter((l) => /NotAllowedError/.test(l))
   if (audioErrs.length) {
     const when = await evaluate(`(function(){return {sfxEnabled: (window.KwaiMedia && KwaiMedia.Audio) ? 'has' : 'none', inited: !!(AIGCUtils.GameAudio), warmCount: window.__warmCount||0}})()`)
@@ -322,6 +347,7 @@ async function main() {
   if (logs.length) console.log('控制台日志:\n' + logs.slice(-12).join('\n'))
   const failed = results.filter((r) => !r.ok).length
   console.log(`\n${results.length - failed}/${results.length} 通过`)
+  if (failed) process.exitCode = 1
 }
 
 main()

@@ -2,6 +2,7 @@
   "appid": "<APPID>",
   "gameName": "塔防小游戏",
   "features": [
+    "base",
     "login",
     "ad",
     "repost",

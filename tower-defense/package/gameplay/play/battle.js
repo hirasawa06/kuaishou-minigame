@@ -129,6 +129,9 @@
 
   function tryDeploy(card, x, y) {
     var u = L.ui;
+    var interactive = u.interactiveRect;
+    if (x < interactive.x || x > interactive.x + interactive.w ||
+        y < interactive.y || y > interactive.y + interactive.h) return false;
     if (x < u.field.x || x > u.field.x + u.field.w) return false;
     if (y < u.field.y - 24 || y > u.base.y + 10) return false;
     if (!canAfford(card)) {

@@ -6,6 +6,7 @@
   var pending = 0;
   var ready = false;
   var onReady = null;
+  var failed = [];
 
   function imageToTexture(img, keyHint) {
     var gl = A.Render.gl;
@@ -13,32 +14,43 @@
       console.error('Asset.Load', '纹理上传时 WebGL 上下文未就绪：' + keyHint);
       return null;
     }
-    var tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    // 上传过程改了纹理绑定，通知渲染器失效缓存
-    if (A.Render.invalidateTexture) A.Render.invalidateTexture();
-    return { tex: tex, w: img.width, h: img.height };
+    try {
+      var tex = gl.createTexture();
+      if (!tex) return null;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      // 上传过程改了纹理绑定，通知渲染器失效缓存
+      if (A.Render.invalidateTexture) A.Render.invalidateTexture();
+      return { tex: tex, w: img.width, h: img.height };
+    } catch (e) {
+      console.error('Asset.Texture', keyHint + ' 上传失败 ' + (e && e.message));
+      return null;
+    }
   }
 
   function load(key, src) {
-    pending++;
     KwaiRender.loadImage({
       src: src,
       onSuccess: function (img) {
         var t = imageToTexture(img, key);
-        if (!t) { pending--; check(); return; }
+        if (!t) {
+          failed.push({ key: key, src: src, reason: 'texture-upload' });
+          pending--;
+          check();
+          return;
+        }
         textures[key] = t;
         pending--;
         check();
       },
       onFail: function (err) {
         console.error('Asset.Load', src + ' 加载失败 ' + (err && err.message));
+        failed.push({ key: key, src: src, reason: err && err.message ? err.message : 'load-failed' });
         pending--;
         check();
       },
@@ -48,20 +60,26 @@
   function check() {
     if (pending <= 0 && !ready) {
       ready = true;
-      if (onReady) onReady();
+      if (onReady) onReady({ ok: failed.length === 0, failed: failed.slice() });
     }
   }
 
   function init(cb) {
     onReady = cb;
+    ready = false;
+    pending = 0;
+    failed.length = 0;
+    var manifest = [];
     // 字体图集
     var atlas = A.FontAtlas;
     for (var size in atlas) {
-      if (atlas.hasOwnProperty(size)) load('font-' + size, atlas[size].src);
+      if (atlas.hasOwnProperty(size)) manifest.push(['font-' + size, atlas[size].src]);
     }
     // 战斗图集（单位、特效、继承图标都在这张里）
-    if (A.GameAtlas && A.GameAtlas.src) load('game', A.GameAtlas.src);
-    load('home-bg', 'res/home-asset/home-bg.png');
+    if (A.GameAtlas && A.GameAtlas.src) manifest.push(['game', A.GameAtlas.src]);
+    manifest.push(['home-bg', 'res/home-asset/home-bg.png']);
+    pending = manifest.length;
+    for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);
     if (pending === 0) check();
   }
 
@@ -93,6 +111,7 @@
     entry: entry,
     sprite: sprite,
     isReady: function () { return ready; },
+    failures: function () { return failed.slice(); },
   };
 
   A.Render.fontTex = function (size) { return tex('font-' + size); };

@@ -20,9 +20,9 @@
     var u = L.ui;
     var h = u.hud;
     D.vGradient(0, 0, u.w, h.y + h.h + 8, D.color('#16244a', 0.95), D.color('#0d1628', 0.6), 10);
-    var pad = u.pad;
-    // 顶部状态栏与刘海：HUD 内容整体下移到安全区之内，但按钮位置以 layout 为准
-    var top = Math.max(h.y + 12, (u.safeTop || 0) + 8);
+    var pad = u.safeLeft + u.pad;
+    // HUD 已由 Layout 放入平台控件预留区下方，绘制与命中共用同一坐标。
+    var top = h.y + 8;
 
     D.text('波次', pad, top + 2, 18, COL.textDim, 0);
     var waveNo = Math.min(S.waveIndex + 1, C.WAVES.length);
@@ -113,7 +113,7 @@
   function drawTray() {
     var u = L.ui;
     var t = u.tray;
-    D.vGradient(0, t.y, t.w, t.h, D.color('#0d1527'), D.color('#070c17'), 10);
+    D.vGradient(0, t.y, u.w, u.h - t.y, D.color('#0d1527'), D.color('#070c17'), 10);
     D.rect(0, t.y, t.w, 1, D.color('#24365a'));
     drawEnergy();
 
@@ -190,21 +190,23 @@
     var u = L.ui;
     var w = u.btnW;
     var h = u.btnH;
-    var x = u.w / 2 - w / 2;
+    var x = u.safeLeft + (u.safeRight - u.safeLeft - w) / 2;
     D.roundRect(x, y, w, h, h / 2,
       primary ? D.color('#2f7fe0') : D.color('#1f2d4a'));
     if (primary) {
       D.roundRect(x + 2, y + 2, w - 4, h * 0.45, h / 2, D.color('#6cb6ff', 0.35));
     }
-    D.text(label, u.w / 2, y + (h - 22) / 2, 28, COL.textMain, 1);
+    D.text(label, x + w / 2, y + (h - 22) / 2, 28, COL.textMain, 1);
   }
 
   function drawMenu() {
     var u = L.ui;
     D.roundRect(0, 0, u.w, u.h, 0, D.color('#050a14', 0.9));
-    icon('enemy-boss', u.w / 2, u.h * 0.19, 104);
-    D.text('塔防小游戏', u.w / 2, u.h * 0.27, 48, COL.textMain, 1);
-    D.text('拖动卡牌 · 守护基地', u.w / 2, u.h * 0.27 + 62, 28, COL.textDim, 1);
+    var top = u.contentTop;
+    var ch = u.contentH;
+    icon('enemy-boss', u.w / 2, top + ch * 0.12, 104);
+    D.text('塔防小游戏', u.w / 2, top + ch * 0.21, 48, COL.textMain, 1);
+    D.text('拖动卡牌 · 守护基地', u.w / 2, top + ch * 0.21 + 62, 28, COL.textDim, 1);
 
     var lines = [
       '下方能量条会持续积攒能量',
@@ -214,7 +216,7 @@
       '坦克·战士·射手·法师 各有定位',
       '共 ' + C.WAVES.length + ' 波，末波首领登场',
     ];
-    var y = u.h * 0.42;
+    var y = top + ch * 0.39;
     for (var i = 0; i < lines.length; i++) {
       D.text(lines[i], u.w / 2, y + i * 28, 18, D.color('#93a7cc'), 1);
     }
@@ -225,17 +227,19 @@
   function drawPaused() {
     var u = L.ui;
     D.roundRect(0, 0, u.w, u.h, 0, D.color('#04080f', 0.72));
-    D.text('已暂停', u.w / 2, u.h * 0.32, 48, COL.textMain, 1);
-    D.text('点击右上角按钮继续游戏', u.w / 2, u.h * 0.32 + 66, 18, COL.textDim, 1);
+    var y = u.contentTop + u.contentH * 0.28;
+    D.text('已暂停', u.w / 2, y, 48, COL.textMain, 1);
+    D.text('点击右上角按钮继续游戏', u.w / 2, y + 66, 18, COL.textDim, 1);
     drawButton('重新开始', u.btnY.paused, false);
   }
 
   function drawResult(win) {
     var u = L.ui;
     D.roundRect(0, 0, u.w, u.h, 0, D.color('#04080f', 0.82));
-    D.text(win ? '胜利' : '失败', u.w / 2, u.h * 0.23, 48,
+    var y = u.contentTop + u.contentH * 0.18;
+    D.text(win ? '胜利' : '失败', u.w / 2, y, 48,
       win ? COL.gold : COL.hpRed, 1);
-    D.text(win ? '你守住了基地！' : '基地被攻破了', u.w / 2, u.h * 0.23 + 62, 28,
+    D.text(win ? '你守住了基地！' : '基地被攻破了', u.w / 2, y + 62, 28,
       COL.textDim, 1);
     var cleared = win ? C.WAVES.length : S.waveIndex;
     var stats = [
@@ -245,17 +249,22 @@
       '剩余基地  ' + Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP,
     ];
     for (var i = 0; i < stats.length; i++) {
-      D.text(stats[i], u.w / 2, u.h * 0.24 + 118 + i * 32, 28, COL.textMain, 1);
+      D.text(stats[i], u.w / 2, y + 118 + i * 32, 28, COL.textMain, 1);
     }
     drawButton('再玩一次', u.btnY.result, true);
   }
 
   function drawLoading() {
-    var u = L.ui && L.ui.ready ? L.ui : { w: C.designW, h: C.designH };
+    var u = L.ui && L.ui.ready ? L.ui : {
+      w: C.designW,
+      h: C.designH,
+      contentTop: 96,
+      contentH: C.designH - 96,
+    };
     var w = u.w || C.designW;
-    var h = u.h || C.designH;
-    D.text('塔防小游戏', w / 2, h * 0.38, 48, COL.textMain, 1);
-    D.text(S.phase === 'error' ? '资源加载失败' : '加载中', w / 2, h * 0.38 + 70, 18, COL.textDim, 1);
+    var y = u.contentTop + u.contentH * 0.38;
+    D.text('塔防小游戏', w / 2, y, 48, COL.textMain, 1);
+    D.text(S.phase === 'error' ? '资源加载失败' : '加载中', w / 2, y + 70, 18, COL.textDim, 1);
   }
 
   A.Hud = {

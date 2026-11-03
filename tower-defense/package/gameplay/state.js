@@ -37,6 +37,7 @@
     shake: 0,
     hitstop: 0,
     cardsPlaced: 0,
+    assetErrors: [],
   };
 
   function shuffle(a) {
@@ -82,6 +83,15 @@
     }
   };
 
+  S.reflowSlots = function () {
+    var L = A.Layout;
+    var step = L.ui.cardW + L.ui.cardGap;
+    for (var i = 0; i < S.slots.length; i++) {
+      S.slots[i].x = i * step;
+      S.slots[i].target = i * step;
+    }
+  };
+
   S.reset = function () {
     S.phase = 'playing';
     S.time = 0;
@@ -105,6 +115,7 @@
     S.inspectT = 0;
     S.shake = 0;
     S.hitstop = 0;
+    S.assetErrors.length = 0;
     S.slotSeq = 0;
     S.deck = S.newDeck();
     S.initSlots();

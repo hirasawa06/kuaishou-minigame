@@ -29,22 +29,32 @@
       y >= rect.y - pad && y <= rect.y + rect.h + pad;
   }
 
+  function inInteractiveArea(x, y) {
+    return pointIn(L.ui.interactiveRect, x, y, 0);
+  }
+
+  function hitControl(rect, x, y, pad) {
+    return inInteractiveArea(x, y) && pointIn(rect, x, y, pad);
+  }
+
   // 命中检测：传送带卡牌按屏幕位置判定，返回卡牌对象本身
   function slotAt(x, y) {
     var u = L.ui;
+    if (!inInteractiveArea(x, y) || !pointIn(u.cards, x, y, 0)) return null;
     for (var i = 0; i < S.slots.length; i++) {
       var slot = S.slots[i];
       if (slot.delay > 0 || !slot.cardId) continue;
       var left = u.cards.x + slot.x;
       if (left < u.cards.x - 2) continue;          // 已被左侧裁掉的部分不响应
       var rect = { x: left, y: u.cards.y, w: u.cardW, h: u.cardH };
-      if (pointIn(rect, x, y, 2)) return { slot: slot, rect: rect };
+      if (hitControl(rect, x, y, 2)) return { slot: slot, rect: rect };
     }
     return null;
   }
 
   function onDown(px, py) {
-    down = true;
+    down = inInteractiveArea(px, py);
+    if (!down) return;
     if (S.phase !== 'playing') return;
     var hit = slotAt(px, py);
     if (!hit) return;
@@ -102,6 +112,7 @@
     var u = L.ui;
     var d = drag;
     if (!d.def) return;
+    if (!inInteractiveArea(px, py)) return;
     if (d.active && d.swiped) {
       discard(d.slot);
       return;
@@ -138,21 +149,22 @@
 
   function tap(px, py) {
     var u = L.ui;
+    if (!inInteractiveArea(px, py)) return;
     if (S.phase === 'menu' || S.phase === 'win' || S.phase === 'lose') {
       var kind = S.phase === 'menu' ? 'menu' : 'result';
-      if (pointIn(u.btnRect(kind), px, py, 12)) A.Game.start();
+      if (hitControl(u.btnRect(kind), px, py, 12)) A.Game.start();
       return;
     }
     if (S.phase === 'paused') {
-      if (pointIn(u.btnRect('paused'), px, py, 12)) {
+      if (hitControl(u.btnRect('paused'), px, py, 12)) {
         A.Game.start();
         return;
       }
-      if (pointIn(u.pauseBtn, px, py, 10)) A.Game.togglePause();
+      if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
       return;
     }
     if (S.phase === 'playing') {
-      if (pointIn(u.pauseBtn, px, py, 10)) A.Game.togglePause();
+      if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
     }
   }
 

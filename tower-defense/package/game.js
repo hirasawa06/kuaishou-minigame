@@ -45,7 +45,7 @@ require("./kwaiOpenApi/kwai-ad.js"); // 广告
 require("./kwaiOpenApi/kwai-repost.js"); // 转发分享
 require("./kwaiOpenApi/kwai-ui.js"); // Toast / Modal / Loading
 // ↓ 其他平台能力模块按需引入
-// require("./kwaiOpenApi/kwai-base.js");
+require("./kwaiOpenApi/kwai-base.js"); // 系统安全区 / 生命周期
 require("./kwaiOpenApi/kwai-render.js"); // 图片 / 字体加载
 // require("./kwaiOpenApi/kwai-network.js");
 // require("./kwaiOpenApi/kwai-storage.js");
@@ -78,6 +78,7 @@ require("./gameplay/play/battle.js"); // 核心玩法
 require("./gameplay/input.js"); // 触摸输入
 require("./gameplay/render/scene.js"); // 战场绘制
 require("./gameplay/render/hud.js"); // HUD 与界面
+require("./gameplay/render/safe-area-debug.js"); // H5 安全区调试层
 require("./gameplay/game.js"); // 主循环装配
 
 window.canvas = kshelper.GetMainCanvas("canvas");
