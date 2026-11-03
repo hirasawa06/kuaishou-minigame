@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# 打包产物（build-zip.mjs 的输出，不入库）
+*.zip
+
+# 图集生成过程中的中间件
+tower-defense/tools/src/shiba-body.png
+tower-defense/tools/src/shiba-shield.png
+
+# 本地预览 / 调试产物
+node_modules/
+*.log

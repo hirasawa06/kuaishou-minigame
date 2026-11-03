@@ -1,0 +1,14 @@
+{
+  "appid": "<APPID>",
+  "gameName": "塔防小游戏",
+  "features": [
+    "login",
+    "ad",
+    "repost",
+    "ui",
+    "media",
+    "device"
+  ],
+  "subpackages": [],
+  "currentStep": 5
+}

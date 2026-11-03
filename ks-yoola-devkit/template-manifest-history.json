@@ -1,0 +1,42 @@
+{
+  "0.0.1": {
+    "files": {
+      "index.html": "09133f758e80815bfd154c696821fa0ee285a17187dfa2a96a3fd2907b5b650a",
+      "kwaiOpenApi/kwai-ad.js": "2cb7c6e7a9c064851d82747b8a731fb4aa27b68c1b815d642325f355cb8d9195",
+      "kwaiOpenApi/kwai-base.js": "26d4bd801eb702a4dfb6a0efdb3e6840d55bfcd20e51b98337aa6fa263c4a30d",
+      "kwaiOpenApi/kwai-commonuse.js": "224977efb0a3a6d7720f78819c36ca6a2b4fb31242ef13e0b10af13a72127aba",
+      "kwaiOpenApi/kwai-data-analysis.js": "7b9ae400e1307f72a71897c6cb0e32fbb14c587b6e11bc610c4e7cf626cf211a",
+      "kwaiOpenApi/kwai-device.js": "ea59ce70fb0b29cee490ad8444f8912469aebca9ef0576c49a15ba68ab647924",
+      "kwaiOpenApi/kwai-file.js": "e01ff42c2b0a9ebb23644db8ee318313f2b750a6180e8e3bfaa54c625dbc185b",
+      "kwaiOpenApi/kwai-game-community.js": "f7a745c3ab0add5b94edd050c3b0ca80238d98782b5a83346b4e1f2bd39fac17",
+      "kwaiOpenApi/kwai-login.js": "678dcb7daf9b55a04b58f5150934a2365155733e8f61717b15969035c3a2971b",
+      "kwaiOpenApi/kwai-media.js": "0ea11eae7adee7e7186b2689e62016f765daabc44b48d94a8fbf3cc111e7e41c",
+      "kwaiOpenApi/kwai-network.js": "75f6a98e79bac3a1369bad64922f1d7bcb7bfa16780e9ada7f03f77d100af121",
+      "kwaiOpenApi/kwai-official.js": "de1e9f106ed2fecbbffdda56fee7e040c9f9f5032ae4e7127734d2b62e6568bc",
+      "kwaiOpenApi/kwai-open.js": "1062b4062e492c73722d40c4626d993b88d74dbd4ed2d3795d56b2ebf6cf48dd",
+      "kwaiOpenApi/kwai-record.js": "49fbbba26e6cb6a09f4a8c3102efa34131d18586c01d4ab011e4ee3109af8ca1",
+      "kwaiOpenApi/kwai-render.js": "eac95803a7e229bdc4e2d83eeb6983a0a40d34f23f4179b4a7f5c3037482a603",
+      "kwaiOpenApi/kwai-repost.js": "0ba284a1555e5c931d267e7b14e31751c103d529dc53f2fba139cc914d4e6248",
+      "kwaiOpenApi/kwai-shortcut.js": "3a46e6bb49798bb0ec3d70533932d30265f83310b9cfc0e469ced2aa64275e5d",
+      "kwaiOpenApi/kwai-siderbar.js": "19ed652447aee93b37861b131ccacb87a26d094b8a0c6981d451d1b41cff3eb5",
+      "kwaiOpenApi/kwai-storage.js": "4e6a2678d3b1a9a8013661d7df4cb8a53984c697c6b4070cef9b46bc946377dc",
+      "kwaiOpenApi/kwai-subpackage.js": "252a841c967da90207c9481c9b783316c503f88704fd0feef8955da3d26b936d",
+      "kwaiOpenApi/kwai-ui.js": "00836503a5462f6ee561c7f334734f12d0540dce690273c653b64249917c487d",
+      "kwaiStandard/core/aigc-init.js": "0b1f06f965263c0ddc26bf2e6b536ffda7b1488e4f399fac6e074940d5836bf0",
+      "kwaiStandard/core/kshelper.js": "772c60b882856ff73a2907f242cb761ba34895d19ddfd280b848df836904955e",
+      "kwaiStandard/core/kwai-ad-config.js": "a503dccd6881dd8cdc2fe6c512392c283e5c8e17d932ca658893bc7181f8b34e",
+      "kwaiStandard/core/kwai-event-bus.js": "17e9c85cb6d5b17711a766b36614741b4b5790c5e28cfba7ce7737735239437b",
+      "kwaiStandard/engines/ks-adapter.js": "6bd4de451e6bc17ca0ffb15234441692e83d8681af9593eef63201045f6b17f4",
+      "kwaiStandard/engines/spine-fx.js": "1f779fc3f50107ed61079b7b21f8e737e63b9a4c94e8368a7356f248e0eb0da7",
+      "kwaiStandard/engines/spine38.js": "82cbd2153331f1665f27e46d4494c328a9333aa38708f4ae84b58a9c6d69d7ba",
+      "kwaiStandard/loaders/resource-loader.js": "91b8a2c392fcd0836b78a992f6681126d9ee48c2cb3d57a61f03c18ea3cd3132",
+      "kwaiStandard/loaders/resource-manifest.js": "fb3c586d012cf8873eb2dbe7545cfbfcadd389ec17ad026cfb1392b7cb4021e6",
+      "kwaiStandard/loaders/subpackage-loader.js": "a4a5560541fd0859566556b89d066bc713d0e1701ace2590c3fbfaf637249c40",
+      "kwaiStandard/main.js": "ae34a69aa6ad2942305148e29bd3da98271174b1f5c4a97a170829829f237c93",
+      "kwaiStandard/manager/asset-manager.js": "1f42f4a47f47ff9ad7bac6add2a421ed67941ab0be5f83a6215f36d08338f89a",
+      "kwaiStandard/manager/game-logger.js": "6a5de28bf04c148f43277d0e69da52867390dda1679216e6c86eeb7084129f3e",
+      "kwaiadapter.js": "22542a5274ee2702bb68aef193d430d20312627dfb1d1c35787c8ae701fb67b5"
+    },
+    "version": "0.0.1"
+  }
+}
