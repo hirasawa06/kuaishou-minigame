@@ -1,5 +1,7 @@
 # 塔防小游戏（快手小游戏 / Yoola）
 
+> 协作约定、当前状态与版本变化见 [AGENTS.md](AGENTS.md)、[STATUS.md](STATUS.md) 和 [CHANGELOG.md](CHANGELOG.md)。产品策划逐步在 `docs/` 整理；已合并的决定才构成当前项目口径。
+
 竖屏单机塔防 + 卡牌布阵。用 WebGL 1.0 自绘，所有图片与音频由 `tools/` 下的脚本离线生成，无外部素材依赖。
 
 ```
