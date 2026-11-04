@@ -270,7 +270,10 @@
       var progress = feedback ? 1 - S.menuFeedback.life / 0.18 : 1;
       var scale = active ? 1.045 : feedback ?
         1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress) : 1;
-      var w = target.w * scale, h = target.h * scale;
+      // 源图有效像素保持原比例；覆盖视觉槽位但不改变安全区内的命中矩形。
+      var fit = Math.max(target.w / spec.crop[2], target.h / spec.crop[3]);
+      var w = spec.crop[2] * fit * scale;
+      var h = spec.crop[3] * fit * scale;
       D.texture(sprite.tex, sprite.w, sprite.h,
         spec.crop[0], spec.crop[1], spec.crop[2], spec.crop[3],
         target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
