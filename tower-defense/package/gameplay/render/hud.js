@@ -15,6 +15,14 @@
     archer: '#4bd184',
     mage: '#a583f0',
   };
+  // Figma 画板 390×845 中的独立按钮裁切区域（共用首页原图贴图）。
+  var MENU_SLICES = {
+    avatar: [11.44, 45.77, 80.56, 82.40],
+    stamina: [93.84, 63.17, 141.90, 45.78],
+    settings: [308.98, 45.77, 73.24, 82.40],
+    rank: [10.99, 137.32, 82.40, 84.68],
+    start: [64.08, 606.06, 260.92, 85.60],
+  };
 
   function fmt(n) {
     return String(Math.floor(n));
@@ -253,12 +261,16 @@
     if ((S.menuFeedback && S.menuFeedback.life > 0) || S.menuPressed) {
       var key = S.menuPressed || S.menuFeedback.key;
       var target = m[key];
-      if (target) {
-        var alpha = S.menuPressed ? 0.30 : 0.30 * S.menuFeedback.life / 0.18;
-        D.roundRect(target.x, target.y, target.w, target.h,
-          Math.min(20, target.h / 3), D.color('#fff5c1', alpha));
-        D.strokeRect(target.x, target.y, target.w, target.h, 2,
-          D.color('#fff9d5', Math.min(1, alpha * 2.5)));
+      var src = MENU_SLICES[key];
+      if (target && src) {
+        var progress = S.menuPressed ? 0 : 1 - Math.max(0, S.menuFeedback.life) / 0.18;
+        var scale = S.menuPressed ? 1.045 :
+          1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress);
+        var w = target.w * scale, h = target.h * scale;
+        D.texture(art.tex, art.w, art.h,
+          src[0] / 390 * art.w, src[1] / 845 * art.h,
+          src[2] / 390 * art.w, src[3] / 845 * art.h,
+          target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
       }
     }
     if (S.menuPanel) drawMenuPanel(m);
