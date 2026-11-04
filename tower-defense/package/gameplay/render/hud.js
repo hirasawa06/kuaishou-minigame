@@ -15,13 +15,13 @@
     archer: '#4bd184',
     mage: '#a583f0',
   };
-  // Figma 画板 390×845 中的独立按钮裁切区域（共用首页原图贴图）。
-  var MENU_SLICES = {
-    avatar: [11.44, 45.77, 80.56, 82.40],
-    stamina: [93.84, 63.17, 141.90, 45.78],
-    settings: [308.98, 45.77, 73.24, 82.40],
-    rank: [10.99, 137.32, 82.40, 84.68],
-    start: [64.08, 606.06, 260.92, 85.60],
+  // 透明按钮图的有效像素范围；源图保留透明边，采样时只取按钮本身。
+  var MENU_BUTTONS = {
+    avatar: { asset: 'home-avatar-button', crop: [35, 22, 309, 324] },
+    stamina: { asset: 'home-stamina-button', crop: [46, 31, 417, 123] },
+    settings: { asset: 'home-settings-button', crop: [69, 60, 241, 252] },
+    rank: { asset: 'home-rank-button', crop: [49, 37, 280, 291] },
+    start: { asset: 'home-start-button', crop: [44, 24, 424, 126] },
   };
 
   function fmt(n) {
@@ -258,20 +258,22 @@
       D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
     }
 
-    if ((S.menuFeedback && S.menuFeedback.life > 0) || S.menuPressed) {
-      var key = S.menuPressed || S.menuFeedback.key;
+    var keys = ['avatar', 'stamina', 'settings', 'rank', 'start'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
       var target = m[key];
-      var src = MENU_SLICES[key];
-      if (target && src) {
-        var progress = S.menuPressed ? 0 : 1 - Math.max(0, S.menuFeedback.life) / 0.18;
-        var scale = S.menuPressed ? 1.045 :
-          1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress);
-        var w = target.w * scale, h = target.h * scale;
-        D.texture(art.tex, art.w, art.h,
-          src[0] / 390 * art.w, src[1] / 845 * art.h,
-          src[2] / 390 * art.w, src[3] / 845 * art.h,
-          target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
-      }
+      var spec = MENU_BUTTONS[key];
+      var sprite = A.Assets.entry(spec.asset);
+      if (!target || !sprite) continue;
+      var active = S.menuPressed === key;
+      var feedback = S.menuFeedback && S.menuFeedback.key === key && S.menuFeedback.life > 0;
+      var progress = feedback ? 1 - S.menuFeedback.life / 0.18 : 1;
+      var scale = active ? 1.045 : feedback ?
+        1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress) : 1;
+      var w = target.w * scale, h = target.h * scale;
+      D.texture(sprite.tex, sprite.w, sprite.h,
+        spec.crop[0], spec.crop[1], spec.crop[2], spec.crop[3],
+        target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
     }
     if (S.menuPanel) drawMenuPanel(m);
   }
