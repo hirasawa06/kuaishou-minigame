@@ -86,6 +86,11 @@
 
   function update(dt) {
     if (S.inspectT > 0) S.inspectT -= dt;
+    if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
+    if (S.phase === 'menu' && S.menuStartDelay > 0) {
+      S.menuStartDelay -= dt;
+      if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
+    }
     A.Battle.update(dt);
   }
 

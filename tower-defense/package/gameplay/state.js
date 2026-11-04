@@ -44,6 +44,9 @@
     assetErrors: [],
     menuPanel: null,
     menuSoundEnabled: true,
+    menuPressed: null,
+    menuFeedback: null,
+    menuStartDelay: 0,
   };
 
   function shuffle(a) {
@@ -165,6 +168,10 @@
     S.drag = null;
     S.dragging = null;
     S.assetErrors.length = 0;
+    S.menuPanel = null;
+    S.menuPressed = null;
+    S.menuFeedback = null;
+    S.menuStartDelay = 0;
     S.rollShop();
   };
 

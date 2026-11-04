@@ -239,18 +239,28 @@
     var frame = u.menuArtwork;
     if (!art || !frame) { drawMenuFallback(); return; }
 
-    // Figma 提供的原图素材作为离线纹理；顶部扩展背景，交互图案按同一变换定位。
-    D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
-      frame.x, frame.y, frame.w, frame.h);
-    if (frame.y > 0) {
-      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h * 0.054,
-        0, 0, u.w, frame.y + 1);
-    }
+    // 原图的 0..45.77 与 45.77..845 连续拼接；上段拉伸到安全区顶部。
+    var split = 45.77 / 845 * art.h;
+    D.texture(art.tex, art.w, art.h, 0, 0, art.w, split,
+      frame.x, 0, frame.w, u.contentTop);
+    D.texture(art.tex, art.w, art.h, 0, split, art.w, art.h - split,
+      frame.x, u.contentTop, frame.w, frame.h - 45.77 * frame.scale);
     if (frame.x > 0) {
       D.rect(0, 0, frame.x, u.h, D.color('#f3dec0'));
       D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
     }
 
+    if ((S.menuFeedback && S.menuFeedback.life > 0) || S.menuPressed) {
+      var key = S.menuPressed || S.menuFeedback.key;
+      var target = m[key];
+      if (target) {
+        var alpha = S.menuPressed ? 0.30 : 0.30 * S.menuFeedback.life / 0.18;
+        D.roundRect(target.x, target.y, target.w, target.h,
+          Math.min(20, target.h / 3), D.color('#fff5c1', alpha));
+        D.strokeRect(target.x, target.y, target.w, target.h, 2,
+          D.color('#fff9d5', Math.min(1, alpha * 2.5)));
+      }
+    }
     if (S.menuPanel) drawMenuPanel(m);
   }
 

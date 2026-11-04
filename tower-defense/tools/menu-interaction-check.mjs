@@ -18,7 +18,8 @@ const ui = {
   },
   btnRect(kind) { return kind === 'menu' ? this.menu.start : rect(100, 400, 180, 54) },
 }
-const state = { phase: 'menu', menuPanel: null, menuSoundEnabled: true }
+const state = { phase: 'menu', menuPanel: null, menuSoundEnabled: true,
+  menuPressed: null, menuFeedback: null, menuStartDelay: 0 }
 let starts = 0
 const soundChanges = []
 const sandbox = {
@@ -46,8 +47,11 @@ function tap(x, y) {
 }
 function assert(ok, message) { if (!ok) throw new Error(message) }
 
-tap(350, 180)
+listeners.mousedown({ clientX: 350, clientY: 180 })
+assert(state.menuPressed === 'settings', '设置按钮按下时缺少高亮状态')
+listeners.mouseup({ clientX: 350, clientY: 180 })
 assert(state.menuPanel === 'settings', '设置面板未打开')
+assert(state.menuFeedback.key === 'settings', '设置按钮缺少点击反馈')
 tap(207, 550)
 assert(state.menuSoundEnabled === false && soundChanges[0] === false, '音效开关未生效')
 tap(207, 550)
@@ -67,5 +71,6 @@ tap(200, 600)
 tap(200, 80)
 assert(starts === 0, '安全区外触发了交互')
 tap(200, 780)
-assert(starts === 1, '开始按钮未触发')
+assert(state.menuStartDelay === 0.18 && state.menuFeedback.key === 'start', '开始按钮未进入反馈阶段')
+assert(starts === 0, '开始按钮在反馈完成前进入战斗')
 console.log('menu interactions: ok')
