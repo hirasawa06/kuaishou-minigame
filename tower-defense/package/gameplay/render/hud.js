@@ -270,8 +270,10 @@
       var progress = feedback ? 1 - S.menuFeedback.life / 0.18 : 1;
       var scale = active ? 1.045 : feedback ?
         1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress) : 1;
-      // 源图有效像素保持原比例；覆盖视觉槽位但不改变安全区内的命中矩形。
-      var fit = Math.max(target.w / spec.crop[2], target.h / spec.crop[3]);
+      // 体力条紧邻头像，必须内接原槽位，避免等比铺满时横向溢出。
+      var fit = key === 'stamina'
+        ? Math.min(target.w / spec.crop[2], target.h / spec.crop[3])
+        : Math.max(target.w / spec.crop[2], target.h / spec.crop[3]);
       var w = spec.crop[2] * fit * scale;
       var h = spec.crop[3] * fit * scale;
       D.texture(sprite.tex, sprite.w, sprite.h,
