@@ -42,6 +42,8 @@
     hitstop: 0,
     cardsPlaced: 0,
     assetErrors: [],
+    menuPanel: null,
+    menuSoundEnabled: true,
   };
 
   function shuffle(a) {

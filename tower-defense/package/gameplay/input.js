@@ -130,10 +130,20 @@
     if (!inInteractiveArea(px, py)) return;
 
     if (S.phase === 'menu') {
-      // 首页按钮：开始 / 设置 / 排行榜（后两者暂无功能，仅提示）
+      if (S.menuPanel) {
+        if (hitControl(u.menu.panelAction, px, py, 0) && S.menuPanel === 'settings') {
+          S.menuSoundEnabled = !S.menuSoundEnabled;
+          if (A.GameAudio) A.GameAudio.setEnabled(S.menuSoundEnabled);
+          return;
+        }
+        S.menuPanel = null;
+        return;
+      }
       if (hitControl(u.btnRect('menu'), px, py, 12)) { A.Game.start(); return; }
-      if (u.menu && hitControl(u.menu.settings, px, py, 6)) { S.toastMsg('设置开发中', 1.0); return; }
-      if (u.menu && hitControl(u.menu.rank, px, py, 6)) { S.toastMsg('排行榜开发中', 1.0); return; }
+      if (u.menu && hitControl(u.menu.settings, px, py, 6)) { S.menuPanel = 'settings'; return; }
+      if (u.menu && hitControl(u.menu.rank, px, py, 6)) { S.menuPanel = 'rank'; return; }
+      if (u.menu && hitControl(u.menu.avatar, px, py, 6)) { S.menuPanel = 'avatar'; return; }
+      if (u.menu && hitControl(u.menu.stamina, px, py, 6)) { S.menuPanel = 'stamina'; return; }
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {

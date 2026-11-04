@@ -81,6 +81,7 @@
     // 首页美术（进入游戏前的客厅场景与章节卡）
     manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
     manifest.push(['menu-card', 'res/Menu/menu-card.png']);
+    manifest.push(['figma-home', 'res/Image/figma-home.png']);
     pending = manifest.length;
     for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);
     if (pending === 0) check();

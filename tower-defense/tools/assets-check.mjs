@@ -65,14 +65,15 @@ function complete(mode, textureMode) {
 }
 
 const failed = complete('404').result
-if (!failed || failed.ok !== false || failed.failed.length !== 3) {
+const expectedCount = complete('success').harness.requests.length
+if (!failed || failed.ok !== false || failed.failed.length !== expectedCount) {
   throw new Error(`404 未被阻断：${JSON.stringify(failed)}`)
 }
 console.log('asset failure gate: ok', failed.failed.map((item) => item.key))
 
 for (const mode of ['null', 'throw']) {
   const upload = complete('success', mode).result
-  if (!upload || upload.ok !== false || upload.failed.length !== 3) {
+  if (!upload || upload.ok !== false || upload.failed.length !== expectedCount) {
     throw new Error(`纹理上传失败未被阻断 (${mode})：${JSON.stringify(upload)}`)
   }
 }
@@ -116,7 +117,7 @@ vm.runInContext(
   { filename: 'gameplay/game.js' },
 )
 gameSandbox.AIGCUtils.Game.applyAssetResult(failed)
-if (state.phase !== 'error' || state.assetErrors.length !== 3) {
+if (state.phase !== 'error' || state.assetErrors.length !== expectedCount) {
   throw new Error(`游戏未进入资源错误状态：${JSON.stringify(state)}`)
 }
 console.log('game error phase gate: ok')

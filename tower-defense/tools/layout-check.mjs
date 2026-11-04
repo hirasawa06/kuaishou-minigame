@@ -55,6 +55,13 @@ function check(name, input, expected) {
     assert(button.x >= ui.safeLeft && button.x + button.w <= ui.safeRight, `${name}: ${kind} button outside safe width`)
     assert(button.y >= ui.contentTop && button.y + button.h <= ui.contentBottom, `${name}: ${kind} button outside safe height`)
   }
+  for (const key of ['avatar', 'stamina', 'settings', 'rank', 'start', 'panel', 'panelAction']) {
+    const rect = ui.menu[key]
+    assert(rect.x >= ui.safeLeft - 0.01 && rect.x + rect.w <= ui.safeRight + 0.01,
+      `${name}: menu ${key} outside safe width`)
+    assert(rect.y >= ui.contentTop - 0.01 && rect.y + rect.h <= ui.contentBottom + 0.01,
+      `${name}: menu ${key} outside safe height`)
+  }
   console.log(`${name}: ok`, {
     content: [ui.contentTop, ui.contentBottom],
     field: [ui.field.y, ui.field.h],

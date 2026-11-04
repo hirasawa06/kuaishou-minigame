@@ -208,7 +208,16 @@
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
     };
-    // ── 进入游戏前的首页（参考图：头像 / 体力 / 设置 / 排行榜 / 章节卡 / 开始按钮）──
+    // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
+    var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
+    var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
+    var figmaY = contentTop - 45.77 * figmaScale;
+    function figmaRect(x, y, width, height) {
+      return { x: figmaX + x * figmaScale, y: figmaY + y * figmaScale,
+        w: width * figmaScale, h: height * figmaScale };
+    }
+    ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
+      h: 845 * figmaScale, scale: figmaScale };
     var mTop = contentTop;
     var mH = contentH;
     var av = Math.round(Math.max(46, Math.min(66, safeW * 0.15)));
@@ -251,6 +260,19 @@
     ui.menu.card.h = Math.max(120, startY - ui.menu.card.y - 14);
     ui.menu.start.x = metrics.safeLeft + (safeW - ui.menu.start.w) / 2;
     ui.menu.start.y = startY;
+    ui.menu.avatar = figmaRect(11.44, 45.77, 80.56, 82.4);
+    ui.menu.stamina = figmaRect(93.84, 63.17, 141.9, 45.78);
+    ui.menu.settings = figmaRect(308.98, 45.77, 73.24, 82.4);
+    ui.menu.rank = figmaRect(10.99, 137.32, 82.4, 84.68);
+    ui.menu.banner = figmaRect(8.24, 244.89, 373.06, 64.09);
+    ui.menu.card = figmaRect(8.24, 308.98, 373.06, 286.09);
+    ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
+    var panelW = Math.min(300, safeW - pad * 2);
+    var panelH = Math.min(210, contentH * 0.45);
+    ui.menu.panel = { x: metrics.safeLeft + (safeW - panelW) / 2,
+      y: contentTop + (contentH - panelH) / 2, w: panelW, h: panelH };
+    ui.menu.panelAction = { x: ui.menu.panel.x + (panelW - 126) / 2,
+      y: ui.menu.panel.y + panelH - 60, w: 126, h: 42 };
 
     ui.btnRect = function (kind) {
       if (kind === 'menu') return ui.menu.start;
