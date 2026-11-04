@@ -303,8 +303,18 @@
       S.baseHp = 0;
       S.phase = 'lose';
       S.shake = 0.6;
+      recordRun(false);
       A.GameAudio && A.GameAudio.play('lose');
     }
+  }
+
+  // 本局结果写入本地存档，排行榜与名片共用同一份最高关卡
+  function recordRun(won) {
+    if (S.runRecorded) return;
+    S.runRecorded = true;
+    var cleared = won ? C.WAVES.length : Math.max(0, S.waveIndex);
+    if (A.Profile && A.Profile.recordRun) A.Profile.recordRun(cleared, won);
+    S.ranking = null;
   }
 
   function updateWaves(dt) {
@@ -326,6 +336,7 @@
       S.waveIndex++;
       if (S.waveIndex >= C.WAVES.length) {
         S.phase = 'win';
+        recordRun(true);
         A.GameAudio && A.GameAudio.play('win');
         return;
       }

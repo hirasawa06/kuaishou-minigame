@@ -53,6 +53,8 @@
   function onDown(px, py) {
     down = inInteractiveArea(px, py);
     if (!down) return;
+    // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
+    if (A.ProfileUI && A.ProfileUI.isOpen()) return;
     if (S.phase !== 'playing') return;
     var hit = shopAt(px, py);
     if (!hit) return;
@@ -127,13 +129,19 @@
 
   function tap(px, py) {
     var u = L.ui;
+    // 弹窗 / 全屏页打开时吞掉所有点击，避免误触后面的战场
+    if (A.ProfileUI && A.ProfileUI.isOpen()) {
+      A.ProfileUI.handleTap(px, py);
+      return;
+    }
     if (!inInteractiveArea(px, py)) return;
 
     if (S.phase === 'menu') {
-      // 首页按钮：开始 / 设置 / 排行榜（后两者暂无功能，仅提示）
+      // 首页按钮：开始 / 头像名片 / 设置 / 排行榜
       if (hitControl(u.btnRect('menu'), px, py, 12)) { A.Game.start(); return; }
-      if (u.menu && hitControl(u.menu.settings, px, py, 6)) { S.toastMsg('设置开发中', 1.0); return; }
-      if (u.menu && hitControl(u.menu.rank, px, py, 6)) { S.toastMsg('排行榜开发中', 1.0); return; }
+      if (u.menu && hitControl(u.menu.avatar, px, py, 6)) { A.ProfileUI.open('profile'); return; }
+      if (u.menu && hitControl(u.menu.settings, px, py, 6)) { A.ProfileUI.open('settings'); return; }
+      if (u.menu && hitControl(u.menu.rank, px, py, 6)) { A.ProfileUI.open('rank'); return; }
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {

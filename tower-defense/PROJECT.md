@@ -10,7 +10,7 @@
 
 - 当前阶段：可玩测试版（Step 5 完成，待真机验证与上传）
 - 平台：快手小游戏（Yoola），竖屏 `portrait`
-- 已接入能力：登录、广告、转发分享、Toast/Modal、媒体（音效）、设备（可扩展振动）
+- 已接入能力：登录、广告、转发分享、Toast/Modal、媒体（音效 + 背景音乐）、设备（振动 / 键盘）、本地存储（资料与设置）
 
 ## 玩法概要
 
@@ -25,7 +25,8 @@
 - 敌人四档：小怪（血少、数量多、快）、普通怪、精英怪、首领（范围压血）
 - 敌人自上而下三条通道推进；被嘲讽会横向吸附到盾位，无人阻挡时直扑基地
 - 共 10 波；金币：击杀 2/5/16/60，清波 +6；初始席位 4，上限 10
-- 基地血量 100；进入游戏前有独立首页（体力/设置/排行榜/章节卡/开始按钮）
+- 基地血量 100；进入游戏前有独立首页（头像/体力/设置/排行榜/章节卡/开始按钮）
+- 个人中心（`gameplay/profile.js` + `gameplay/ui.js`）：设置开关、我的名片、9 个头像、昵称（2 到 8 字）、邀请好友、虚拟地区排行榜；单机无服务端，榜单按地区 id 稳定播种，地区身份固定为中国
 
 ## 项目特有约定
 
@@ -46,8 +47,9 @@
 ```bash
 python3 tools/gen-assets.py        # 字形图集 + 图标精灵图 + yoola 素材
 python3 tools/gen-shiba-atlas.py   # 战斗图集 game.png（柴犬分件 + 特效 + 继承图标）
-python3 tools/gen-audio.py         # 11 个短音效（ffmpeg 合成）
+python3 tools/gen-audio.py         # 11 个短音效 + 循环背景音乐（ffmpeg 合成）
 python3 tools/gen-home-asset.py    # 首页渲染图
+python3 tools/gen-profile-art.py   # 9 只猫狗头像图集
 ```
 
 - 字形图集从 `gameplay/**.js` 的字符串字面量自动收集用字：**新增中文文案后必须重新执行 `gen-assets.py`**，否则会缺字
@@ -60,6 +62,8 @@ python3 tools/gen-home-asset.py    # 首页渲染图
 - 分件以**整张正视图为共同参照**落格，不能各自居中，否则拼合错位
 - 源图放 `tools/src/shiba-front.png`（`cut1` 抠图结果）；旧图标源放 `tools/src/sprites-legacy.png`
 - **改分件/特效后必须重新执行 `gen-shiba-atlas.py`**，并检查 `sprites.js` 里旧图标仍完整
+- 界面图标（关闭、返回、箭头、勾选、音乐、音效、分享、链接）只在 `sprites.png`；`Assets.sprite()` 先查战斗图集，未命中再回退界面图集
+- 字形图集只有 18 / 28 / 48 三档，界面文字不要写 20 / 24 / 26 等其他字号，否则该行会整段不绘制
 
 ### 验证
 ```bash
@@ -91,9 +95,10 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 
 ## 待办
 
-- 真机验证：iOS / Android 的平台按钮实际占位、安全区、刘海与底部手势避让、音效播放、60fps
+- 真机验证：iOS / Android 的平台按钮实际占位、安全区、刘海与底部手势避让、音效与背景音乐播放、系统键盘、剪贴板、60fps
+- 个人中心：昵称远端合规校验、头像资源在真机的内存占用、BGM 循环接缝听感
 - 广告接入：复活 / 加倍奖励位（`kwaiStandard/core/kwai-ad-config.js` 占位，上传阶段替换）
-- 存档：最佳波次 / 通关次数（`KwaiStorage`，当前未接入）
+- 存档：已接入个人资料与最高关卡（`KwaiStorage`，key `td_profile_v1`）；体力、章节进度仍未接入
 - 动画：战 / 射手 / 法师仍是整图图标，只有盾位接了分件动画
 - 数值：金币产出、席位与刷新价格曲线尚未做长期仿真调平
 - 商店：卡池有重复卡，暂未做保底或锁定
@@ -104,17 +109,20 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 ```
 gameplay/
   config.js            数值、卡牌、敌人、波次表
-  layout.js            竖屏布局（HUD / 战场 / 基地 / 卡槽）
+  layout.js            竖屏布局（HUD / 战场 / 基地 / 卡槽 / 各弹窗几何）
+  profile.js           个人资料、设置开关、最高关卡与虚拟地区榜
   state.js             运行时状态与工具函数
   assets.js            纹理加载与缓存
-  audio.js             音效节流与首次交互预热
+  audio.js             音效节流、背景音乐与首次交互预热
   input.js             触摸/鼠标：拖拽放卡、滑动丢卡、按钮
   game.js              主循环装配（GameLoop.frame）
   play/battle.js       能量、卡槽、单位、敌人、投射物、波次
   render/gl.js         WebGL 1.0 批渲染器
   render/draw.js       矩形/圆角/圆环/纹理/文字原语
   render/scene.js      战场绘制
+  ui.js                设置 / 名片 / 头像 / 昵称 / 排行榜 / 邀请
   render/hud.js        HUD、卡槽、说明、菜单、暂停、结算
+  data/avatars.js      头像图集元数据（生成）
   render/safe-area-debug.js  H5 五区安全区域调试层（正式容器默认关闭）
   anim/rig.js          分件关键帧采样与绘制
   anim/defs.js         单位动画表（状态、关键帧、支点）
@@ -131,5 +139,8 @@ tools/
   anim-shot.mjs        定格动画帧截图（待机/攻击/受击/死亡）
   layout-check.mjs     iOS / Android / H5 安全区布局合同测试
   assets-check.mjs     资源加载失败门禁测试
+  menu-shot.mjs        首页与商店截图
+  profile-shot.mjs     个人中心界面截图与冒烟流程
+  gen-profile-art.py   头像图集生成
   src/                 素材源：柴犬正视图、旧图标图集
 ```

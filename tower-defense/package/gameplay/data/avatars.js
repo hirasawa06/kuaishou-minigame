@@ -1,0 +1,5 @@
+/* 由 tools/gen-profile-art.py 生成，请勿手改 */
+(function () {
+  var A = window.AIGCUtils = window.AIGCUtils || {};
+  A.AvatarAtlas = {"src":"res/Menu/avatars.png","texW":792,"texH":792,"grid":3,"size":128,"frames":{"av-cat-orange":[4,4,256,256],"av-bear-cream":[268,4,256,256],"av-rabbit-pink":[532,4,256,256],"av-cat-gray":[4,268,256,256],"av-dog-brown":[268,268,256,256],"av-fox-red":[532,268,256,256],"av-cat-blue":[4,532,256,256],"av-dog-yellow":[268,532,256,256],"av-cat-green":[532,532,256,256]},"items":[{"id":"av-cat-orange","name":"暖阳小橘","color":"#f5a84a"},{"id":"av-bear-cream","name":"奶油团子","color":"#e8c496"},{"id":"av-rabbit-pink","name":"桃气兔兔","color":"#f0b0b0"},{"id":"av-cat-gray","name":"青灰小满","color":"#9eacba"},{"id":"av-dog-brown","name":"可可豆豆","color":"#b08060"},{"id":"av-fox-red","name":"赤焰阿福","color":"#e88654"},{"id":"av-cat-blue","name":"蓝莓团子","color":"#8ca8d6"},{"id":"av-dog-yellow","name":"勇敢小橘","color":"#f4be60"},{"id":"av-cat-green","name":"抹茶布丁","color":"#96c48e"}]};
+})();

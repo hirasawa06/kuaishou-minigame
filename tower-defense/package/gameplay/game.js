@@ -32,6 +32,10 @@
     syncViewport();
     A.Input.bind(canvas);
     S.phase = 'loading';
+    // 先把存档里的音乐/音效开关同步给音频模块，再挂首次交互
+    if (A.Profile && A.GameAudio) {
+      A.GameAudio.applySettings({ music: A.Profile.data.music, sfx: A.Profile.data.sfx });
+    }
     A.GameAudio && A.GameAudio.init();
     A.Assets.init(applyAssetResult);
   }
@@ -123,6 +127,18 @@
   }
 
   function render() {
+    try {
+      renderInner();
+    } catch (e) {
+      // 绘制异常只记录一次，避免每帧刷屏；后续帧继续尝试，便于定位
+      if (!render.__logged) {
+        render.__logged = true;
+        console.error('Game.Render', e && e.stack ? e.stack : e);
+      }
+    }
+  }
+
+  function renderInner() {
     drawBackdrop();
     if (S.phase === 'loading' || S.phase === 'error') {
       Hud.drawLoading();
@@ -134,12 +150,14 @@
     if (S.phase === 'menu') {
       drawBattleIdle();
       Hud.drawMenu();
+      if (A.ProfileUI) A.ProfileUI.draw();
       if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
       A.Render.endFrame();
       return;
     }
 
     drawBattle();
+    // 战斗中打开排行榜等页面时，仍然显示 HUD，但页面盖在最上层
     Hud.drawHud();
     Hud.drawTray();
     Hud.drawDragGhost();

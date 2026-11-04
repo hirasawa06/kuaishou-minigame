@@ -8,7 +8,8 @@
     "repost",
     "ui",
     "media",
-    "device"
+    "device",
+    "storage"
   ],
   "subpackages": [],
   "currentStep": 5

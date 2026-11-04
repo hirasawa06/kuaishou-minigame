@@ -1,12 +1,21 @@
-/* gameplay/audio.js — 音效播放（走 KwaiMedia.Audio，资源缺失时静默降级） */
+/* gameplay/audio.js — 背景音乐与音效（走 KwaiMedia.Audio，资源缺失时静默降级）
+ *
+ * 音乐 / 音效是两个独立开关，即时生效并写入本地存档（见 gameplay/profile.js）：
+ *   - 音乐：循环播放 res/Audio/bgm.mp3，关闭时暂停并从开头停住
+ *   - 音效：技能、点击、胜负提示音；关闭时直接拦截，不再创建播放实例
+ */
 (function () {
   var A = window.AIGCUtils;
 
-  var enabled = true;
+  var musicOn = true;
+  var sfxOn = true;
+  var enabled = true;        // 音频环境可用（播放异常会置 false）
   var inited = false;
   var lastPlay = {};
   var warmed = {};
   var VOLUME = 0.7;
+  var MUSIC_VOLUME = 0.32;
+  var BGM = 'res/Audio/bgm.mp3';
 
   var SFX = {
     place: 'res/Audio/place.mp3',
@@ -54,7 +63,7 @@
       })(keys[i]);
     }
     setTimeout(function () {
-      safe(function () { m.setSfxVolume(VOLUME); });
+      if (sfxOn) safe(function () { m.setSfxVolume(VOLUME); });
     }, 400);
   }
 
@@ -71,20 +80,36 @@
     if (gestureHooked) return;
     gestureHooked = true;
     var c = window.canvas;
-    if (!c || !c.addEventListener) { warmup(); return; }
+    if (!c || !c.addEventListener) { gestureSeen = true; warmup(); startMusic(); return; }
     var once = function () {
+      if (gestureSeen) return;
       gestureSeen = true;
       c.removeEventListener('touchstart', once);
       c.removeEventListener('mousedown', once);
       warmed = {};
       warmup();
+      startMusic();
     };
     c.addEventListener('touchstart', once);
     c.addEventListener('mousedown', once);
   }
 
+  function startMusic() {
+    if (!musicOn || !gestureSeen) return;
+    var m = media();
+    if (!m) return;
+    safe(function () { m.setBgmVolume(MUSIC_VOLUME); });
+    safe(function () { m.playBgm(BGM); });
+  }
+
+  function pauseMusic() {
+    var m = media();
+    if (!m) return;
+    safe(function () { m.pauseBgm(); });
+  }
+
   function play(name) {
-    if (!enabled || !inited) return;
+    if (!enabled || !inited || !sfxOn) return;
     // 用户还没交互过：浏览器会拒绝自动播放，直接跳过，避免刷出 NotAllowedError
     if (!gestureSeen) return;
     var src = SFX[name];
@@ -98,10 +123,42 @@
     safe(function () { m.playSfx(src); });
   }
 
+  function setMusic(on) {
+    musicOn = !!on;
+    if (!musicOn) pauseMusic();
+    else startMusic();
+  }
+
+  function setSfx(on) {
+    sfxOn = !!on;
+    var m = media();
+    if (m) safe(function () { m.setSfxEnabled(sfxOn); });
+    if (!sfxOn) return;
+    // 重新打开时恢复音量，并补一次交互确认，保证后续音效可播
+    safe(function () { m && m.setSfxVolume(VOLUME); });
+  }
+
+  // 读取存档后同步开关（不触发播放，等首次交互）
+  function applySettings(opts) {
+    opts = opts || {};
+    if (typeof opts.music === 'boolean') musicOn = opts.music;
+    if (typeof opts.sfx === 'boolean') sfxOn = opts.sfx;
+    if (!sfxOn) {
+      var m = media();
+      if (m) safe(function () { m.setSfxEnabled(false); });
+    }
+  }
+
   A.GameAudio = {
     init: init,
     play: play,
     setEnabled: function (v) { enabled = !!v; },
+    setMusic: setMusic,
+    setSfx: setSfx,
+    applySettings: applySettings,
+    isMusicOn: function () { return musicOn; },
+    isSfxOn: function () { return sfxOn; },
+    startMusic: startMusic,
     setVolume: function (v) {
       VOLUME = v;
       var m = media();

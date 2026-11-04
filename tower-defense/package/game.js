@@ -48,10 +48,10 @@ require("./kwaiOpenApi/kwai-ui.js"); // Toast / Modal / Loading
 require("./kwaiOpenApi/kwai-base.js"); // 系统安全区 / 生命周期
 require("./kwaiOpenApi/kwai-render.js"); // 图片 / 字体加载
 // require("./kwaiOpenApi/kwai-network.js");
-// require("./kwaiOpenApi/kwai-storage.js");
 // require("./kwaiOpenApi/kwai-file.js");
-require("./kwaiOpenApi/kwai-media.js"); // 音效播放
-require("./kwaiOpenApi/kwai-device.js"); // 振动反馈
+require("./kwaiOpenApi/kwai-media.js"); // 音效 / 背景音乐
+require("./kwaiOpenApi/kwai-device.js"); // 振动 / 键盘
+require("./kwaiOpenApi/kwai-storage.js"); // 本地存档（资料与设置）
 // require("./kwaiOpenApi/kwai-open.js");
 // require("./kwaiOpenApi/kwai-record.js");
 // require("./kwaiOpenApi/kwai-shortcut.js");
@@ -68,6 +68,7 @@ require("./gameplay/data/rigs.js"); // 战斗图集元数据（柴犬分件 + �
 require("./gameplay/config.js"); // 数值配置
 require("./gameplay/layout.js"); // 竖屏布局
 require("./gameplay/state.js"); // 运行时数据模型
+require("./gameplay/profile.js"); // 个人资料 / 设置 / 虚拟地区榜
 require("./gameplay/render/gl.js"); // WebGL 批渲染器
 require("./gameplay/render/draw.js"); // 绘图原语
 require("./gameplay/assets.js"); // 纹理加载
@@ -77,6 +78,7 @@ require("./gameplay/anim/defs.js"); // 单位动画表
 require("./gameplay/play/battle.js"); // 核心玩法
 require("./gameplay/input.js"); // 触摸输入
 require("./gameplay/render/scene.js"); // 战场绘制
+require("./gameplay/ui.js"); // 设置 / 名片 / 排行榜 / 邀请
 require("./gameplay/render/hud.js"); // HUD 与界面
 require("./gameplay/render/safe-area-debug.js"); // H5 安全区调试层
 require("./gameplay/game.js"); // 主循环装配

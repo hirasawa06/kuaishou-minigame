@@ -244,11 +244,16 @@
       D.vGradient(0, 0, u.w, u.h, D.color('#fdf3e4'), D.color('#e9d2b6'), 20);
     }
 
-    // 头像
+    // 头像：点击进入「我的名片」，使用玩家在资料里选择的伙伴
     var av = m.avatar;
+    var prof = A.Profile;
     D.roundRect(av.x - 3, av.y - 3, av.w + 6, av.h + 6, 16, D.color('#fff6e6', 0.95));
-    D.roundRect(av.x, av.y, av.w, av.h, 14, D.color('#c98f52'));
-    icon('unit-tank-1', av.x + av.w / 2, av.y + av.h / 2, av.w * 0.82);
+    D.roundRect(av.x, av.y, av.w, av.h, 14, D.color('#f6d79a'));
+    if (prof && A.ProfileUI) {
+      A.ProfileUI.avatar(prof.data.avatarIndex, av.x + av.w / 2, av.y + av.h / 2, av.w * 0.86);
+    } else {
+      icon('unit-tank-1', av.x + av.w / 2, av.y + av.h / 2, av.w * 0.82);
+    }
 
     // 体力
     var stb = m.stamina;
@@ -257,6 +262,21 @@
     icon('ui-bolt', stb.x + stb.h * 0.55, stb.y + stb.h / 2, stb.h * 0.72);
     D.text('体力', stb.x + stb.h * 1.0, stb.y + (stb.h - 18) / 2, 18, D.color('#8a6a44'), 0);
     D.text('30/30', stb.x + stb.w - 12, stb.y + (stb.h - 18) / 2, 18, D.color('#5b4126'), 2);
+
+    // 昵称：写在头像右侧、体力条下方，点名字同样进入名片
+    if (prof) {
+      var nameX = av.x + 2;
+      var nameMaxW = Math.max(60, m.settings.x - nameX - 10);
+      var name = prof.data.nickname;
+      while (name.length > 1 && D.textWidth(name, A.FontAtlas['18']) > nameMaxW) {
+        name = name.slice(0, name.length - 1);
+      }
+      var nameY = stb.y + stb.h + 6;
+      var nameH = Math.max(24, Math.round(av.h * 0.36));
+      var nameW = Math.min(nameMaxW + 12, D.textWidth(name, A.FontAtlas['18']) + 24);
+      D.roundRect(nameX, nameY, nameW, nameH, 12, D.color('#fff7ea', 0.86));
+      D.text(name, nameX + 10, nameY + (nameH - 18) / 2, 18, D.color('#6b4a2a'), 0);
+    }
 
     // 设置
     var sb = m.settings;

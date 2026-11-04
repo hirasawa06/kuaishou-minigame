@@ -342,6 +342,72 @@ def icon_play(base):
     return img
 
 
+# ── 个人资料 / 设置 / 排行榜界面用图标 ──────────────────────────
+def icon_close(base):
+    img, d = new_icon()
+    d.line(p(34, 34, 94, 94), fill=base, width=11 * SCALE)
+    d.line(p(94, 34, 34, 94), fill=base, width=11 * SCALE)
+    return img
+
+
+def icon_back(base):
+    img, d = new_icon()
+    d.line(p(34, 64, 96, 64), fill=base, width=10 * SCALE)
+    d.line(p(34, 64, 66, 34), fill=base, width=10 * SCALE)
+    d.line(p(34, 64, 66, 94), fill=base, width=10 * SCALE)
+    return img
+
+
+def icon_chevron(base):
+    img, d = new_icon()
+    d.line(p(46, 34, 82, 64), fill=base, width=11 * SCALE)
+    d.line(p(82, 64, 46, 94), fill=base, width=11 * SCALE)
+    return img
+
+
+def icon_check(base):
+    img, d = new_icon()
+    d.line(p(28, 66, 52, 92), fill=base, width=11 * SCALE)
+    d.line(p(52, 92, 100, 36), fill=base, width=11 * SCALE)
+    return img
+
+
+def icon_music(base):
+    img, d = new_icon()
+    # 双联音符：一根符干 + 顶部横梁 + 两个符头
+    d.line(p(52, 26, 52, 86), fill=base, width=9 * SCALE)
+    d.line(p(96, 20, 96, 78), fill=base, width=9 * SCALE)
+    d.polygon(p(52, 26, 96, 20, 96, 38, 52, 44), fill=base)
+    d.ellipse(p(24, 74, 66, 104), fill=base)
+    d.ellipse(p(68, 66, 110, 96), fill=base)
+    return img
+
+
+def icon_sound(base):
+    img, d = new_icon()
+    d.polygon(p(16, 48, 38, 48, 62, 22, 62, 106, 38, 80, 16, 80), fill=base)
+    d.arc(p(56, 26, 104, 102), start=-55, end=55, fill=base, width=8 * SCALE)
+    d.arc(p(50, 12, 122, 116), start=-52, end=52, fill=base, width=7 * SCALE)
+    return img
+
+
+def icon_share(base):
+    img, d = new_icon()
+    for cx, cy in ((86, 26), (86, 102), (30, 64)):
+        d.ellipse(p(cx - 13, cy - 13, cx + 13, cy + 13), fill=base)
+    d.line(p(38, 58, 78, 34), fill=base, width=7 * SCALE)
+    d.line(p(38, 70, 78, 94), fill=base, width=7 * SCALE)
+    return img
+
+
+def icon_link(base):
+    img, d = new_icon()
+    d.rounded_rectangle(p(52, 56, 108, 96), 14 * SCALE, outline=base, width=8 * SCALE)
+    d.rounded_rectangle(p(20, 32, 76, 72), 14 * SCALE, outline=base, width=8 * SCALE)
+    d.line(p(44, 64, 84, 64), fill=base, width=8 * SCALE)
+    return img
+
+
 ICON_BUILDERS = {
     "unit-tank-1": lambda: icon_shield(COL["tank1"]),
     "unit-tank-2": lambda: icon_shield(COL["tank2"]),
@@ -359,6 +425,15 @@ ICON_BUILDERS = {
     "ui-bolt": lambda: icon_bolt(COL["bolt"]),
     "ui-pause": lambda: icon_pause(COL["light"]),
     "ui-play": lambda: icon_play(COL["light"]),
+    # 界面图标统一烘焙成木棕色：纸面 / 奶油底上直接可读，按钮内也够清晰
+    "ui-close": lambda: icon_close((107, 74, 44, 255)),
+    "ui-back": lambda: icon_back((107, 74, 44, 255)),
+    "ui-chevron": lambda: icon_chevron((160, 132, 104, 255)),
+    "ui-check": lambda: icon_check((120, 66, 12, 255)),
+    "ui-music": lambda: icon_music((107, 74, 44, 255)),
+    "ui-sound": lambda: icon_sound((107, 74, 44, 255)),
+    "ui-share": lambda: icon_share((107, 74, 44, 255)),
+    "ui-link": lambda: icon_link((90, 50, 8, 255)),
 }
 
 ICON_CACHE = {}
