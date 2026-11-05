@@ -7,6 +7,7 @@
   var A = window.AIGCUtils;
   var archSpec = A.CharacterAnimations.arch;
   var tankSpec = A.CharacterAnimations.tank;
+  var lampSpec = A.CharacterAnimations.lamp;
 
   // 护盾柴犬：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
   var shiba = {
@@ -105,11 +106,65 @@
   var archerLeft = archerBack('left');
   var archerRight = archerBack('right');
 
+  // 台灯小怪：移动时以跳步向基地推进，攻击由灯罩前撞完成。
+  var lampMinion = {
+    scale: 1.08,
+    parts: [
+      { icon: lampSpec.frames.idle, pivot: [0.50, 0.89] },
+    ],
+    states: {
+      idle: {
+        dur: lampSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: lampSpec.frames.idle, dy: 0, sy: 1.00 }] },
+          { t: 0.60, mods: [{ icon: lampSpec.frames.idle, dy: -0.8, sy: 1.016, sx: 0.994 }] },
+          { t: lampSpec.states.idle.duration, mods: [{ icon: lampSpec.frames.idle, dy: 0, sy: 1.00 }] },
+        ],
+      },
+      move: {
+        dur: lampSpec.states.move.duration, loop: true, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: lampSpec.frames.idle, dy: 0, sy: 1.00 }] },
+          { t: 0.12, mods: [{ icon: lampSpec.frames.hop, dy: -5.2, sy: 0.97, sx: 1.03 }] },
+          { t: 0.30, mods: [{ icon: lampSpec.frames.hop, dy: -2.8, sy: 1.00, sx: 1.00 }] },
+          { t: lampSpec.states.move.duration, mods: [{ icon: lampSpec.frames.idle, dy: 0, sy: 1.00, sx: 1.00 }] },
+        ],
+      },
+      atk: {
+        dur: lampSpec.states.attack.duration, ease: 'inOutSine', hit: lampSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: lampSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.12, mods: [{ icon: lampSpec.frames.windup, dy: -1.2, rot: -2.5, sx: 0.99 }] },
+          { t: lampSpec.states.attack.hit, mods: [{ icon: lampSpec.frames.impact, dy: 3.1, rot: 1.5, sx: 1.03 }] },
+          { t: 0.31, mods: [{ icon: lampSpec.frames.impact, dy: 1.0, rot: 0.5, sx: 1.01 }] },
+          { t: lampSpec.states.attack.duration, mods: [{ icon: lampSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+        ],
+      },
+      hurt: {
+        dur: lampSpec.states.hurt.duration, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: lampSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.10, mods: [{ icon: lampSpec.frames.hurt, dy: 2.2, rot: -3.0, sx: 1.01 }] },
+          { t: lampSpec.states.hurt.duration, mods: [{ icon: lampSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+        ],
+      },
+      die: {
+        dur: lampSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: lampSpec.frames.idle, alpha: 1, dy: 0 }] },
+          { t: 0.18, mods: [{ icon: lampSpec.frames.defeat, alpha: 1, dy: 3.0 }] },
+          { t: lampSpec.states.die.duration, mods: [{ icon: lampSpec.frames.defeat, alpha: 1, dy: 3.0 }] },
+        ],
+      },
+    },
+  };
+
   // 盾位：柴犬分件动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
     tank: shiba,
     arch: archerRight,
     'arch-left': archerLeft,
     'arch-right': archerRight,
+    small: lampMinion,
   };
 })();

@@ -278,7 +278,7 @@ async function main() {
   await shot('07-paused')
 
   // 暂停页的"重新开始"按钮
-  const restart = await evaluate(`(function(){var b=AIGCUtils.Layout.ui.btnRect('paused');return {x:b.x+b.w/2,y:b.y+b.h/2}})()`)
+  const restart = await evaluate(`(function(){var b=AIGCUtils.Layout.ui.pausePanel.btn('restart');return {x:b.x+b.w/2,y:b.y+b.h/2}})()`)
   { const v = await toViewport(restart.x, restart.y); await tap(v.x, v.y) }
   await sleep(300)
   const afterRestart = await evaluate(`(function(){var S=AIGCUtils.State;return {phase:S.phase, wave:S.waveIndex+1, units:S.liveUnits()}})()`)

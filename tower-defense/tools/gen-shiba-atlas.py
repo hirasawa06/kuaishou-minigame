@@ -65,6 +65,8 @@ ARCHER_SPEC = load_animation_spec("arch")
 ARCHER_CAT_DIR = os.path.join(SRC_DIR, ARCHER_SPEC["sourceDir"])
 TANK_SPEC = load_animation_spec("tank")
 TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
+LAMP_SPEC = load_animation_spec("lamp")
+LAMP_DIR = os.path.join(SRC_DIR, LAMP_SPEC["sourceDir"])
 DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
 DEFEAT_SMOKE = [
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-01.png"),
@@ -220,17 +222,22 @@ def archer_back_defeat():
 
 
 def spec_sheet_frame(spec, source_dir, name):
-    """按规格从横向等分精灵表取帧；角色动作与独立特效共用此规则。"""
+    """按规格从规则网格精灵表取帧；角色动作与独立特效共用此规则。"""
     frame = spec["frames"][name]
     columns = frame.get("columns")
     if not columns:
         raise ValueError("动作规格缺少 sheet columns: " + name)
+    rows = frame.get("rows", 1)
     sheet = Image.open(os.path.join(source_dir, frame["file"])).convert("RGBA")
     width, height = sheet.size
     index = frame["index"]
+    if index < 0 or index >= columns * rows:
+        raise ValueError("动作规格 sheet index 越界: " + name)
     col = index % columns
+    row = index // columns
     x0, x1 = col * width // columns, (col + 1) * width // columns
-    return fit_visible(sheet.crop((x0, 0, x1, height)))
+    y0, y1 = row * height // rows, (row + 1) * height // rows
+    return fit_visible(sheet.crop((x0, y0, x1, y1)))
 
 
 def tank_frame(name):
@@ -239,6 +246,11 @@ def tank_frame(name):
     if "columns" in frame:
         return spec_sheet_frame(TANK_SPEC, TANK_DOG_DIR, name)
     return fit_visible(Image.open(os.path.join(TANK_DOG_DIR, frame["file"])).convert("RGBA"))
+
+
+def lamp_frame(name):
+    """台灯小怪动作表：统一从 3×2 透明精灵表取帧。"""
+    return spec_sheet_frame(LAMP_SPEC, LAMP_DIR, name)
 
 
 def defeat_smoke(index):
@@ -491,6 +503,10 @@ def build():
     cell(TANK_SPEC["frames"]["hurt"]["icon"], tank_frame("hurt"))
     cell(TANK_SPEC["frames"]["defeat"]["icon"], tank_frame("defeat"))
 
+    # 台灯小怪：待机、跳步、灯罩蓄力 / 撞击、受击、侧翻倒地。
+    for frame_name, frame in LAMP_SPEC["frames"].items():
+        cell(frame["icon"], lamp_frame(frame_name))
+
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
     legacy_meta = {}
@@ -546,7 +562,7 @@ def write_rigs(atlas_data):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],

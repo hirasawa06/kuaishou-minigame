@@ -13,12 +13,17 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 
 const args = process.argv.slice(2)
-const port = Number(args[args.indexOf('--port') + 1]) || 8099
-const outDir = args[args.indexOf('--out') + 1] || '/tmp/tdanim'
-const actorId = args[args.indexOf('--hero') + 1] || 'tank'
-const actorType = args[args.indexOf('--entity') + 1] || 'hero'
-const targetSide = args[args.indexOf('--target') + 1] || 'right'
-const requestedState = args[args.indexOf('--state') + 1] || ''
+function option(name, fallback) {
+  const index = args.indexOf(name)
+  return index >= 0 && args[index + 1] ? args[index + 1] : fallback
+}
+
+const port = Number(option('--port', '8099')) || 8099
+const outDir = option('--out', '/tmp/tdanim')
+const actorId = option('--hero', 'tank')
+const actorType = option('--entity', 'hero')
+const targetSide = option('--target', 'right')
+const requestedState = option('--state', '')
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -179,7 +184,15 @@ async function main() {
   console.log('unit at', pos)
 
   if (requestedState) {
-    var previewTime = requestedState === 'die' ? 0.30 : requestedState === 'hurt' ? 0.17 : 0.12;
+    var previewTime = await evaluate(`(function () {
+      var A = window.AIGCUtils, un = window.__un;
+      var rig = A.Rigs && A.Rigs[un.rigId || un.def.id];
+      var state = rig && rig.states && rig.states[${JSON.stringify(requestedState)}];
+      if (state && state.hit !== undefined) return state.hit;
+      if (${JSON.stringify(requestedState)} === 'die') return 0.30;
+      if (${JSON.stringify(requestedState)} === 'hurt') return 0.17;
+      return 0.12;
+    })()`)
     await evaluate(POSE(requestedState, previewTime, false))
     await shot('preview-' + requestedState)
     console.log('截图目录:', outDir)

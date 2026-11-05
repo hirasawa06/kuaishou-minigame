@@ -81,9 +81,10 @@
     // small 血少量多 / normal 标准 / elite 精英 / boss 首领
     ENEMIES: {
       small: {
-        id: 'small', name: '小怪', tier: 'small', icon: 'enemy-small',
+        id: 'small', name: '台灯小怪', tier: 'small', icon: 'enemy-small',
         hp: 70, atk: 8, interval: 0.9, speed: 62,
         radius: 11, color: '#8fd06a', baseDamage: 2, gold: 2,
+        attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
         id: 'normal', name: '普通怪', tier: 'normal', icon: 'enemy-normal',

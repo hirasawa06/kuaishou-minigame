@@ -279,6 +279,25 @@
     });
   }
 
+  function enemyImpactEffect(enemy, target) {
+    var color = enemy.def.impactColor || '#ff9a9a';
+    if (enemy.def.attackEffect === 'bump') {
+      S.addEffect({
+        type: 'pop', x: target.x, y: target.y - 2, r: 8,
+        life: 0.14, max: 0.14, color: color,
+      });
+      return;
+    }
+    S.addEffect({
+      type: 'slash', x: enemy.x, y: enemy.y + enemy.def.radius * 0.5,
+      tx: target.x, ty: target.y, life: 0.16, max: 0.16, color: color,
+    });
+    S.addEffect({
+      type: 'glow', x: target.x, y: target.y - 2, r: 7,
+      life: 0.14, max: 0.14, color: color,
+    });
+  }
+
   function projectileOrigin(unit) {
     var rig = activeRig(unit);
     var muzzle = rig && rig.muzzle;
@@ -619,14 +638,7 @@
           }
           if (hitUnit) {
             damageUnit(hitUnit, e.atk);
-            S.addEffect({
-              type: 'slash', x: e.x, y: e.y + e.def.radius * 0.5,
-              tx: hitUnit.x, ty: hitUnit.y, life: 0.16, max: 0.16, color: '#ff9a9a',
-            });
-            S.addEffect({
-              type: 'glow', x: hitUnit.x, y: hitUnit.y - 2, r: 7,
-              life: 0.14, max: 0.14, color: '#ffb0a8',
-            });
+            enemyImpactEffect(e, hitUnit);
             S.hitstop = Math.max(S.hitstop, 0.035);
           }
         }
