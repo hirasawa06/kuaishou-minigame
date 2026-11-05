@@ -38,7 +38,7 @@
     // moveSpeed: 移动速度（0=驻守）  splash: 群体攻击范围  taunt: 嘲讽范围
     HEROES: [
       {
-        id: 'tank', name: '铁盾柴犬', cls: 'tank', clsName: '盾',
+        id: 'tank', name: '柴不破', cls: 'tank', clsName: '盾',
         icon: 'unit-tank-1', cost: 8,
         hp: 900, atk: 0, interval: 1.0,
         range: 0, radius: 17, moveSpeed: 0,
@@ -47,17 +47,18 @@
         desc: '嘲讽周围敌人，只会格挡，不造成伤害',
       },
       {
-        id: 'war', name: '冲锋犬', cls: 'warrior', clsName: '战',
-        icon: 'unit-war-1', cost: 6,
+        id: 'war', name: '锤锤喵', cls: 'warrior', clsName: '战',
+        icon: 'war-front-idle', cost: 6,
         hp: 420, atk: 42, interval: 0.8,
         range: 46, radius: 15, moveSpeed: 52,
         taunt: 0, splash: 0,
         aggro: 260,
+        directionRig: { front: 'war-front', back: 'war-back' },
         color: '#e07a3a',
         desc: '主动出击寻敌，中血量近战输出',
       },
       {
-        id: 'arch', name: '游侠猫', cls: 'archer', clsName: '射手',
+        id: 'arch', name: '镭射喵', cls: 'archer', clsName: '射手',
         icon: 'unit-arch-1', cost: 7,
         hp: 180, atk: 96, interval: 1.15,
         range: 260, radius: 14, moveSpeed: 0,
@@ -67,7 +68,7 @@
         desc: '射程最远，血量最少，单体高伤',
       },
       {
-        id: 'mage', name: '魔法猫', cls: 'mage', clsName: '法师',
+        id: 'mage', name: '哈利边牧', cls: 'mage', clsName: '法师',
         icon: 'unit-mage-1', cost: 9,
         hp: 150, atk: 54, interval: 1.5,
         range: 170, radius: 14, moveSpeed: 0,

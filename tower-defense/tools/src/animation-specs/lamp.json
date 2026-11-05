@@ -4,12 +4,12 @@
   "render": "whole",
   "sourceDir": "characters/角色/台灯小怪",
   "frames": {
-    "idle": { "icon": "lamp-idle", "file": "lamp-minion-actions-v1.png", "index": 0, "columns": 3, "rows": 2 },
-    "hop": { "icon": "lamp-hop", "file": "lamp-minion-actions-v1.png", "index": 1, "columns": 3, "rows": 2 },
-    "windup": { "icon": "lamp-windup", "file": "lamp-minion-actions-v1.png", "index": 2, "columns": 3, "rows": 2 },
-    "impact": { "icon": "lamp-impact", "file": "lamp-minion-actions-v1.png", "index": 3, "columns": 3, "rows": 2 },
-    "hurt": { "icon": "lamp-hurt", "file": "lamp-minion-actions-v1.png", "index": 4, "columns": 3, "rows": 2 },
-    "defeat": { "icon": "lamp-defeat", "file": "lamp-minion-actions-v1.png", "index": 5, "columns": 3, "rows": 2 }
+    "idle": { "icon": "lamp-idle", "file": "lamp-minion-actions-v2.png", "index": 0, "columns": 3, "rows": 2 },
+    "hop": { "icon": "lamp-hop", "file": "lamp-minion-actions-v2.png", "index": 1, "columns": 3, "rows": 2 },
+    "windup": { "icon": "lamp-windup", "file": "lamp-minion-actions-v2.png", "index": 2, "columns": 3, "rows": 2 },
+    "impact": { "icon": "lamp-impact", "file": "lamp-minion-actions-v2.png", "index": 3, "columns": 3, "rows": 2 },
+    "hurt": { "icon": "lamp-hurt", "file": "lamp-minion-actions-v2.png", "index": 4, "columns": 3, "rows": 2 },
+    "defeat": { "icon": "lamp-defeat", "file": "lamp-minion-actions-v2.png", "index": 5, "columns": 3, "rows": 2 }
   },
   "states": {
     "idle": { "duration": 1.2 },

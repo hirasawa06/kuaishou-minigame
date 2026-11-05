@@ -246,6 +246,9 @@
 
   function enterAnimation(entity, stateName) {
     if (entity.anim === stateName) return;
+    if (stateName === 'idle' && entity.def.directionRig) {
+      entity.rigId = entity.def.directionRig.back;
+    }
     entity.anim = stateName;
     entity.animT = 0;
   }
@@ -259,7 +262,16 @@
 
   function selectAttackRig(unit, target) {
     var rigs = unit.def.attackRig;
-    if (rigs) unit.rigId = target.x < unit.x ? rigs.left : rigs.right;
+    if (rigs) {
+      unit.rigId = target.x < unit.x ? rigs.left : rigs.right;
+      return;
+    }
+    selectVerticalRig(unit, target.y);
+  }
+
+  function selectVerticalRig(unit, targetY) {
+    var rigs = unit.def.directionRig;
+    if (rigs) unit.rigId = targetY < unit.y ? rigs.back : rigs.front;
   }
 
   function attackHitTime(unit, fallback) {
@@ -492,6 +504,7 @@
         var dy = ty - un.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d > 4) {
+          selectVerticalRig(un, ty);
           var step = Math.min(d, def.moveSpeed * dt);
           un.x += dx / d * step;
           un.y += dy / d * step;

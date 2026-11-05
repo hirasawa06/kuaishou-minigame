@@ -1,0 +1,27 @@
+{
+  "id": "war",
+  "entity": "hero",
+  "render": "whole",
+  "sourceDir": "characters/角色/近战猫",
+  "frames": {
+    "frontIdle": { "icon": "war-front-idle", "file": "近战猫动作-v2.png", "index": 0, "columns": 4, "rows": 3 },
+    "frontWalk": { "icon": "war-front-walk", "file": "近战猫动作-v2.png", "index": 1, "columns": 4, "rows": 3 },
+    "frontWindup": { "icon": "war-front-windup", "file": "近战猫动作-v2.png", "index": 2, "columns": 4, "rows": 3 },
+    "frontImpact": { "icon": "war-front-impact", "file": "近战猫动作-v2.png", "index": 3, "columns": 4, "rows": 3 },
+    "frontHurt": { "icon": "war-front-hurt", "file": "近战猫动作-v2.png", "index": 4, "columns": 4, "rows": 3 },
+    "frontDefeat": { "icon": "war-front-defeat", "file": "近战猫动作-v2.png", "index": 5, "columns": 4, "rows": 3 },
+    "backIdle": { "icon": "war-back-idle", "file": "近战猫动作-v2.png", "index": 6, "columns": 4, "rows": 3 },
+    "backWalk": { "icon": "war-back-walk", "file": "近战猫动作-v2.png", "index": 7, "columns": 4, "rows": 3 },
+    "backWindup": { "icon": "war-back-windup", "file": "近战猫动作-v2.png", "index": 8, "columns": 4, "rows": 3 },
+    "backImpact": { "icon": "war-back-impact", "file": "近战猫动作-v2.png", "index": 9, "columns": 4, "rows": 3 },
+    "backHurt": { "icon": "war-back-hurt", "file": "近战猫动作-v2.png", "index": 10, "columns": 4, "rows": 3 },
+    "backDefeat": { "icon": "war-back-defeat", "file": "近战猫动作-v2.png", "index": 11, "columns": 4, "rows": 3 }
+  },
+  "states": {
+    "idle": { "duration": 1.4 },
+    "move": { "duration": 0.42, "frame": "Walk" },
+    "attack": { "duration": 0.40, "hit": 0.20, "windup": "Windup", "impact": "Impact" },
+    "hurt": { "duration": 0.28, "frame": "Hurt" },
+    "die": { "duration": 0.48, "frame": "Defeat" }
+  }
+}

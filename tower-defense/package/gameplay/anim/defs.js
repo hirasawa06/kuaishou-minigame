@@ -8,6 +8,7 @@
   var archSpec = A.CharacterAnimations.arch;
   var tankSpec = A.CharacterAnimations.tank;
   var lampSpec = A.CharacterAnimations.lamp;
+  var warSpec = A.CharacterAnimations.war;
 
   // 护盾柴犬：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
   var shiba = {
@@ -159,12 +160,73 @@
     },
   };
 
+  // 近战猫：根据目标与移动方向切换正面 / 背面整姿势帧。
+  function meleeCat(side) {
+    var frames = warSpec.frames;
+    var states = warSpec.states;
+    var key = side === 'front' ? 'front' : 'back';
+    return {
+      scale: 1.12,
+      parts: [{ icon: frames[key + 'Idle'], pivot: [0.50, 0.88] }],
+      states: {
+        idle: {
+          dur: states.idle.duration, loop: true, ease: 'inOutSine',
+          keys: [
+            { t: 0.00, mods: [{ icon: frames[key + 'Idle'], dy: 0, sy: 1 }] },
+            { t: 0.70, mods: [{ icon: frames[key + 'Idle'], dy: -0.8, sy: 1.016, sx: 0.994 }] },
+            { t: states.idle.duration, mods: [{ icon: frames[key + 'Idle'], dy: 0, sy: 1 }] },
+          ],
+        },
+        move: {
+          dur: states.move.duration, loop: true, ease: 'outQuad',
+          keys: [
+            { t: 0.00, mods: [{ icon: frames[key + 'Idle'], dy: 0, sy: 1 }] },
+            { t: 0.15, mods: [{ icon: frames[key + 'Walk'], dy: -2.4, sy: 0.985, sx: 1.015 }] },
+            { t: states.move.duration, mods: [{ icon: frames[key + 'Idle'], dy: 0, sy: 1, sx: 1 }] },
+          ],
+        },
+        atk: {
+          dur: states.attack.duration, ease: 'inOutSine', hit: states.attack.hit,
+          keys: [
+            { t: 0.00, mods: [{ icon: frames[key + 'Idle'], dy: 0, rot: 0 }] },
+            { t: 0.12, mods: [{ icon: frames[key + 'Windup'], dy: -0.8, rot: -2 }] },
+            { t: states.attack.hit, mods: [{ icon: frames[key + 'Impact'], dy: 1.8, rot: 1.4, sx: 1.02 }] },
+            { t: 0.30, mods: [{ icon: frames[key + 'Impact'], dy: 0.5, rot: 0.5, sx: 1.01 }] },
+            { t: states.attack.duration, mods: [{ icon: frames[key + 'Idle'], dy: 0, rot: 0, sx: 1 }] },
+          ],
+        },
+        hurt: {
+          dur: states.hurt.duration, ease: 'outQuad',
+          keys: [
+            { t: 0.00, mods: [{ icon: frames[key + 'Idle'], dy: 0, rot: 0 }] },
+            { t: 0.10, mods: [{ icon: frames[key + 'Hurt'], dy: 2.2, rot: -2.2, sx: 1.01 }] },
+            { t: states.hurt.duration, mods: [{ icon: frames[key + 'Idle'], dy: 0, rot: 0, sx: 1 }] },
+          ],
+        },
+        die: {
+          dur: states.die.duration, ease: 'inQuad',
+          keys: [
+            { t: 0.00, mods: [{ icon: frames[key + 'Idle'], alpha: 1, dy: 0 }] },
+            { t: 0.18, mods: [{ icon: frames[key + 'Defeat'], alpha: 1, dy: 3 }] },
+            { t: states.die.duration, mods: [{ icon: frames[key + 'Defeat'], alpha: 1, dy: 3 }] },
+          ],
+        },
+      },
+    };
+  }
+
+  var meleeCatFront = meleeCat('front');
+  var meleeCatBack = meleeCat('back');
+
   // 盾位：柴犬分件动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
     tank: shiba,
     arch: archerRight,
     'arch-left': archerLeft,
     'arch-right': archerRight,
+    war: meleeCatBack,
+    'war-front': meleeCatFront,
+    'war-back': meleeCatBack,
     small: lampMinion,
   };
 })();

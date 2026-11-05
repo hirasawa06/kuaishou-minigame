@@ -23,6 +23,7 @@ const outDir = option('--out', '/tmp/tdanim')
 const actorId = option('--hero', 'tank')
 const actorType = option('--entity', 'hero')
 const targetSide = option('--target', 'right')
+const requestedRig = option('--rig', '')
 const requestedState = option('--state', '')
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
@@ -113,7 +114,7 @@ const SETUP = `(function () {
   var un = {
     uid: 900, def: card,
     x: u.field.x + u.field.w * 0.40, y: u.field.y + u.field.h * 0.58,
-    rigId: card.attackRig ? card.attackRig[${JSON.stringify(targetSide)}] : card.id,
+    rigId: ${JSON.stringify(requestedRig)} || (card.attackRig ? card.attackRig[${JSON.stringify(targetSide)}] : card.id),
     hp: card.hp, maxHp: card.hp, atkTimer: 9999, hitFlash: 0, slowT: 0,
     spawnT: 0, dead: false, anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
   };

@@ -67,6 +67,8 @@ TANK_SPEC = load_animation_spec("tank")
 TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
 LAMP_SPEC = load_animation_spec("lamp")
 LAMP_DIR = os.path.join(SRC_DIR, LAMP_SPEC["sourceDir"])
+WAR_SPEC = load_animation_spec("war")
+WAR_CAT_DIR = os.path.join(SRC_DIR, WAR_SPEC["sourceDir"])
 DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
 DEFEAT_SMOKE = [
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-01.png"),
@@ -251,6 +253,11 @@ def tank_frame(name):
 def lamp_frame(name):
     """台灯小怪动作表：统一从 3×2 透明精灵表取帧。"""
     return spec_sheet_frame(LAMP_SPEC, LAMP_DIR, name)
+
+
+def war_frame(name):
+    """近战猫动作表：正背两套动作共用 4×3 透明精灵表。"""
+    return spec_sheet_frame(WAR_SPEC, WAR_CAT_DIR, name)
 
 
 def defeat_smoke(index):
@@ -507,6 +514,10 @@ def build():
     for frame_name, frame in LAMP_SPEC["frames"].items():
         cell(frame["icon"], lamp_frame(frame_name))
 
+    # 近战猫：正背朝向分别提供待机、走步、挥锤、受击和倒地姿势。
+    for frame_name, frame in WAR_SPEC["frames"].items():
+        cell(frame["icon"], war_frame(frame_name))
+
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
     legacy_meta = {}
@@ -562,7 +573,7 @@ def write_rigs(atlas_data):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, WAR_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],
