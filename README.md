@@ -1,6 +1,6 @@
 # 塔防小游戏（快手小游戏 / Yoola）
 
-> 协作约定、当前状态与版本变化见 [AGENTS.md](AGENTS.md)、[STATUS.md](STATUS.md) 和 [CHANGELOG.md](CHANGELOG.md)。产品策划逐步在 `docs/` 整理；已合并的决定才构成当前项目口径。
+> 协作约定、当前状态与版本变化见 [AGENTS.md](AGENTS.md)、[STATUS.md](STATUS.md)、[CHANGELOG.md](CHANGELOG.md) 和按时间排序的 [DEVLOG.md](DEVLOG.md)。产品策划逐步在 `docs/` 整理；已合并的决定才构成当前项目口径。
 
 设计与适配基线见 [屏幕安全区与平台按钮设计规范](docs/屏幕安全区与平台按钮设计规范.md)。该文档描述目标规范；当前实现进度和未完成项仍以 [STATUS.md](STATUS.md) 与 `tower-defense/PROJECT.md` 为准。
 
