@@ -86,10 +86,10 @@ def write_wav(samples, path):
         w.writeframes(bytes(frames))
 
 
-def to_mp3(wav_path, mp3_path):
+def to_mp3(wav_path, mp3_path, bitrate="64k"):
     subprocess.run([
         "ffmpeg", "-y", "-loglevel", "error", "-i", wav_path,
-        "-codec:a", "libmp3lame", "-b:a", "64k", "-ac", "1", mp3_path,
+        "-codec:a", "libmp3lame", "-b:a", bitrate, "-ac", "1", mp3_path,
     ], check=True)
 
 
@@ -129,6 +129,78 @@ SFX = {
 }
 
 
+def pluck(freq, dur, vol=0.2, decay=3.4, kind="tri"):
+    """柔和的拨弦音，起音短、指数衰减，适合做循环背景乐的小节音。"""
+    n = int(RATE * dur)
+    out = []
+    phase = 0.0
+    atk = max(1, int(RATE * 0.012))
+    for i in range(n):
+        t = i / RATE
+        phase += 2 * math.pi * freq / RATE
+        if kind == "sine":
+            s = math.sin(phase)
+        elif kind == "tri":
+            s = 2.0 * abs(2.0 * (phase / (2 * math.pi) % 1.0) - 1.0) - 1.0
+        else:
+            s = math.sin(phase)
+        env = min(1.0, i / atk) * math.exp(-decay * t)
+        out.append(s * env * vol)
+    return out
+
+
+def add_at(dst, samples, offset):
+    for i, v in enumerate(samples):
+        j = offset + i
+        if 0 <= j < len(dst):
+            dst[j] += v
+
+
+def loop_track():
+    """8 小节循环背景乐（约 20s）。首尾都落在同一和弦上，循环处不跳音。"""
+    bpm = 96.0
+    beat = 60.0 / bpm
+    bar = beat * 4
+    bars = 8
+    total = int(RATE * bar * bars)
+    out = [0.0] * total
+
+    # C - Am - F - G 循环两遍，全部为三和弦的分解音
+    chords = [
+        (261.63, [261.63, 329.63, 392.00]),   # C
+        (220.00, [220.00, 261.63, 329.63]),   # Am
+        (174.61, [174.61, 220.00, 261.63]),   # F
+        (196.00, [196.00, 246.94, 293.66]),   # G
+    ]
+
+    for b in range(bars):
+        base, notes = chords[b % 4]
+        offset = int(b * bar * RATE)
+        # 低音：每小节第一拍，长音
+        add_at(out, pluck(base / 2, bar * 0.92, 0.16, 1.6, "sine"), offset)
+        # 琶音：每拍一个音，第三拍高八度，让循环有起伏
+        for k in range(4):
+            note = notes[k % 3]
+            if k == 2:
+                note *= 2
+            add_at(out, pluck(note, beat * 0.95, 0.12, 3.0, "tri"),
+                   offset + int(k * beat * RATE))
+        # 第 4 拍轻轻点一下五度，作为过渡
+        add_at(out, pluck(notes[1] * 2, beat * 0.6, 0.07, 4.2, "sine"),
+               offset + int(3.5 * beat * RATE))
+
+    # 归一化，并做 20ms 首尾淡入淡出，避免循环接缝处爆音
+    peak = max(1e-6, max(abs(v) for v in out))
+    scale = 0.7 / peak if peak > 0.7 else 1.0
+    out = [v * scale for v in out]
+    fade = int(RATE * 0.02)
+    for i in range(fade):
+        g = i / fade
+        out[i] *= g
+        out[-1 - i] *= g
+    return out
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     tmp = "/tmp/td-sfx"
@@ -143,6 +215,13 @@ def main():
     total = sum(s for _, s in made)
     print("音效:", ", ".join(f"{n}({s}B)" for n, s in made))
     print("合计 %.1f KB" % (total / 1024))
+
+    # 背景音乐：单独生成，体积大一些，仍保持单声道低码率
+    bgm_wav = os.path.join(tmp, "bgm.wav")
+    bgm_mp3 = os.path.join(OUT, "bgm.mp3")
+    write_wav(loop_track(), bgm_wav)
+    to_mp3(bgm_wav, bgm_mp3, "48k")
+    print("背景音乐 bgm.mp3 %.1f KB" % (os.path.getsize(bgm_mp3) / 1024))
 
 
 if __name__ == "__main__":

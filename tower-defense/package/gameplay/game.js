@@ -32,6 +32,10 @@
     syncViewport();
     A.Input.bind(canvas);
     S.phase = 'loading';
+    // 先把存档里的音乐/音效开关同步给音频模块，再挂首次交互
+    if (A.Profile && A.GameAudio) {
+      A.GameAudio.applySettings({ music: A.Profile.data.music, sfx: A.Profile.data.sfx });
+    }
     A.GameAudio && A.GameAudio.init();
     A.Assets.init(applyAssetResult);
   }
@@ -84,6 +88,40 @@
     }
   }
 
+  // 由「重新开始」调用：保留当前布局，重置对局数据
+  function restart() {
+    start();
+  }
+
+  // 返回主页：清空本局临时状态，回到首页；未结束的一局不计入存档
+  function goMenu() {
+    if (A.ProfileUI) A.ProfileUI.close();
+    S.phase = 'menu';
+    S.dragging = null;
+    S.drag = null;
+    S.inspect = null;
+    S.inspectT = 0;
+    S.toast = null;
+    S.shake = 0;
+    S.hitstop = 0;
+    S.units.length = 0;
+    S.enemies.length = 0;
+    S.projectiles.length = 0;
+    S.effects.length = 0;
+    S.floats.length = 0;
+    S.spawnQueue.length = 0;
+    S.ranking = null;
+  }
+
+  // 战斗内打开设置：先暂停，避免打开面板时敌人继续推进
+  function openSettings() {
+    if (S.phase === 'playing') {
+      S.phase = 'paused';
+      S.dragging = null;
+    }
+    if (A.ProfileUI) A.ProfileUI.open('settings');
+  }
+
   function update(dt) {
     if (S.inspectT > 0) S.inspectT -= dt;
     if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
@@ -128,6 +166,18 @@
   }
 
   function render() {
+    try {
+      renderInner();
+    } catch (e) {
+      // 绘制异常只记录一次，避免每帧刷屏；后续帧继续尝试，便于定位
+      if (!render.__logged) {
+        render.__logged = true;
+        console.error('Game.Render', e && e.stack ? e.stack : e);
+      }
+    }
+  }
+
+  function renderInner() {
     drawBackdrop();
     if (S.phase === 'loading' || S.phase === 'error') {
       Hud.drawLoading();
@@ -139,12 +189,14 @@
     if (S.phase === 'menu') {
       drawBattleIdle();
       Hud.drawMenu();
+      if (A.ProfileUI) A.ProfileUI.draw();
       if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
       A.Render.endFrame();
       return;
     }
 
     drawBattle();
+    // 战斗中打开排行榜等页面时，仍然显示 HUD，但页面盖在最上层
     Hud.drawHud();
     Hud.drawTray();
     Hud.drawDragGhost();
@@ -154,6 +206,9 @@
     if (S.phase === 'paused') Hud.drawPaused();
     else if (S.phase === 'win') Hud.drawResult(true);
     else if (S.phase === 'lose') Hud.drawResult(false);
+
+    // 战斗内设置面板叠在暂停层之上
+    if (A.ProfileUI) A.ProfileUI.draw();
 
     if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
     A.Render.endFrame();
@@ -189,6 +244,9 @@
   A.Game = {
     boot: boot,
     start: start,
+    restart: restart,
+    goMenu: goMenu,
+    openSettings: openSettings,
     togglePause: togglePause,
     update: update,
     render: render,

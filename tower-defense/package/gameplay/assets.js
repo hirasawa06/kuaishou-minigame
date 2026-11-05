@@ -33,7 +33,12 @@
     }
   }
 
-  function load(key, src) {
+  // 首次失败多为启动瞬间并发请求的偶发错误（H5 预览与真机都可能出现），
+  // 自动重试一次再判定失败，避免整局停在错误页。
+  var RETRY_DELAY = 160;
+
+  function load(key, src, attempt) {
+    attempt = attempt || 1;
     KwaiRender.loadImage({
       src: src,
       onSuccess: function (img) {
@@ -49,6 +54,10 @@
         check();
       },
       onFail: function (err) {
+        if (attempt < 2) {
+          setTimeout(function () { load(key, src, attempt + 1); }, RETRY_DELAY);
+          return;
+        }
         console.error('Asset.Load', src + ' 加载失败 ' + (err && err.message));
         failed.push({ key: key, src: src, reason: err && err.message ? err.message : 'load-failed' });
         pending--;
@@ -81,6 +90,10 @@
     // 首页美术（进入游戏前的客厅场景与章节卡）
     manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
     manifest.push(['menu-card', 'res/Menu/menu-card.png']);
+    // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
+    manifest.push(['avatars', 'res/Menu/avatars.png']);
+    // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
+    if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
     manifest.push(['figma-home', 'res/Image/figma-home.png']);
     manifest.push(['home-start-button', 'res/Image/home-start-button.png']);
     manifest.push(['home-avatar-button', 'res/Image/home-avatar-button.png']);
@@ -96,13 +109,15 @@
 
   function entry(key) { return textures[key] || null; }
 
+  // 图标优先查战斗图集（战斗单位/敌人），没有的再回退到界面图标图集。
+  // 设置、名片、排行榜这类界面图标只存在于 sprites.png，两套图集都要能取到。
   function sprite(name) {
     var s = A.GameAtlas && A.GameAtlas.icons[name];
     var t = textures.game;
     if (s && t) {
       return { tex: t.tex, texW: t.w, texH: t.h, x: s[0], y: s[1], w: s[2], h: s[3] };
     }
-    var s2 = A.SpriteAtlas.icons[name];
+    var s2 = A.SpriteAtlas && A.SpriteAtlas.icons[name];
     var t2 = textures.sprites;
     if (!s2 || !t2) return null;
     return { tex: t2.tex, texW: t2.w, texH: t2.h, x: s2[0], y: s2[1], w: s2[2], h: s2[3] };

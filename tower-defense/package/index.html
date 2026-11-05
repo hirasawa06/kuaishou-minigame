@@ -198,46 +198,50 @@ function toggleOrientation() {
 }
 </script>
 <!-- aigc-init.js 必须最先加载，初始化 AIGCUtils 命名空间和 AIGCUtils.Layout 基础字段 -->
-<script src="kwaiStandard/core/aigc-init.js?v=1"></script>
+<script src="kwaiStandard/core/aigc-init.js?v=2"></script>
 <!-- kwaiStandard/ 标准库：资源管理器 / 事件总线 / 分包加载器 / 资源映射表 / 资源路径解析器 -->
-<script src="kwaiStandard/manager/asset-manager.js?v=1"></script>
-<script src="kwaiStandard/core/kwai-event-bus.js?v=1"></script>
-<script src="kwaiStandard/loaders/subpackage-loader.js?v=1"></script>
-<script src="kwaiStandard/loaders/resource-manifest.js?v=1"></script>
-<script src="kwaiStandard/loaders/resource-loader.js?v=1"></script>
-<script src="kwaiStandard/manager/game-logger.js?v=1"></script>
+<script src="kwaiStandard/manager/asset-manager.js?v=2"></script>
+<script src="kwaiStandard/core/kwai-event-bus.js?v=2"></script>
+<script src="kwaiStandard/loaders/subpackage-loader.js?v=2"></script>
+<script src="kwaiStandard/loaders/resource-manifest.js?v=2"></script>
+<script src="kwaiStandard/loaders/resource-loader.js?v=2"></script>
+<script src="kwaiStandard/manager/game-logger.js?v=2"></script>
 <!-- Spine 3.8 运行时 + 特效渲染器（共享主画布 WebGL 上下文） -->
-<script src="kwaiStandard/engines/spine38.js?v=1"></script>
-<script src="kwaiStandard/engines/spine-fx.js?v=1"></script>
-<script src="kwaiStandard/core/kwai-ad-config.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-login.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-ad.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-repost.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-ui.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-base.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-render.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-media.js?v=1"></script>
-<script src="kwaiOpenApi/kwai-device.js?v=1"></script>
+<script src="kwaiStandard/engines/spine38.js?v=2"></script>
+<script src="kwaiStandard/engines/spine-fx.js?v=2"></script>
+<script src="kwaiStandard/core/kwai-ad-config.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-login.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-ad.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-repost.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-ui.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-base.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-render.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-media.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-device.js?v=2"></script>
+<script src="kwaiOpenApi/kwai-storage.js?v=2"></script>
 <!-- 在下方按依赖顺序追加游戏 js 文件；kwaiStandard/main.js 保持最后 -->
-<script src="gameplay/data/font-atlas.js?v=1"></script>
-<script src="gameplay/data/sprites.js?v=1"></script>
-<script src="gameplay/data/rigs.js?v=1"></script>
-<script src="gameplay/data/character-animations.js?v=1"></script>
-<script src="gameplay/config.js?v=1"></script>
-<script src="gameplay/layout.js?v=1"></script>
-<script src="gameplay/state.js?v=1"></script>
-<script src="gameplay/render/gl.js?v=1"></script>
-<script src="gameplay/render/draw.js?v=1"></script>
-<script src="gameplay/assets.js?v=1"></script>
-<script src="gameplay/audio.js?v=1"></script>
-<script src="gameplay/anim/rig.js?v=1"></script>
-<script src="gameplay/anim/defs.js?v=1"></script>
-<script src="gameplay/play/battle.js?v=1"></script>
-<script src="gameplay/input.js?v=1"></script>
-<script src="gameplay/render/scene.js?v=1"></script>
-<script src="gameplay/render/hud.js?v=1"></script>
-<script src="gameplay/render/safe-area-debug.js?v=1"></script>
-<script src="gameplay/game.js?v=1"></script>
-<script src="kwaiStandard/main.js?v=1"></script>
+<script src="gameplay/data/font-atlas.js?v=3"></script>
+<script src="gameplay/data/sprites.js?v=3"></script>
+<script src="gameplay/data/rigs.js?v=3"></script>
+<script src="gameplay/data/character-animations.js?v=3"></script>
+<script src="gameplay/data/avatars.js?v=3"></script>
+<script src="gameplay/config.js?v=3"></script>
+<script src="gameplay/layout.js?v=3"></script>
+<script src="gameplay/state.js?v=3"></script>
+<script src="gameplay/profile.js?v=3"></script>
+<script src="gameplay/render/gl.js?v=3"></script>
+<script src="gameplay/render/draw.js?v=3"></script>
+<script src="gameplay/assets.js?v=3"></script>
+<script src="gameplay/audio.js?v=3"></script>
+<script src="gameplay/anim/rig.js?v=3"></script>
+<script src="gameplay/anim/defs.js?v=3"></script>
+<script src="gameplay/play/battle.js?v=3"></script>
+<script src="gameplay/input.js?v=3"></script>
+<script src="gameplay/render/scene.js?v=3"></script>
+<script src="gameplay/ui.js?v=3"></script>
+<script src="gameplay/render/hud.js?v=3"></script>
+<script src="gameplay/render/safe-area-debug.js?v=3"></script>
+<script src="gameplay/game.js?v=3"></script>
+<script src="kwaiStandard/main.js?v=3"></script>
 </body>
 </html>

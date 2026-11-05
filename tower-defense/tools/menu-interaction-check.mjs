@@ -21,7 +21,7 @@ const ui = {
 const state = { phase: 'menu', menuPanel: null, menuSoundEnabled: true,
   menuPressed: null, menuFeedback: null, menuStartDelay: 0 }
 let starts = 0
-const soundChanges = []
+let openPanel = null
 const sandbox = {
   console,
   AIGCUtils: {
@@ -29,7 +29,11 @@ const sandbox = {
     State: state,
     Layout: { w: 414, h: 896, ui },
     Game: { start() { starts++ } },
-    GameAudio: { setEnabled(value) { soundChanges.push(value) } },
+    ProfileUI: {
+      isOpen() { return openPanel !== null },
+      open(name) { openPanel = name },
+      handleTap() { openPanel = null },
+    },
   },
 }
 sandbox.window = sandbox
@@ -50,20 +54,16 @@ function assert(ok, message) { if (!ok) throw new Error(message) }
 listeners.mousedown({ clientX: 350, clientY: 180 })
 assert(state.menuPressed === 'settings', '设置按钮按下时缺少高亮状态')
 listeners.mouseup({ clientX: 350, clientY: 180 })
-assert(state.menuPanel === 'settings', '设置面板未打开')
+assert(openPanel === 'settings', '个人中心设置面板未打开')
 assert(state.menuFeedback.key === 'settings', '设置按钮缺少点击反馈')
 tap(207, 550)
-assert(state.menuSoundEnabled === false && soundChanges[0] === false, '音效开关未生效')
-tap(207, 550)
-assert(state.menuSoundEnabled === true && soundChanges[1] === true, '音效未恢复')
-tap(350, 180)
-assert(state.menuPanel === null, '面板未关闭')
+assert(openPanel === null, '个人中心弹窗未关闭')
 tap(44, 275)
-assert(state.menuPanel === 'rank', '排行榜说明未打开')
+assert(openPanel === 'rank', '排行榜未打开')
 tap(200, 800)
-assert(starts === 0 && state.menuPanel === null, '弹层下的开始按钮被误触')
+assert(starts === 0 && openPanel === null, '弹层下的开始按钮被误触')
 tap(50, 180)
-assert(state.menuPanel === 'avatar', '头像入口未响应')
+assert(openPanel === 'profile', '头像入口未响应')
 tap(200, 600)
 tap(150, 180)
 assert(state.menuPanel === 'stamina', '体力入口未响应')

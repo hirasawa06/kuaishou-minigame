@@ -64,6 +64,8 @@
   function onDown(px, py) {
     down = inInteractiveArea(px, py);
     if (!down) return;
+    // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
+    if (A.ProfileUI && A.ProfileUI.isOpen()) return;
     if (S.phase === 'menu' && !S.menuPanel) S.menuPressed = menuHitKey(px, py);
     if (S.phase !== 'playing') return;
     var hit = shopAt(px, py);
@@ -143,25 +145,25 @@
 
   function tap(px, py) {
     var u = L.ui;
+    // 弹窗 / 全屏页打开时吞掉所有点击，避免误触后面的战场
+    if (A.ProfileUI && A.ProfileUI.isOpen()) {
+      A.ProfileUI.handleTap(px, py);
+      return;
+    }
     if (!inInteractiveArea(px, py)) return;
 
     if (S.phase === 'menu') {
       if (S.menuStartDelay > 0) return;
       if (S.menuPanel) {
-        if (hitControl(u.menu.panelAction, px, py, 0) && S.menuPanel === 'settings') {
-          S.menuSoundEnabled = !S.menuSoundEnabled;
-          if (A.GameAudio) A.GameAudio.setEnabled(S.menuSoundEnabled);
-          return;
-        }
         S.menuPanel = null;
         return;
       }
       var key = menuHitKey(px, py);
       if (key) S.menuFeedback = { key: key, life: 0.18 };
       if (key === 'start') { S.menuStartDelay = 0.18; return; }
-      if (key === 'settings') { S.menuPanel = 'settings'; return; }
-      if (key === 'rank') { S.menuPanel = 'rank'; return; }
-      if (key === 'avatar') { S.menuPanel = 'avatar'; return; }
+      if (key === 'settings') { A.ProfileUI.open('settings'); return; }
+      if (key === 'rank') { A.ProfileUI.open('rank'); return; }
+      if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
       if (key === 'stamina') { S.menuPanel = 'stamina'; return; }
       return;
     }
@@ -170,7 +172,11 @@
       return;
     }
     if (S.phase === 'paused') {
-      if (hitControl(u.btnRect('paused'), px, py, 12)) { A.Game.start(); return; }
+      var pp = u.pausePanel;
+      if (hitControl(pp.btn('resume'), px, py, 8)) { A.Game.togglePause(); return; }
+      if (hitControl(pp.btn('settings'), px, py, 8)) { A.Game.openSettings(); return; }
+      if (hitControl(pp.btn('restart'), px, py, 8)) { A.Game.restart(); return; }
+      if (hitControl(pp.btn('home'), px, py, 8)) { A.Game.goMenu(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
       return;
     }

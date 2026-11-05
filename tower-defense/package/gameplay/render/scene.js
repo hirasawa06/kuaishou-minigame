@@ -364,9 +364,12 @@
     }
   }
 
+  function spriteIcon(name, cx, cy, size) { icon(name, cx, cy, size); }
+
   A.Scene = {
     COL: COL,
     icon: icon,
+    ic: spriteIcon,
     frame: frame,
     additiveGlow: additiveGlow,
     drawBackground: drawBackground,

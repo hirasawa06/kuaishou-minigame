@@ -208,6 +208,36 @@
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
     };
+    // 暂停面板：继续 / 设置 / 重新开始 / 返回主页，四行竖排。
+    // 面板整体居中，按钮高度按 contentH 缩放，短屏也不会挤出安全区。
+    var pauseBtnW = Math.round(Math.min(240, safeW - pad * 4));
+    var pauseBtnH = Math.round(Math.max(44, Math.min(52, contentH * 0.062)));
+    var pauseGap = Math.round(Math.max(10, Math.min(16, contentH * 0.018)));
+    var pauseTitleY = contentTop + Math.round(contentH * 0.2);
+    var pauseTop = pauseTitleY + 96;
+    var pauseList = ['resume', 'settings', 'restart', 'home'];
+    var pauseH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
+    if (pauseTop + pauseH > contentBottom - 12) {
+      pauseTop = Math.max(contentTop + 90, contentBottom - 12 - pauseH);
+    }
+    var pauseX = Math.round(metrics.safeLeft + (safeW - pauseBtnW) / 2);
+    var pauseRects = {};
+    for (var pi = 0; pi < pauseList.length; pi++) {
+      pauseRects[pauseList[pi]] = {
+        x: pauseX,
+        y: pauseTop + pi * (pauseBtnH + pauseGap),
+        w: pauseBtnW,
+        h: pauseBtnH,
+      };
+    }
+    ui.pausePanel = {
+      titleY: pauseTitleY,
+      subY: pauseTitleY + 62,
+      w: pauseBtnW,
+      h: pauseBtnH,
+      gap: pauseGap,
+      btn: function (kind) { return pauseRects[kind]; },
+    };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
@@ -218,48 +248,7 @@
     }
     ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
       h: 845 * figmaScale, scale: figmaScale };
-    var mTop = contentTop;
-    var mH = contentH;
-    var av = Math.round(Math.max(46, Math.min(66, safeW * 0.15)));
-    ui.menu = {
-      avatar: { x: metrics.safeLeft + pad, y: mTop + 6, w: av, h: av },
-      stamina: {
-        x: metrics.safeLeft + pad + av + 10,
-        y: mTop + 12,
-        w: Math.min(180, safeW - av - pad * 2 - 10),
-        h: Math.round(av * 0.46),
-      },
-      settings: {
-        x: metrics.safeRight - pad - 62,
-        y: mTop + 8,
-        w: 62,
-        h: 62,
-      },
-      rank: {
-        x: metrics.safeLeft + pad,
-        y: mTop + av + 14,
-        w: 62,
-        h: 62,
-      },
-      banner: {
-        x: metrics.safeLeft + pad,
-        y: mTop + Math.round(Math.max(96, mH * 0.185)),
-        h: 56,
-      },
-      card: {
-        x: metrics.safeLeft + pad,
-        y: 0, // 依赖 banner，下面计算
-        h: 0,
-      },
-      start: { w: Math.round(Math.min(300, safeW - pad * 2)), h: 66 },
-    };
-    ui.menu.banner.w = safeW - pad * 2;
-    ui.menu.card.w = safeW - pad * 2;
-    ui.menu.card.y = ui.menu.banner.y + ui.menu.banner.h + 10;
-    var startY = Math.min(contentBottom - 26 - ui.menu.start.h, ui.menu.card.y + Math.round(mH * 0.52));
-    ui.menu.card.h = Math.max(120, startY - ui.menu.card.y - 14);
-    ui.menu.start.x = metrics.safeLeft + (safeW - ui.menu.start.w) / 2;
-    ui.menu.start.y = startY;
+    ui.menu = {};
     ui.menu.avatar = figmaRect(11.44, 45.77, 80.56, 82.4);
     ui.menu.stamina = figmaRect(93.84, 63.17, 141.9, 45.78);
     ui.menu.settings = figmaRect(308.98, 45.77, 73.24, 82.4);
@@ -273,6 +262,236 @@
       y: contentTop + (contentH - panelH) / 2, w: panelW, h: panelH };
     ui.menu.panelAction = { x: ui.menu.panel.x + (panelW - 126) / 2,
       y: ui.menu.panel.y + panelH - 60, w: 126, h: 42 };
+
+    // ── 设置 / 名片 / 头像 / 昵称 / 排行榜 / 邀请 的界面几何 ──
+    // 所有弹窗与全屏页都从同一份可交互区域派生：标题栏、按钮、行高都由 contentH 缩放。
+    var sheetW = Math.round(Math.min(340, safeW - pad * 2 - 8));
+    var sheetX = Math.round(metrics.safeLeft + (safeW - sheetW) / 2);
+    var sheetTop = contentTop + Math.round(contentH * 0.14);
+    var sheetMaxBottom = contentBottom - 12;
+
+    // 设置弹窗：标题 + 两条开关 + 分享按钮 + 版本号
+    var setH = Math.round(Math.min(372, sheetMaxBottom - sheetTop));
+    var setY = Math.round(sheetTop + Math.max(0, (sheetMaxBottom - sheetTop - setH) * 0.35));
+    var rowH = Math.round(Math.max(68, Math.min(78, setH * 0.21)));
+    var setHead = Math.round(rowH * 0.92);
+    var setBtnH = Math.round(Math.max(40, Math.min(50, setH * 0.14)));
+    var setInnerY = setY + setHead + Math.round(setH * 0.075);
+    var setRowGap = Math.round(Math.max(8, setH * 0.03));
+    var musicRow = { x: sheetX + 14, y: setInnerY, w: sheetW - 28, h: rowH };
+    var sfxRow = { x: musicRow.x, y: musicRow.y + rowH + setRowGap, w: musicRow.w, h: rowH };
+    var shareBtn = {
+      x: sheetX + 22,
+      y: sfxRow.y + rowH + Math.round(setH * 0.06),
+      w: sheetW - 44,
+      h: setBtnH,
+    };
+    ui.settings = {
+      sheet: { x: sheetX, y: setY, w: sheetW, h: setH },
+      head: setHead,
+      musicRow: musicRow,
+      sfxRow: sfxRow,
+      shareBtn: shareBtn,
+      close: { x: sheetX + sheetW - 38, y: setY + 6, w: 32, h: 32 },
+      versionY: shareBtn.y + shareBtn.h + 16,
+    };
+
+    // 名片：整页卡片，标题带 + 头像 + 昵称 + ID + 两个入口
+    var cardH = Math.round(Math.min(470, contentH * 0.78));
+    var cardY = contentTop + Math.round(Math.max(14, contentH * 0.16));
+    var profHead = Math.round(Math.max(40, rowH * 0.8));
+    var avatarSize = Math.round(Math.max(64, Math.min(92, cardH * 0.22)));
+    var profRowH = Math.round(Math.max(42, Math.min(52, cardH * 0.12)));
+    var profRowX = sheetX + 26;
+    var profRowW = sheetW - 52;
+    var profAvatar = {
+      x: Math.round(sheetX + (sheetW - avatarSize) / 2),
+      y: cardY + profHead + Math.round(cardH * 0.06),
+      w: avatarSize,
+      h: avatarSize,
+    };
+    var profNameY = profAvatar.y + avatarSize + Math.round(cardH * 0.06);
+    var profAvatarBtn = {
+      x: profRowX,
+      y: profNameY + Math.round(cardH * 0.16),
+      w: profRowW,
+      h: profRowH,
+    };
+    var profNickBtn = {
+      x: profRowX,
+      y: profAvatarBtn.y + profRowH + Math.round(rowH * 0.22),
+      w: profRowW,
+      h: profRowH,
+    };
+    ui.profile = {
+      card: { x: sheetX, y: cardY, w: sheetW, h: cardH },
+      head: profHead,
+      close: { x: sheetX + sheetW - 38, y: cardY + 6, w: 32, h: 32 },
+      avatar: profAvatar,
+      nameY: profNameY,
+      idY: profNameY + 36,
+      avatarBtn: profAvatarBtn,
+      nickBtn: profNickBtn,
+    };
+
+    // 选择头像：标题 + 3×3 网格 + 当前名称 + 保存
+    var pickH = Math.round(Math.min(452, contentH * 0.76));
+    var pickY = contentTop + Math.round(Math.max(16, (contentH - pickH) * 0.28));
+    var pickHead = Math.max(38, Math.round(rowH * 0.74));
+    var gridPad = 18;
+    var subLineY = pickY + pickHead + 12;
+    var gridTop = subLineY + 30;
+    var btnH = Math.round(Math.max(38, Math.min(48, pickH * 0.12)));
+    var cellMax = Math.floor((sheetW - gridPad * 2 - 2 * 12) / 3);
+    var cellSize = Math.round(Math.min(cellMax, (pickH * 0.5) / 3 - 8));
+    var cellGap = 12;
+    var gridW = cellSize * 3 + cellGap * 2;
+    var gridX = Math.round(sheetX + (sheetW - gridW) / 2);
+    var pickCurY = gridTop + cellSize * 3 + cellGap * 2 + 12;
+    var pickSave = {
+      x: sheetX + 22,
+      y: Math.round(Math.min(pickY + pickH - btnH - 14, pickCurY + 34)),
+      w: sheetW - 44,
+      h: btnH,
+    };
+    ui.avatarPick = {
+      sheet: { x: sheetX, y: pickY, w: sheetW, h: pickH },
+      head: pickHead,
+      close: { x: sheetX + sheetW - 38, y: pickY + 6, w: 32, h: 32 },
+      grid: { x: gridX, y: gridTop, cell: cellSize, gap: cellGap, cols: 3, rows: 3 },
+      currentY: pickCurY,
+      save: pickSave,
+      subY: subLineY,
+    };
+    ui.avatarPick.rect = function (i) {
+      var g = ui.avatarPick.grid;
+      var col = i % g.cols;
+      var row = (i - col) / g.cols;
+      return {
+        x: g.x + col * (g.cell + g.gap),
+        y: g.y + row * (g.cell + g.gap),
+        w: g.cell,
+        h: g.cell,
+      };
+    };
+
+    // 修改昵称：输入框 + 计数 + 提示 + 保存
+    var nickH = Math.round(Math.min(330, contentH * 0.56));
+    var nickY = contentTop + Math.round(Math.max(16, (contentH - nickH) * 0.3));
+    var nickHead = Math.max(38, Math.round(rowH * 0.74));
+    var nickFieldY = nickY + nickHead + Math.round(nickH * 0.12);
+    var nickFieldH = Math.round(Math.max(40, Math.min(50, nickH * 0.17)));
+    ui.nickname = {
+      sheet: { x: sheetX, y: nickY, w: sheetW, h: nickH },
+      head: nickHead,
+      close: { x: sheetX + sheetW - 38, y: nickY + 6, w: 32, h: 32 },
+      labelY: nickY + nickHead + Math.round(nickH * 0.06),
+      field: { x: sheetX + 20, y: nickFieldY, w: sheetW - 40, h: nickFieldH },
+      hintY: nickFieldY + nickFieldH + 8,
+      save: {
+        x: sheetX + 22,
+        y: Math.round(Math.min(nickY + nickH - 14 - Math.max(40, nickH * 0.15),
+          nickFieldY + nickFieldH + Math.round(nickH * 0.3))),
+        w: sheetW - 44,
+        h: Math.round(Math.max(40, Math.min(50, nickH * 0.15))),
+      },
+    };
+
+    // 地区排行榜：全屏页（返回 + 标题 + 地区切换 + 前三天梯 + 列表 + 我的名次）
+    var rankPad = Math.round(Math.max(14, pad));
+    var rankX = metrics.safeLeft + rankPad;
+    var rankW = safeW - rankPad * 2;
+    var backSize = 40;
+    // 顶部：返回键一行，标题与副标题在下方一行，避免窄屏文字压住图标
+    var rankTitleY = contentTop + backSize + 4;
+    var rankBarY = rankTitleY + 80;
+    var rankBarH = Math.round(Math.max(36, Math.min(44, contentH * 0.055)));
+    var podiumY = rankBarY + rankBarH + 10;
+    var podiumH = Math.round(Math.max(104, Math.min(150, contentH * 0.185)));
+    var rowH2 = Math.round(Math.max(34, Math.min(44, contentH * 0.052)));
+    var listY = podiumY + podiumH + 8;
+    // 底部固定两段：我的名次卡片 + 一行说明，二者之间留 8px，说明贴着安全区底
+    // 底部：我的名次卡片 + 一行说明；说明用 18 号字，留足下沿空间
+    var footH = 26;
+    var mineH = Math.round(Math.max(52, Math.min(62, contentH * 0.076)));
+    var mineY = contentBottom - footH - 2 - mineH;
+    var listAvail = mineY - 10 - listY;
+    var visibleRows = Math.max(1, Math.min(6, Math.floor(listAvail / (rowH2 + 8))));
+    ui.rank = {
+      x: rankX,
+      w: rankW,
+      titleX: rankX,
+      back: { x: rankX, y: contentTop + 4, w: backSize, h: backSize },
+      titleY: rankTitleY,
+      subY: rankTitleY + 42,
+      barY: rankBarY,
+      barH: rankBarH,
+      bar: { x: rankX, y: rankBarY, w: Math.round(rankW * 0.62), h: rankBarH },
+      badge: {
+        x: rankX + Math.round(rankW * 0.62) + 6,
+        y: rankBarY + 5,
+        w: rankW - Math.round(rankW * 0.62) - 6,
+        h: rankBarH - 10,
+      },
+      podiumY: podiumY,
+      podiumH: podiumH,
+      rowH: rowH2,
+      listY: listY,
+      visibleRows: visibleRows,
+      mine: { x: rankX, y: mineY, w: rankW, h: mineH },
+      footY: contentBottom - 26,
+      rowRect: function (i) {
+        return { x: rankX, y: listY + i * (rowH2 + 8), w: rankW, h: rowH2 };
+      },
+    };
+
+    // 选择地区：标题 + 3 个地区行 + 说明
+    var regH = Math.round(Math.min(386, contentH * 0.64));
+    var regY = contentTop + Math.round(Math.max(16, (contentH - regH) * 0.3));
+    var regHead = Math.max(38, Math.round(rowH * 0.74));
+    var regRowH = Math.round(Math.max(44, Math.min(54, regH * 0.15)));
+    var regRowGap = 10;
+    var regTop = regY + regHead + Math.round(regH * 0.09);
+    ui.regionPick = {
+      sheet: { x: sheetX, y: regY, w: sheetW, h: regH },
+      head: regHead,
+      close: { x: sheetX + sheetW - 38, y: regY + 6, w: 32, h: 32 },
+      subY: regY + regHead + Math.round(regH * 0.03),
+      rows: (function () {
+        var out = [];
+        for (var i = 0; i < 3; i++) {
+          out.push({
+            x: sheetX + 18,
+            y: regTop + i * (regRowH + regRowGap),
+            w: sheetW - 36,
+            h: regRowH,
+          });
+        }
+        return out;
+      })(),
+      noteY: regY + regH - 60,
+    };
+
+    // 邀请好友：两只伙伴 + 标题 + 文案 + 复制按钮 + 说明
+    var invH = Math.round(Math.min(430, contentH * 0.74));
+    var invY = contentTop + Math.round(Math.max(16, (contentH - invH) * 0.24));
+    var invHead = Math.max(38, Math.round(rowH * 0.74));
+    var invBodyY = invY + invHead + 12;
+    var invBodyH = Math.round(invH * 0.38);
+    var invTitleY = invBodyY + invBodyH + 8;
+    var invSubY = invTitleY + 38;
+    var invCopyH = Math.round(Math.max(42, Math.min(50, invH * 0.115)));
+    var invCopyY = invSubY + Math.round(invH * 0.1);
+    ui.invite = {
+      sheet: { x: sheetX, y: invY, w: sheetW, h: invH },
+      head: invHead,
+      close: { x: sheetX + sheetW - 38, y: invY + 6, w: 32, h: 32 },
+      body: { x: sheetX + 24, y: invBodyY, w: sheetW - 48, h: invBodyH },
+      titleY: invTitleY,
+      subY: invSubY,
+      copy: { x: sheetX + 22, y: invCopyY, w: sheetW - 44, h: invCopyH },
+      noteY: invCopyY + invCopyH + 12,
+    };
 
     ui.btnRect = function (kind) {
       if (kind === 'menu') return ui.menu.start;

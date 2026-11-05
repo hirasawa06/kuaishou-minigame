@@ -33,8 +33,10 @@ function makeGl(textureMode) {
 
 function createHarness(textureMode = 'ok') {
   const requests = []
+  const timers = []
   const sandbox = {
     console,
+    setTimeout(callback) { timers.push(callback) },
     KwaiRender: { loadImage: (options) => requests.push(options) },
     AIGCUtils: {
       FontAtlas: { 18: { src: 'font-18.png' } },
@@ -50,16 +52,21 @@ function createHarness(textureMode = 'ok') {
   vm.runInContext(fs.readFileSync(ASSETS_FILE, 'utf8'), vm.createContext(sandbox), {
     filename: 'gameplay/assets.js',
   })
-  return { sandbox, requests }
+  return { sandbox, requests, timers }
 }
 
 function complete(mode, textureMode) {
   const harness = createHarness(textureMode)
   let result = null
   harness.sandbox.AIGCUtils.Assets.init((value) => { result = value })
-  for (const request of harness.requests) {
-    if (mode === '404') request.onFail(new Error(`404 ${request.src}`))
-    else request.onSuccess({ width: 64, height: 64, src: request.src })
+  let next = 0
+  while (next < harness.requests.length || harness.timers.length) {
+    while (next < harness.requests.length) {
+      const request = harness.requests[next++]
+      if (mode === '404') request.onFail(new Error(`404 ${request.src}`))
+      else request.onSuccess({ width: 64, height: 64, src: request.src })
+    }
+    while (harness.timers.length) harness.timers.shift()()
   }
   return { result, harness }
 }

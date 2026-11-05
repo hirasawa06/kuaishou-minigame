@@ -42,6 +42,8 @@
     hitstop: 0,
     cardsPlaced: 0,
     assetErrors: [],
+    ranking: null,     // 排行榜快照（由 Profile.buildRanking 生成）
+    runRecorded: false, // 本局是否已计入存档，避免重复记录
     menuPanel: null,
     menuSoundEnabled: true,
     menuPressed: null,
@@ -168,6 +170,8 @@
     S.drag = null;
     S.dragging = null;
     S.assetErrors.length = 0;
+    S.ranking = null;
+    S.runRecorded = false;
     S.menuPanel = null;
     S.menuPressed = null;
     S.menuFeedback = null;
