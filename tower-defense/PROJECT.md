@@ -44,24 +44,25 @@
 - `kwaiStandard/main.js` 的 `draw()`（脚手架唯一允许替换的占位绘制）已改为调用 `AIGCUtils.GameLoop.frame()`
 
 ### 资源生成
-所有图片、音频均由 `tools/` 下的脚本离线生成，不依赖外部素材：
+运行时图片、音频均由 `tools/` 下的脚本离线生成；角色参考和动作源图只放在
+`tools/src/characters/`，不得留在 `package/res/`：
 
 ```bash
 python3 tools/gen-assets.py        # 字形图集 + 图标精灵图 + yoola 素材
-python3 tools/gen-shiba-atlas.py   # 战斗图集 game.png（柴犬分件 + 特效 + 继承图标）
+python3 tools/gen-shiba-atlas.py   # 战斗图集 game.png（角色背面帧 + 特效 + 继承图标）
 python3 tools/gen-audio.py         # 11 个短音效（ffmpeg 合成）
 python3 tools/gen-home-asset.py    # 首页渲染图
 ```
 
 - 字形图集从 `gameplay/**.js` 的字符串字面量自动收集用字：**新增中文文案后必须重新执行 `gen-assets.py`**，否则会缺字
-- 图集尺寸自动选宽，保证高度 ≤ 2048（低端机纹理上限）
+- 图集按注册顺序自动排格，并对重复帧名和容量耗尽直接报错；图集尺寸自动选宽，保证高度 ≤ 2048（低端机纹理上限）
 
-**战斗图集（`res/Image/game.png`，1024×512，22 格）**
+**战斗图集（`res/Image/game.png`，1024×1024，当前 43 格）**
 - 单元格 128px，含 4px padding（旋转 + 线性过滤时防渗色），有效区 120px
-- row0：整只柴犬 / 柴犬身体 / 柴犬盾牌 / fx-glow / fx-slash / fx-smoke / fx-ring
-- row2~3：`gen-assets.py` 生成的旧图标，由本脚本裁入，保证卡牌与 HUD 仍有图
+- 帧按生成器注册顺序自动排格；运行时代码只通过帧名查询，禁止依赖图集行列位置
+- 当前包含卡牌用柴犬分件、通用特效、战场敌人与 UI 图标、射手猫背面待机 / 瞄准 / 左右开火 / 后坐 / 仰面晕倒帧，以及盾狗背面待机 / 受击 / 仰面晕倒帧；飞行光弹由运行时绘制，不能烘焙进角色帧
 - 分件以**整张正视图为共同参照**落格，不能各自居中，否则拼合错位
-- 源图放 `tools/src/shiba-front.png`（`cut1` 抠图结果）；旧图标源放 `tools/src/sprites-legacy.png`
+- 柴犬旧正视源图仅供卡牌分件，放 `tools/src/shiba-front.png`；角色参考按角色目录收纳在 `tools/src/characters/角色/<角色名>/`，跨角色风格参考放在 `tools/src/characters/情绪版/`。射手猫动作源位于 `角色/射手猫/`；盾狗战场源位于 `角色/盾狗/`，包含背面待机、背面受击 / 晕倒帧。所有角色共用的死亡烟雾位于 `tools/src/effects/defeat-smoke/vanish-smoke-0*.png`；旧图标源放 `tools/src/sprites-legacy.png`
 - **改分件/特效后必须重新执行 `gen-shiba-atlas.py`**，并检查 `sprites.js` 里旧图标仍完整
 
 ### 验证
@@ -78,9 +79,14 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 仿真脚本的机器人会按梯队随机布阵，作为难度基线：约 3~4 次能通关 1 次。
 
 ### 动画与特效
+- 角色新增、动作选择、图集接入与验收以 [角色行动动画制作规范](../docs/角色行动动画制作规范.md) 为准；用户仅提供角色图与特点时，按该规范的决策矩阵自动制定行动方案。
 - 单位分件动画在 `gameplay/anim/`：`rig.js`（关键帧采样 + 绘制）、`defs.js`（各单位 `states`）
+- 角色动作的单一数据源是 `tools/src/animation-specs/<角色id>.json`；`gen-shiba-atlas.py` 生成 `data/character-animations.js`，Rig 读取该数据，禁止重复手填关键战斗时刻。
 - 有 `A.Rigs[cardId]` 的单位走分件动画，没有的仍走整图 `Scene.icon`，新增单位可逐个接入
-- 攻击伤害**不在起手结算**：`updateUnits` 只切 `anim='atk'` + `pendingHit`，到达出手帧才 `resolveAttack`
+- 攻击伤害**不在起手结算**：`updateUnits` 只切 `anim='atk'` + `pendingHit`，到达 Rig 的 `states.atk.hit` 才 `resolveAttack`；不得再为单位硬编码第二套出手时间
+- 射手猫背面动作固定为蓄力 0.10 秒、独立开火帧 0.12–0.18 秒、后坐并在 0.46 秒回到待机；目标左右两侧各用一帧，始终由角色右手持枪；光弹从相应 Rig 的 `muzzle` 锚点生成，命中时才造成伤害
+- 射手猫被击败时先向后仰 0.12 秒，切换到用户确认的仰面晕倒帧；姿势保持不透明，在 0.46 秒时生成三帧纯白烟雾并直接移出单位列表。烟雾的扩散由三张素材帧表达，不可再以运行时缩放伪造。死亡持续时间读取 Rig 数据，不能为此单位另写硬编码
+- 盾狗不进入攻击流程；嘲讽仍由战斗逻辑处理，但不播放光盾特效。战场待机与受击均为背视；受击在 0.34 秒内轻微后移、失衡后回正，保持角色体积而不压扁；死亡切换为仰面晕倒（头朝战场南侧），姿势不渐隐，随后复用通用白烟雾退场。
 - `hitstop` 只压缩战斗推进（`battleDt`），特效仍按真实 `dt` 衰减，否则闪点会一起卡住
 - 死亡单位要等 `die` 动画播完（`dieT`）才移出 `S.units`，**名额统计必须跳过 `dead`**，否则尸体卡上限
 - 加法混合通过 `A.Render.setAdditive(true/false)` 切换，进出都会 flush；着色器带 `uAdd`，
@@ -97,10 +103,10 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 - 真机验证：iOS / Android 的平台按钮实际占位、安全区、刘海与底部手势避让、音效播放、60fps
 - 广告接入：复活 / 加倍奖励位（`kwaiStandard/core/kwai-ad-config.js` 占位，上传阶段替换）
 - 存档：最佳波次 / 通关次数（`KwaiStorage`，当前未接入）
-- 动画：战 / 射手 / 法师仍是整图图标，只有盾位接了分件动画
+- 动画：盾狗与射手猫均已接入背面战场动作帧；战 / 法师仍待接入
 - 数值：金币产出、席位与刷新价格曲线尚未做长期仿真调平
 - 商店：卡池有重复卡，暂未做保底或锁定
-- 特效：法师/射手投射物仍是几何图形，待接 `fx-glow` 拖尾
+- 特效：射手已接入 `fx-glow` 单发光弹与短尾迹；法师投射物仍待接入贴图特效
 
 ## 文件清单
 
@@ -124,6 +130,7 @@ gameplay/
   data/font-atlas.js   字形图集元数据（生成）
   data/sprites.js      图标精灵图元数据（生成，仅作旧图标手册）
   data/rigs.js         战斗图集元数据：图集尺寸、格子、图标表、分件锚点（生成）
+  data/character-animations.js  角色动作规格的运行时数据（生成）
 tools/
   gen-assets.py        字形图集、旧图标与 yoola 素材
   gen-shiba-atlas.py   战斗图集：柴犬分件 + 特效 + 继承图标

@@ -5,7 +5,7 @@
  * 用 CDP 打开本地预览，直接在运行时摆一个柴犬 + 一个敌人，
  * 按指定 animT 定格，逐帧截图，用于比对分件动画与特效。
  *
- * 用法：node tools/anim-shot.mjs [--port 8099] [--out /tmp/tdanim]
+ * 用法：node tools/anim-shot.mjs [--entity hero|enemy] [--hero <id>] [--port 8099]
  */
 
 import fs from 'node:fs'
@@ -15,6 +15,10 @@ import { spawn } from 'node:child_process'
 const args = process.argv.slice(2)
 const port = Number(args[args.indexOf('--port') + 1]) || 8099
 const outDir = args[args.indexOf('--out') + 1] || '/tmp/tdanim'
+const actorId = args[args.indexOf('--hero') + 1] || 'tank'
+const actorType = args[args.indexOf('--entity') + 1] || 'hero'
+const targetSide = args[args.indexOf('--target') + 1] || 'right'
+const requestedState = args[args.indexOf('--state') + 1] || ''
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -98,20 +102,24 @@ const SETUP = `(function () {
   S.effects.length = 0;
   S.floats.length = 0;
   S.toast = null;
-  var card = S.cardById('tank-a');
+  var isEnemy = ${JSON.stringify(actorType)} === 'enemy';
+  var card = isEnemy ? A.Config.ENEMIES[${JSON.stringify(actorId)}] : S.cardById(${JSON.stringify(actorId)});
+  if (!card) throw new Error('未知单位：${actorId}');
   var un = {
     uid: 900, def: card,
     x: u.field.x + u.field.w * 0.40, y: u.field.y + u.field.h * 0.58,
+    rigId: card.attackRig ? card.attackRig[${JSON.stringify(targetSide)}] : card.id,
     hp: card.hp, maxHp: card.hp, atkTimer: 9999, hitFlash: 0, slowT: 0,
     spawnT: 0, dead: false, anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
   };
-  S.units.push(un);
-  S.enemies.push({
-    uid: 901, def: A.Config.ENEMIES.grunt,
+  var target = {
+    uid: 901, def: isEnemy ? S.cardById('tank') : A.Config.ENEMIES.normal,
     x: un.x + 34, y: un.y - 30, hp: 400, maxHp: 400, atk: 1, speed: 0,
     slowT: 0, slowFactor: 1, atkTimer: 9999, hitFlash: 0, spawnT: 0, dead: false,
     anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
-  });
+  };
+  (isEnemy ? S.enemies : S.units).push(un);
+  (isEnemy ? S.units : S.enemies).push(target);
   window.__un = un;
   // 冻结逻辑推进：只保留渲染，才能定格到精确帧
   window.__battleUpdate = A.Battle.update;
@@ -124,12 +132,30 @@ const POSE = (state, t, fx) => `(function () {
   un.anim = ${JSON.stringify(state)};
   un.animT = ${t};
   if (${fx ? 'true' : 'false'}) {
-    var cx = un.x + 16, cy = un.y - 22;
+    var rig = A.Rigs && A.Rigs[un.rigId || un.def.id];
+    var muzzle = rig && rig.muzzle || [0, -6];
+    var cx = un.x + muzzle[0], cy = un.y + muzzle[1];
     S.effects.length = 0;
-    S.addEffect({ type: 'glow', x: cx, y: cy, r: 16, life: 0.13, max: 0.16, color: '#ffd9a0' });
-    S.addEffect({ type: 'slash', x: un.x, y: un.y, tx: un.x + 34, ty: un.y - 30,
-                  life: 0.12, max: 0.18, color: '#ffd9a0' });
+    S.projectiles.length = 0;
+    S.addEffect({ type: 'glow', x: cx, y: cy, r: 8, life: 0.13, max: 0.16, color: '#ffd9a0' });
+    if (un.def.id === 'arch') {
+      S.projectiles.push({ kind: 'light', x: cx + 8, y: cy - 7,
+        tx: cx + 50, ty: cy - 44, color: un.def.color });
+    } else {
+      S.addEffect({ type: 'slash', x: un.x, y: un.y, tx: un.x + 34, ty: un.y - 30,
+                    life: 0.12, max: 0.18, color: '#ffd9a0' });
+    }
   }
+  return true;
+})()`
+
+const SMOKE = (t) => `(function () {
+  var S = window.AIGCUtils.State, un = window.__un;
+  S.units.length = 0;
+  S.enemies.length = 0;
+  S.effects.length = 0;
+  S.addEffect({ type: 'smoke', x: un.x, y: un.y, r: un.def.radius,
+    life: 0.45 * (1 - ${t}), max: 0.45, color: '#ffffff' });
   return true;
 })()`
 
@@ -152,19 +178,38 @@ async function main() {
   const pos = await evaluate(SETUP)
   console.log('unit at', pos)
 
+  if (requestedState) {
+    var previewTime = requestedState === 'die' ? 0.30 : requestedState === 'hurt' ? 0.17 : 0.12;
+    await evaluate(POSE(requestedState, previewTime, false))
+    await shot('preview-' + requestedState)
+    console.log('截图目录:', outDir)
+    ws.close()
+    chrome.kill()
+    return
+  }
+
   await evaluate(POSE('idle', 1.2, false))
   await shot('01-idle')
 
   const frames = [
     ['02-atk-windup', 0.09, false],
-    ['03-atk-hit', 0.17, false],
-    ['03b-atk-hit-fx', 0.17, true],
+    ['03-atk-hit', actorType === 'hero' && actorId === 'arch' ? 0.12 : 0.17, false],
+    ['03b-atk-hit-fx', actorType === 'hero' && actorId === 'arch' ? 0.12 : 0.17, true],
     ['04-atk-follow', 0.28, true],
     ['05-hurt', 0.06, false],
     ['06-die', 0.30, false],
   ]
   for (const [name, t, fx] of frames) {
     await evaluate(POSE(name.includes('die') ? 'die' : name.includes('hurt') ? 'hurt' : 'atk', t, fx))
+    await shot(name)
+  }
+
+  for (const [name, t] of [
+    ['07-smoke-1', 0.0],
+    ['08-smoke-2', 0.4],
+    ['09-smoke-3', 0.8],
+  ]) {
+    await evaluate(SMOKE(t))
     await shot(name)
   }
 

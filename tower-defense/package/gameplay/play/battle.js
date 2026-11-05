@@ -108,6 +108,7 @@
       y: y,
       homeX: x,
       homeY: y,
+      rigId: card.id,
       facing: 1,
       hp: card.hp,
       maxHp: card.hp,
@@ -120,7 +121,6 @@
       animT: 0,
       pendingHit: -1,
       pendingTarget: 0,
-      tauntPulse: 0,
     };
     S.units.push(unit);
     return unit;
@@ -179,12 +179,15 @@
     if (e.dead) return;
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    if (e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
     if (!isSplash) {
       S.addFloat(e.x + (Math.random() - 0.5) * 10, e.y - e.def.radius - 8,
         String(Math.round(dmg)), '#ffe9a8');
     }
     if (e.hp <= 0) {
       e.dead = true;
+      enterAnimation(e, 'die');
+      e.dieT = deathDuration(e);
       S.kills++;
       var g = e.def.gold || 2;
       S.gold += g;
@@ -221,29 +224,87 @@
     }
     if (u.hp <= 0) {
       u.dead = true;
-      u.anim = 'die';
-      u.animT = 0;
-      u.dieT = 0.4;
-      S.addEffect({ type: 'smoke', x: u.x, y: u.y, r: u.def.radius, life: 0.55, max: 0.55, color: '#b9c2d8' });
-      S.addEffect({ type: 'pop', x: u.x, y: u.y, r: u.def.radius, life: 0.4, max: 0.4, color: '#8e97b8' });
+      enterAnimation(u, 'die');
+      u.dieT = deathDuration(u);
     }
   }
 
   // ── 投射物 ─────────────────────────────────────────────────
+  function entityRig(entity) {
+    return A.Rigs && A.Rigs[entity.rigId || entity.def.id];
+  }
+
+  function activeRig(unit) {
+    return entityRig(unit);
+  }
+
+  function stateDuration(entity, stateName, fallback) {
+    var rig = entityRig(entity);
+    var state = rig && rig.states && rig.states[stateName];
+    return state && state.dur ? state.dur : fallback;
+  }
+
+  function enterAnimation(entity, stateName) {
+    if (entity.anim === stateName) return;
+    entity.anim = stateName;
+    entity.animT = 0;
+  }
+
+  function finishTransientAnimation(entity, fallback) {
+    if (entity.anim === 'idle' || entity.anim === 'move' || entity.anim === 'die') return;
+    if (entity.animT >= stateDuration(entity, entity.anim, fallback)) {
+      enterAnimation(entity, 'idle');
+    }
+  }
+
+  function selectAttackRig(unit, target) {
+    var rigs = unit.def.attackRig;
+    if (rigs) unit.rigId = target.x < unit.x ? rigs.left : rigs.right;
+  }
+
+  function attackHitTime(unit, fallback) {
+    var rig = entityRig(unit);
+    var state = rig && rig.states && rig.states.atk;
+    return state && state.hit !== undefined ? state.hit : fallback;
+  }
+
+  function deathDuration(unit) {
+    return stateDuration(unit, 'die', unit.def.deathDuration || 0.28);
+  }
+
+  function deathSmoke(unit) {
+    S.addEffect({
+      type: 'smoke', x: unit.x, y: unit.y, r: unit.def.radius,
+      life: 0.45, max: 0.45, color: '#ffffff',
+    });
+  }
+
+  function projectileOrigin(unit) {
+    var rig = activeRig(unit);
+    var muzzle = rig && rig.muzzle;
+    return {
+      x: unit.x + (muzzle ? muzzle[0] : 0),
+      y: unit.y + (muzzle ? muzzle[1] : -6),
+    };
+  }
+
   function fireProjectile(unit, target) {
     var def = unit.def;
-    S.projectiles.push({
-      x: unit.x, y: unit.y - 6,
+    var origin = projectileOrigin(unit);
+    var projectile = {
+      x: origin.x, y: origin.y,
       tx: target.x, ty: target.y,
       targetUid: target.uid,
       speed: def.cls === 'archer' ? 680 : 420,
-      kind: def.cls === 'archer' ? 'arrow' : 'fire',
+      kind: def.cls === 'archer' ? 'light' : 'fire',
       dmg: def.atk,
       splash: def.splash || 0,
       slow: def.slow || null,
       color: def.color,
       life: 1.6,
-    });
+    };
+    S.projectiles.push(projectile);
+    return projectile;
   }
 
   function applySplash(p, cx, cy) {
@@ -379,18 +440,14 @@
         un.animT += dt;
         un.dieT -= dt;
         if (un.dieT > 0) alive.push(un);
+        else deathSmoke(un);
         continue;
       }
       if (un.spawnT > 0) un.spawnT -= dt;
       if (un.hitFlash > 0) un.hitFlash -= dt;
-      if (un.tauntPulse > 0) un.tauntPulse -= dt;
-
       var def = un.def;
       un.animT += dt;
-      if ((un.anim === 'hurt' || un.anim === 'atk') && un.animT > 0.6) {
-        un.anim = 'idle';
-        un.animT = 0;
-      }
+      finishTransientAnimation(un, 0.6);
 
       // 战士主动寻敌：有目标就走过去，没目标回原位
       if (def.cls === 'warrior' && def.moveSpeed > 0) {
@@ -409,7 +466,9 @@
           un.x += dx / d * step;
           un.y += dy / d * step;
           un.facing = dx >= 0 ? 1 : -1;
-          if (un.anim === 'idle') un.animT += dt;
+          if (un.anim === 'idle' || un.anim === 'move') enterAnimation(un, 'move');
+        } else if (un.anim === 'move') {
+          enterAnimation(un, 'idle');
         }
         var uu = L.ui;
         un.x = S.clamp(un.x, uu.field.x + def.radius, uu.field.x + uu.field.w - def.radius);
@@ -437,10 +496,8 @@
         }
       }
 
-      // 盾位不攻击：只按嘲讽范围周期性脉动一次视觉
+      // 盾位不攻击；嘲讽逻辑由 updateTaunt 独立处理。
       if (def.cls === 'tank') {
-        if (un.tauntPulse <= -1.2 / Math.max(0.2, def.interval)) un.tauntPulse = 0.45;
-        un.tauntPulse -= dt;
         alive.push(un);
         continue;
       }
@@ -449,10 +506,10 @@
       if (un.atkTimer <= 0) {
         var best = findTarget(un);
         if (best) {
+          selectAttackRig(un, best);
           un.atkTimer = def.interval;
-          un.anim = 'atk';
-          un.animT = 0;
-          un.pendingHit = def.id === 'tank' ? 0.17 : 0.07;
+          enterAnimation(un, 'atk');
+          un.pendingHit = attackHitTime(un, 0.07);
           un.pendingTarget = best.uid;
           un.facing = best.x >= un.x ? 1 : -1;
         }
@@ -508,9 +565,9 @@
       });
       S.hitstop = Math.max(S.hitstop, 0.04);
     } else {
-      fireProjectile(un, best);
+      var projectile = fireProjectile(un, best);
       S.addEffect({
-        type: 'glow', x: un.x, y: un.y - 6, r: def.cls === 'archer' ? 5 : 8,
+        type: 'glow', x: projectile.x, y: projectile.y, r: def.cls === 'archer' ? 7 : 8,
         life: 0.12, max: 0.12, color: def.color,
       });
     }
@@ -522,11 +579,17 @@
     var alive = [];
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
-      if (e.dead) continue;
+      if (e.dead) {
+        e.animT += dt;
+        e.dieT -= dt;
+        if (e.dieT > 0) alive.push(e);
+        else deathSmoke(e);
+        continue;
+      }
       if (e.spawnT > 0) e.spawnT -= dt;
       if (e.hitFlash > 0) e.hitFlash -= dt;
       e.animT += dt;
-      if (e.anim === 'atk' && e.animT > 0.5) { e.anim = 'idle'; e.animT = 0; }
+      finishTransientAnimation(e, 0.5);
       if (e.slowT > 0) {
         e.slowT -= dt;
         if (e.slowT <= 0) e.slowFactor = 1;
@@ -572,6 +635,7 @@
 
       var atBase = e.y >= u.baseStopY;
       if (atBase && e.def.tier === 'boss') {
+        if (e.anim === 'move') enterAnimation(e, 'idle');
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
           S.baseHp -= e.def.baseDamage;
@@ -585,6 +649,7 @@
           A.GameAudio && A.GameAudio.play('base');
         }
       } else if (atBase) {
+        if (e.anim === 'move') enterAnimation(e, 'idle');
         e.y = u.baseStopY;
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
@@ -595,17 +660,19 @@
           A.GameAudio && A.GameAudio.play('base');
         }
       } else if (blocker) {
+        if (e.anim === 'move') enterAnimation(e, 'idle');
         if (e.atkTimer <= 0) {
+          selectAttackRig(e, blocker);
           e.atkTimer = e.def.interval;
-          e.anim = 'atk';
-          e.animT = 0;
-          e.pendingHit = 0.18;
+          enterAnimation(e, 'atk');
+          e.pendingHit = attackHitTime(e, 0.18);
           e.pendingTarget = blocker.uid;
         }
       } else {
         var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
         e.y += sp * dt;
         if (e.y > u.baseStopY) e.y = u.baseStopY;
+        if (e.anim === 'idle' || e.anim === 'move') enterAnimation(e, 'move');
       }
       e.x = S.clamp(e.x, u.field.x + e.def.radius, u.field.x + u.field.w - e.def.radius);
       alive.push(e);
@@ -640,7 +707,7 @@
           target.slowFactor = p.slow.factor;
           S.addEffect({ type: 'ring', x: p.x, y: p.y, r: 6, r2: 26, life: 0.24, max: 0.24, color: p.color });
         }
-        if (p.kind === 'arrow') {
+        if (p.kind === 'light') {
           S.addEffect({
             type: 'spark', x: p.x, y: p.y,
             vx: -dx / d * 70, vy: -dy / d * 70, life: 0.16, max: 0.16, color: '#d9ffcf',
@@ -667,8 +734,7 @@
         e.vx *= 0.93;
         e.vy *= 0.93;
       } else if (e.type === 'smoke') {
-        e.y -= 14 * dt;
-        e.r = (e.r || 10) * (1 + dt * 0.9);
+        e.y -= 10 * dt;
       }
       alive.push(e);
     }

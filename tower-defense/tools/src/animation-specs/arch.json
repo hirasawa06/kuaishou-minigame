@@ -1,0 +1,27 @@
+{
+  "id": "arch",
+  "entity": "hero",
+  "render": "whole",
+  "sourceDir": "characters/角色/射手猫",
+  "frames": {
+    "idle": { "icon": "arch-back-idle", "file": "archer-back-attack-sheet.png", "index": 0 },
+    "aim": { "icon": "arch-back-aim", "file": "archer-back-attack-sheet.png", "index": 1 },
+    "recoil": { "icon": "arch-back-recoil", "file": "archer-back-attack-sheet.png", "index": 3 },
+    "fireLeft": { "icon": "arch-back-fire-left", "file": "archer-back-fire-left.png" },
+    "fireRight": { "icon": "arch-back-fire-right", "file": "archer-back-fire-right.png" },
+    "defeat": { "icon": "arch-back-defeat", "file": "archer-back-defeat.png" }
+  },
+  "states": {
+    "idle": { "duration": 2.2 },
+    "attack": {
+      "duration": 0.46,
+      "hit": 0.12,
+      "directions": {
+        "left": { "frame": "fireLeft", "muzzle": [-15, -10] },
+        "right": { "frame": "fireRight", "muzzle": [15, -10] }
+      }
+    },
+    "hurt": { "duration": 0.22 },
+    "die": { "duration": 0.46, "frame": "defeat" }
+  }
+}

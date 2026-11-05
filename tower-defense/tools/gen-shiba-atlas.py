@@ -9,10 +9,8 @@ gen-shiba-atlas.py — 战斗精灵图集（128 单元格，2048x1024 内装得�
   package/res/Image/game.png        128 单元格图集（2x 绘制后缩放）
   package/gameplay/data/rigs.js     分件坐标 + 几何特效元数据
 
-图集布局：8 列 × 4 行，单元格 128px（含 4px padding，有效区 120px）。
-  row0: unit-tank-1 / unit-tank-1-body / unit-tank-1-shield
-  row1: fx-glow / fx-slash / fx-smoke
-  row2-3: 原 sprites.png 中的图标（缩小后塞入，保证卡牌/HUD 仍有图）
+图集布局：8 列 × 8 行，单元格 128px（含 4px padding，有效区 120px）。
+帧按注册顺序自动排格；运行时只能通过稳定帧名查找，不能依赖行列位置。
 """
 
 import json
@@ -31,11 +29,11 @@ SRC_DIR = os.path.join(ROOT, "tools", "src")
 CELL = 128
 PAD = 4
 COLS = 8
-ROWS = 4
+ROWS = 8
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
 
-# 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承），排进 row2/3
+# 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICONS = [
     "unit-tank-2", "unit-war-1", "unit-war-2", "unit-arch-1",
     "unit-arch-2", "unit-mage-1", "unit-mage-2",
@@ -47,6 +45,31 @@ LEGACY_ICONS = [
 NEW_ICONS = [
     "enemy-small", "enemy-normal", "enemy-elite", "ui-coin",
     "ui-setting", "ui-rank", "ui-lock",
+]
+
+SPEC_DIR = os.path.join(SRC_DIR, "animation-specs")
+
+
+def load_animation_spec(name):
+    """读取动作规格；缺少关键字段时在生成阶段直接失败。"""
+    path = os.path.join(SPEC_DIR, name + ".json")
+    with open(path, encoding="utf-8") as f:
+        spec = json.load(f)
+    for key in ("id", "sourceDir", "frames", "states"):
+        if key not in spec:
+            raise ValueError("动作规格缺少字段: " + key)
+    return spec
+
+
+ARCHER_SPEC = load_animation_spec("arch")
+ARCHER_CAT_DIR = os.path.join(SRC_DIR, ARCHER_SPEC["sourceDir"])
+TANK_SPEC = load_animation_spec("tank")
+TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
+DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
+DEFEAT_SMOKE = [
+    os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-01.png"),
+    os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-02.png"),
+    os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-03.png"),
 ]
 
 
@@ -160,6 +183,69 @@ def fit_cell(img, size, anchor_bottom=True):
     return im, ox, oy
 
 
+def fit_visible(img):
+    """剔除透明画布噪点后等比收进一个图集单元格。"""
+    # AI 图常在整张透明画布边缘遗留极淡像素；按可见阈值裁掉，
+    # 否则 fit_cell 会把角色缩得过小。
+    alpha = np.asarray(img)[:, :, 3]
+    ys, xs = np.where(alpha >= 16)
+    if len(xs) == 0:
+        raise ValueError("射手猫背面动作源图为空")
+    bbox = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    return fit_cell(img.crop(bbox), CELL - 2 * PAD)[0]
+
+
+def archer_back_frame(name):
+    """按动作规格从 2x2 背面动作源图取一格。"""
+    frame = ARCHER_SPEC["frames"][name]
+    if "index" not in frame:
+        raise ValueError("动作规格缺少 sheet index: " + name)
+    sheet = Image.open(os.path.join(ARCHER_CAT_DIR, frame["file"])).convert("RGBA")
+    w, h = sheet.size
+    col, row = frame["index"] % 2, frame["index"] // 2
+    x0, x1 = col * w // 2, (col + 1) * w // 2
+    y0, y1 = row * h // 2, (row + 1) * h // 2
+    return fit_visible(sheet.crop((x0, y0, x1, y1)))
+
+
+def archer_frame(name):
+    """读取动作规格中定义的一张完整姿势帧。"""
+    frame = ARCHER_SPEC["frames"][name]
+    return fit_visible(Image.open(os.path.join(ARCHER_CAT_DIR, frame["file"])).convert("RGBA"))
+
+
+def archer_back_defeat():
+    """用户确认的仰面晕倒姿势：脸朝镜头，头在战场南侧。"""
+    return archer_frame("defeat")
+
+
+def spec_sheet_frame(spec, source_dir, name):
+    """按规格从横向等分精灵表取帧；角色动作与独立特效共用此规则。"""
+    frame = spec["frames"][name]
+    columns = frame.get("columns")
+    if not columns:
+        raise ValueError("动作规格缺少 sheet columns: " + name)
+    sheet = Image.open(os.path.join(source_dir, frame["file"])).convert("RGBA")
+    width, height = sheet.size
+    index = frame["index"]
+    col = index % columns
+    x0, x1 = col * width // columns, (col + 1) * width // columns
+    return fit_visible(sheet.crop((x0, 0, x1, height)))
+
+
+def tank_frame(name):
+    """盾狗受击、晕倒与三帧光盾。"""
+    frame = TANK_SPEC["frames"][name]
+    if "columns" in frame:
+        return spec_sheet_frame(TANK_SPEC, TANK_DOG_DIR, name)
+    return fit_visible(Image.open(os.path.join(TANK_DOG_DIR, frame["file"])).convert("RGBA"))
+
+
+def defeat_smoke(index):
+    """通用三帧死亡烟雾：爆开、扩散、残雾。"""
+    return fit_visible(Image.open(DEFEAT_SMOKE[index]).convert("RGBA"))
+
+
 def make_glow(size=96):
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -195,24 +281,6 @@ def make_slash(w=120, h=72):
     d.polygon(outer + inner[::-1], fill=225)
     img = img.filter(ImageFilter.GaussianBlur(0.8))
     out = Image.new("RGBA", (w, h), (255, 255, 255, 0))
-    out.putalpha(img)
-    return out
-
-
-def make_smoke(size=96):
-    """柔边不规则团块：死亡烟尘 / 落地尘土"""
-    img = Image.new("L", (size, size), 0)
-    d = ImageDraw.Draw(img)
-    cx = cy = size / 2
-    for k in range(9):
-        ang = k / 9 * math.tau
-        rr = size * 0.17 + (k % 3) * 3
-        ox = math.cos(ang) * size * 0.13
-        oy = math.sin(ang) * size * 0.13
-        d.ellipse((cx + ox - rr, cy + oy - rr, cx + ox + rr, cy + oy + rr), fill=150)
-    d.ellipse((cx - size * 0.24, cy - size * 0.24, cx + size * 0.24, cy + size * 0.24), fill=200)
-    img = img.filter(ImageFilter.GaussianBlur(size * 0.08))
-    out = Image.new("RGBA", (size, size), (255, 255, 255, 0))
     out.putalpha(img)
     return out
 
@@ -371,10 +439,24 @@ def build():
     atlas = Image.new("RGBA", (ATLAS_W, ATLAS_H), (0, 0, 0, 0))
     table = {}
     rigs = {}
+    used_cells = set()
 
-    def cell(name, img, col, row, ox=None, oy=None):
+    def next_cell():
+        if len(used_cells) >= COLS * ROWS:
+            raise ValueError("战斗图集已满，请扩容 ROWS 或删除未使用帧")
+        for row in range(ROWS):
+            for col in range(COLS):
+                if (col, row) not in used_cells:
+                    used_cells.add((col, row))
+                    return col, row
+        raise ValueError("战斗图集没有可用格位")
+
+    def cell(name, img, ox=None, oy=None):
         """落格。ox/oy 是相对整个正视图的绝对坐标（含 PAD 与居中偏移），
-        这里换算成图集内的绝对位置；不给时格内居中。"""
+        这里换算成图集内的绝对位置；格位自动分配并检测容量。"""
+        if name in table:
+            raise ValueError("图集帧重复: " + name)
+        col, row = next_cell()
         dx = (CELL - 2 * PAD - img.width) // 2 + PAD
         dy = (CELL - 2 * PAD - img.height) // 2 + PAD
         if ox is not None:
@@ -384,15 +466,30 @@ def build():
         table[name] = [col * CELL + PAD, row * CELL + PAD, CELL - 2 * PAD, CELL - 2 * PAD]
 
     # 整只（卡牌 / 拖拽残影 / 兼容）
-    cell("unit-tank-1", full_s, 0, 0)
-    cell("unit-tank-1-body", body_s, 1, 0, body_ox, body_oy)
-    cell("unit-tank-1-shield", shield_s, 2, 0, shield_ox, shield_oy)
-    cell("fx-glow", make_glow(), 3, 0)
-    cell("fx-slash", make_slash(), 4, 0)
-    cell("fx-smoke", make_smoke(), 5, 0)
-    cell("fx-ring", make_glow(), 6, 0)
-    for i, name in enumerate(NEW_ICONS):
-        cell(name, NEW_BUILDERS[name](), i, 1)
+    cell("unit-tank-1", full_s)
+    cell("unit-tank-1-body", body_s, body_ox, body_oy)
+    cell("unit-tank-1-shield", shield_s, shield_ox, shield_oy)
+    cell("fx-glow", make_glow())
+    cell("fx-slash", make_slash())
+    cell("fx-smoke", defeat_smoke(0))
+    cell("fx-ring", make_glow())
+    cell("fx-smoke-2", defeat_smoke(1))
+    for name in NEW_ICONS:
+        cell(name, NEW_BUILDERS[name]())
+
+    # 射手猫背面：待机、瞄准、左右开火、后坐、仰面晕倒。飞行光弹仍由运行时负责。
+    cell(ARCHER_SPEC["frames"]["idle"]["icon"], archer_back_frame("idle"))
+    cell(ARCHER_SPEC["frames"]["aim"]["icon"], archer_back_frame("aim"))
+    cell(ARCHER_SPEC["frames"]["recoil"]["icon"], archer_back_frame("recoil"))
+    cell(ARCHER_SPEC["frames"]["fireLeft"]["icon"], archer_frame("fireLeft"))
+    cell(ARCHER_SPEC["frames"]["fireRight"]["icon"], archer_frame("fireRight"))
+    cell(ARCHER_SPEC["frames"]["defeat"]["icon"], archer_back_defeat())
+    cell("fx-smoke-3", defeat_smoke(2))
+
+    # 盾狗：背面待机、受击与晕倒均为完整姿势帧。
+    cell(TANK_SPEC["frames"]["idle"]["icon"], tank_frame("idle"))
+    cell(TANK_SPEC["frames"]["hurt"]["icon"], tank_frame("hurt"))
+    cell(TANK_SPEC["frames"]["defeat"]["icon"], tank_frame("defeat"))
 
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
@@ -405,15 +502,13 @@ def build():
             legacy_meta = json.loads(txt.split(key, 1)[1].split(";\n", 1)[0])
     old = Image.open(legacy_src).convert("RGBA") if os.path.exists(legacy_src) else None
     if old is not None and legacy_meta.get("icons"):
-        for i, name in enumerate(LEGACY_ICONS):
+        for name in LEGACY_ICONS:
             box = legacy_meta["icons"].get(name)
             if not box:
                 continue
             im = old.crop((box[0], box[1], box[0] + box[2], box[1] + box[3]))
             im = im.resize((CELL - 2 * PAD, CELL - 2 * PAD), Image.LANCZOS)
-            col = i % COLS
-            row = 2 + i // COLS
-            cell(name, im, col, row)
+            cell(name, im)
 
     atlas.save(os.path.join(IMG_DIR, "game.png"))
 
@@ -448,10 +543,30 @@ def write_rigs(atlas_data):
     return src
 
 
+def write_character_animations():
+    """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
+    runtime = {}
+    for spec in (ARCHER_SPEC, TANK_SPEC):
+        runtime[spec["id"]] = {
+            "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
+            "states": spec["states"],
+        }
+    src = os.path.join(DATA_DIR, "character-animations.js")
+    with open(src, "w", encoding="utf-8") as f:
+        f.write("/* 由 tools/gen-shiba-atlas.py 生成，请勿手改 */\n")
+        f.write("(function () {\n  var A = window.AIGCUtils = window.AIGCUtils || {};\n")
+        f.write("  A.CharacterAnimations = " + json.dumps(runtime, ensure_ascii=False,
+                                                          separators=(",", ":")) + ";\n")
+        f.write("})();\n")
+    return src
+
+
 if __name__ == "__main__":
     os.makedirs(IMG_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
     data = build()
-    p = write_rigs(data)
+    rigs_path = write_rigs(data)
+    spec_path = write_character_animations()
     print(json.dumps({"atlas": data["src"], "cells": len(data["icons"]),
-                      "rigs": os.path.relpath(p, ROOT)}, ensure_ascii=False))
+                      "rigs": os.path.relpath(rigs_path, ROOT),
+                      "animations": os.path.relpath(spec_path, ROOT)}, ensure_ascii=False))
