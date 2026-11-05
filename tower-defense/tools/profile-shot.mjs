@@ -139,10 +139,7 @@ async function main() {
 
   // 修改昵称
   await tapLog('AIGCUtils.Layout.ui.profile.nickBtn')
-  await evaluate(`AIGCUtils.ProfileUI && (function(){
-    var el = document.getElementById('td-nick-input');
-    return el ? true : false;
-  })()`)
+  console.log('nickname editor:', await evaluate('AIGCUtils.ProfileUI.top()'))
   await shot('04-nickname')
 
   // 回首页 → 设置

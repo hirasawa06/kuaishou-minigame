@@ -453,7 +453,7 @@
     D.text('来和我挑战客厅防线', g.sheet.x + g.sheet.w / 2, g.subY + 6, 18,
       col('#9d7c58'), 1);
 
-    primaryButton(g.copy, '复制邀请链接', 28);
+    primaryButton(g.copy, '复制邀请口令', 28);
     icon('ui-link', g.copy.x + 26, g.copy.y + g.copy.h / 2, 22);
 
     D.text('把这份冒险分享给好朋友', g.sheet.x + g.sheet.w / 2, g.noteY, 18,
@@ -511,58 +511,22 @@
   }
 
   function linkOf() {
-    return 'https://kuaishou.com/minigame/td?from=invite&id=' + P.data.id;
-  }
-
-  function documentReady() {
-    return typeof document !== 'undefined' && document && document.body;
-  }
-
-  function copyTextFallback(text, done, fail) {
-    if (!documentReady()) { fail(); return; }
-    try {
-      var ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      var ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      if (ok) done(); else fail();
-    } catch (e) {
-      fail();
-    }
+    if (!window.KwaiRepost || !KwaiRepost.buildInviteCode) return '';
+    return KwaiRepost.buildInviteCode({ from: 'invite', id: P.data.id });
   }
 
   function copyInviteLink() {
     var link = linkOf();
     var done = function () {
-      toast('邀请链接已复制', 1.2);
+      toast('邀请口令已复制', 1.2);
       play('start');
     };
     var fail = function () {
       // 剪贴板不可用时降级为系统分享，仍给用户可用的出口
       shareInvite(true);
     };
-    if (typeof ks !== 'undefined' && ks.setClipboardData) {
-      ks.setClipboardData({
-        data: link,
-        success: done,
-        fail: fail,
-      });
-      return;
-    }
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard &&
-          navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(done, fail);
-        return;
-      }
-    } catch (e) {
-      // 非安全上下文时 clipboard 不可用，继续走 execCommand 降级
-    }
-    copyTextFallback(link, done, fail);
+    if (!link || !window.KwaiDevice || !KwaiDevice.copyText) { fail(); return; }
+    KwaiDevice.copyText(link, done, fail);
   }
 
   function shareInvite(fallbackToCopy) {
@@ -573,7 +537,7 @@
         onCancel: function () { toast('已取消分享', 1.0); },
         onFail: function () {
           if (fallbackToCopy) { copyFallback(); }
-          else toast('分享失败，可试试复制链接', 1.6);
+          else toast('分享失败，可试试复制口令', 1.6);
         },
       });
       return;
@@ -583,8 +547,13 @@
   }
 
   function copyFallback() {
-    copyTextFallback(linkOf(), function () {
-      toast('邀请链接已复制', 1.4);
+    var link = linkOf();
+    if (!link || !window.KwaiDevice || !KwaiDevice.copyText) {
+      toast('复制失败，请再试一次', 1.4);
+      return;
+    }
+    KwaiDevice.copyText(link, function () {
+      toast('邀请口令已复制', 1.4);
     }, function () {
       toast('复制失败，请再试一次', 1.4);
     });
@@ -606,49 +575,23 @@
     if (on) play('start');
   }
 
-  // 键盘输入：快手走系统键盘，浏览器用隐藏 input
-  var keyHandler = null;
+  // 键盘输入统一经平台适配层：快手系统键盘，H5 预览静默降级。
   function openKeyboard() {
-    if (typeof ks !== 'undefined' && KwaiDevice && KwaiDevice.showKeyboard) {
-      KwaiDevice.showKeyboard({
-        defaultValue: UI.draftNickname,
-        maxLength: P.NICK_MAX,
-        multiple: false,
-        confirmHold: false,
-        confirmType: 'done',
-      });
-      if (!keyHandler) {
-        keyHandler = function (res) {
-          UI.draftNickname = P.cleanNickname(res && res.value);
-        };
-        KwaiDevice.onKeyboardInput(keyHandler);
-        KwaiDevice.onKeyboardConfirm(function (res) {
-          if (res && res.value !== undefined) UI.draftNickname = P.cleanNickname(res.value);
-          saveNickname();
-        });
-      }
-      return;
-    }
-    // H5：创建一个不可见的输入框承接系统键盘
-    if (!documentReady()) return;
-    var input = document.getElementById('td-nick-input');
-    if (!input) {
-      input = document.createElement('input');
-      input.id = 'td-nick-input';
-      input.type = 'text';
-      input.maxLength = P.NICK_MAX;
-      input.autocomplete = 'off';
-      input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
-      input.addEventListener('input', function () {
-        UI.draftNickname = P.cleanNickname(input.value);
-      });
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { input.blur(); saveNickname(); }
-      });
-      document.body.appendChild(input);
-    }
-    input.value = UI.draftNickname;
-    input.focus();
+    if (!window.KwaiDevice || !KwaiDevice.openTextInput) return;
+    KwaiDevice.openTextInput({
+      defaultValue: UI.draftNickname,
+      maxLength: P.NICK_MAX,
+      multiple: false,
+      confirmHold: false,
+      confirmType: 'done',
+      onInput: function (value) {
+        UI.draftNickname = P.cleanNickname(value);
+      },
+      onConfirm: function (value) {
+        UI.draftNickname = P.cleanNickname(value);
+        saveNickname();
+      },
+    });
   }
 
   function saveNickname() {
