@@ -149,11 +149,16 @@
       return;
     }
     if (S.phase === 'paused') {
-      if (hitControl(u.btnRect('paused'), px, py, 12)) { A.Game.start(); return; }
+      var pp = u.pausePanel;
+      if (hitControl(pp.btn('resume'), px, py, 8)) { A.Game.togglePause(); return; }
+      if (hitControl(pp.btn('settings'), px, py, 8)) { A.Game.openSettings(); return; }
+      if (hitControl(pp.btn('restart'), px, py, 8)) { A.Game.restart(); return; }
+      if (hitControl(pp.btn('home'), px, py, 8)) { A.Game.goMenu(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
       return;
     }
     if (S.phase === 'playing') {
+      if (hitControl(u.gearBtn, px, py, 10)) { A.Game.openSettings(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) { A.Game.togglePause(); return; }
       if (hitControl(u.refreshBtn, px, py, 4)) {
         S.refreshShop();

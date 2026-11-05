@@ -200,6 +200,13 @@
       w: 44,
       h: 44,
     };
+    // 战斗内设置入口：放在暂停按钮左侧，同样从安全边界派生
+    ui.gearBtn = {
+      x: ui.pauseBtn.x - 52,
+      y: ui.pauseBtn.y,
+      w: 44,
+      h: 44,
+    };
     // 主按钮几何：按钮实际绘制在 h*btnY 处，点击判定复用同一份数据
     ui.btnW = 184;
     ui.btnH = 54;
@@ -207,6 +214,37 @@
       menu: Math.min(contentBottom - 78, contentTop + contentH * 0.63),
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
+    };
+
+    // 暂停面板：继续 / 设置 / 重新开始 / 返回主页，四行竖排。
+    // 面板整体居中，按钮高度按 contentH 缩放，短屏也不会挤出安全区。
+    var pauseBtnW = Math.round(Math.min(240, safeW - pad * 4));
+    var pauseBtnH = Math.round(Math.max(44, Math.min(52, contentH * 0.062)));
+    var pauseGap = Math.round(Math.max(10, Math.min(16, contentH * 0.018)));
+    var pauseTitleY = contentTop + Math.round(contentH * 0.2);
+    var pauseTop = pauseTitleY + 96;
+    var pauseList = ['resume', 'settings', 'restart', 'home'];
+    var pauseH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
+    if (pauseTop + pauseH > contentBottom - 12) {
+      pauseTop = Math.max(contentTop + 90, contentBottom - 12 - pauseH);
+    }
+    var pauseX = Math.round(metrics.safeLeft + (safeW - pauseBtnW) / 2);
+    var pauseRects = {};
+    for (var pi = 0; pi < pauseList.length; pi++) {
+      pauseRects[pauseList[pi]] = {
+        x: pauseX,
+        y: pauseTop + pi * (pauseBtnH + pauseGap),
+        w: pauseBtnW,
+        h: pauseBtnH,
+      };
+    }
+    ui.pausePanel = {
+      titleY: pauseTitleY,
+      subY: pauseTitleY + 62,
+      w: pauseBtnW,
+      h: pauseBtnH,
+      gap: pauseGap,
+      btn: function (kind) { return pauseRects[kind]; },
     };
     // ── 进入游戏前的首页（参考图：头像 / 体力 / 设置 / 排行榜 / 章节卡 / 开始按钮）──
     var mTop = contentTop;

@@ -34,9 +34,9 @@
     var remain = A.Battle.remainingEnemies();
     D.text('剩余 ' + remain, pad, top + 56, 18, COL.textDim, 0);
 
-    // 基地血量
+    // 基地血量：固定在屏幕中线略左，给右侧金币区留出空间
     var hpRatio = Math.max(0, S.baseHp) / C.BASE_HP;
-    var cx = u.w * 0.46;
+    var cx = u.w * 0.36;
     icon('ui-heart', cx - 26, top + 16, 26);
     D.text(String(Math.ceil(Math.max(0, S.baseHp))), cx - 8, top + 2, 28,
       hpRatio > 0.4 ? COL.textMain : COL.hpRed, 0);
@@ -45,15 +45,23 @@
       hpRatio > 0.5 ? COL.hpGreen : hpRatio > 0.25 ? COL.hpOrange : COL.hpRed);
     D.text('基地', cx - 30, top + 50, 18, COL.textDim, 0);
 
-    // 金币与上场席位：右边界留出暂停按钮的宽度，避免文字被盖住
-    var pbx = u.pauseBtn.x - 10;
+    // 金币与上场席位：整体靠右对齐到设置按钮左侧。
+    // 席位文字贴右边界，金币数字和图标依次往左排，互不覆盖。
+    var rightEdge = u.gearBtn.x - 10;
     var slotLabel = '席位 ' + S.liveUnits() + '/' + S.heroCap;
-    D.text(slotLabel, pbx, top + 34, 18, COL.textDim, 2);
-    var slotW = D.textWidth(slotLabel, A.FontAtlas['18']);
-    icon('ui-coin', pbx - slotW - 26, top + 16, 26);
-    D.text(fmt(S.gold), pbx - slotW - 8, top + 2, 28, COL.gold, 0);
+    D.text(slotLabel, rightEdge, top + 38, 18, COL.textDim, 2);
+    // 金币和席位都右对齐到同一条竖线：金币在上、席位在下，避免互相挤占
+    var goldText = fmt(S.gold);
+    var goldW = D.textWidth(goldText, A.FontAtlas['28']);
+    D.text(goldText, rightEdge, top + 2, 28, COL.gold, 2);
+    icon('ui-coin', rightEdge - goldW - 16, top + 16, 26);
 
-    // 暂停
+    // 设置 + 暂停：两个按钮同尺寸，命中区都与绘制矩形一致
+    var gb = u.gearBtn;
+    D.roundRect(gb.x, gb.y, gb.w, gb.h, 12, D.color('#1e2d52', 0.95));
+    D.strokeRect(gb.x, gb.y, gb.w, gb.h, 1, D.color('#3a5085'));
+    icon('ui-setting', gb.x + gb.w / 2, gb.y + gb.h / 2, gb.w * 0.5);
+
     var pb = u.pauseBtn;
     D.roundRect(pb.x, pb.y, pb.w, pb.h, 12, D.color('#1e2d52', 0.95));
     D.strokeRect(pb.x, pb.y, pb.w, pb.h, 1, D.color('#3a5085'));
@@ -216,18 +224,26 @@
     D.text(S.toast.text, u.w / 2, y + 10, 18, D.color('#d7e8ff', a), 1);
   }
 
-  function drawButton(label, y, primary) {
+  function drawButton(label, rectOrY, primary, fontSize, subtle) {
     var u = L.ui;
-    var w = u.btnW;
-    var h = u.btnH;
-    var x = u.safeLeft + (u.safeRight - u.safeLeft - w) / 2;
-    D.roundRect(x, y, w, h, h / 2,
-      primary ? D.color('#f0a02a') : D.color('#2a3040'));
+    var r = rectOrY && rectOrY.w !== undefined
+      ? rectOrY
+      : {
+        x: u.safeLeft + (u.safeRight - u.safeLeft - u.btnW) / 2,
+        y: rectOrY, w: u.btnW, h: u.btnH,
+      };
+    var size = fontSize || 28;
+    var bg = primary ? D.color('#f0a02a')
+      : subtle ? D.color('#1b2333', 0.86) : D.color('#2a3040');
+    D.roundRect(r.x, r.y, r.w, r.h, r.h / 2, bg);
     if (primary) {
-      D.roundRect(x + 3, y + 3, w - 6, h * 0.42, h / 2, D.color('#ffcf6a', 0.55));
-      D.strokeRect(x, y, w, h, 2, D.color('#a86a14'));
+      D.roundRect(r.x + 3, r.y + 3, r.w - 6, r.h * 0.42, r.h / 2, D.color('#ffcf6a', 0.55));
+      D.strokeRect(r.x, r.y, r.w, r.h, 2, D.color('#a86a14'));
+    } else if (subtle) {
+      D.strokeRect(r.x, r.y, r.w, r.h, 1.4, D.color('#3b4a66'));
     }
-    D.text(label, x + w / 2, y + (h - 28) / 2, 28, primary ? D.color('#5a3208') : COL.textMain, 1);
+    D.text(label, r.x + r.w / 2, r.y + (r.h - size) / 2,
+      size, primary ? D.color('#5a3208') : COL.textMain, 1);
   }
 
   // ── 首页（参考图：客厅 + 头像 + 体力 + 设置 / 排行榜 + 章节卡 + 开始） ──
@@ -344,10 +360,16 @@
   function drawPaused() {
     var u = L.ui;
     D.roundRect(0, 0, u.w, u.h, 0, D.color('#04080f', 0.72));
-    var y = u.contentTop + u.contentH * 0.28;
+    var y = u.contentTop + u.contentH * 0.16;
     D.text('已暂停', u.w / 2, y, 48, COL.textMain, 1);
-    D.text('点击右上角按钮继续游戏', u.w / 2, y + 66, 18, COL.textDim, 1);
-    drawButton('重新开始', u.btnY.paused, false);
+    D.text('点击右上角按钮继续游戏', u.w / 2, y + 62, 18, COL.textDim, 1);
+
+
+    // 主操作与设置/主页入口都从 layout 取几何，绘制与命中一致
+    drawButton('继续游戏', u.pausePanel.btn('resume'), true, 28);
+    drawButton('设置', u.pausePanel.btn('settings'), false, 28);
+    drawButton('重新开始', u.pausePanel.btn('restart'), false, 28);
+    drawButton('返回主页', u.pausePanel.btn('home'), false, 28, true);
   }
 
   function drawResult(win) {
