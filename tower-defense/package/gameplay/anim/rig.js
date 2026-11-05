@@ -38,7 +38,7 @@
     var out = [];
     var i;
     for (i = 0; i < n; i++) {
-      out.push({ dx: 0, dy: 0, rot: 0, sx: 1, sy: 1, alpha: 1, flash: 0 });
+      out.push({ dx: 0, dy: 0, rot: 0, sx: 1, sy: 1, alpha: 1, flash: 0, icon: null });
     }
     if (keys.length === 1) {
       for (i = 0; i < n; i++) Object.assign(out[i], keys[0].mods[i] || {});
@@ -67,6 +67,8 @@
       o.sy = lerp(a.sy === undefined ? 1 : a.sy, b.sy === undefined ? 1 : b.sy, u);
       o.alpha = lerp(a.alpha === undefined ? 1 : a.alpha, b.alpha === undefined ? 1 : b.alpha, u);
       o.flash = lerp(a.flash || 0, b.flash || 0, u);
+      // 图标帧不插值：保持当前关键帧，直到抵达下一帧。
+      o.icon = a.icon || null;
     }
     return out;
   }
@@ -90,9 +92,9 @@
 
     for (var i = 0; i < rig.parts.length; i++) {
       var part = rig.parts[i];
-      var icon = atlas.icons[part.icon];
-      if (!icon) continue;
       var m = mods[i] || {};
+      var icon = atlas.icons[m.icon || part.icon];
+      if (!icon) continue;
       var dw = size * (m.sx || 1);
       var dh = size * (m.sy || 1);
       var rot = (m.rot || 0) * Math.PI / 180;

@@ -62,6 +62,7 @@
         hp: 180, atk: 96, interval: 1.15,
         range: 260, radius: 14, moveSpeed: 0,
         taunt: 0, splash: 0,
+        attackRig: { left: 'arch-left', right: 'arch-right' },
         color: '#3fbf78',
         desc: '射程最远，血量最少，单体高伤',
       },

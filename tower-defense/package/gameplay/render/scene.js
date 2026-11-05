@@ -94,6 +94,7 @@
     var spawn = e.spawnT > 0 ? 1 - e.spawnT / 0.35 : 1;
     var scale = 0.7 + 0.3 * spawn;
     var rr = r * scale;
+    var rig = A.Rigs && A.Rigs[e.rigId || e.def.id];
     // 抬手动画：0.18s 内微微上抬后压，给攻击一个可读的节奏
     var wind = 0;
     var tilt = 0;
@@ -114,15 +115,21 @@
       D.circle(e.x, e.y, rr + 7, D.color('#5ab6e8', 0.18));
       D.ring(e.x, e.y, rr + 5, 1.4, D.color('#8fe0ff', 0.55));
     }
-    icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
+    if (rig) {
+      A.Anim.draw(rig, e, e.x, e.y - r * 0.15, r * 3.05 * (rig.scale || 1) * scale, {
+        alpha: 0.3 + 0.7 * spawn,
+      });
+    } else {
+      icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
+    }
     if (e.hitFlash > 0) {
       D.circle(e.x, e.y, rr, D.color('#ffffff', e.hitFlash * 3.2));
     }
     var w = Math.max(24, rr * 2.1);
     var ratio = Math.max(0, e.hp / e.maxHp);
-    hpBar(e.x - w / 2, e.y - rr - 12, w, ratio,
+    if (!e.dead) hpBar(e.x - w / 2, e.y - rr - 12, w, ratio,
       e.def.id === 'boss' ? D.color('#ff6b9d') : COL.hpRed);
-    if (e.def.id === 'boss') {
+    if (!e.dead && e.def.id === 'boss') {
       D.ring(e.x, e.y, rr + 6 + Math.sin(S.time * 3) * 2, 1.6, D.color('#ffd166', 0.6));
     }
   }
@@ -158,29 +165,13 @@
     var d = un.def;
     var r = d.radius;
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
-    var rig = A.Rigs && A.Rigs[d.id];
+    var rig = A.Rigs && A.Rigs[un.rigId || d.id];
     D.circle(un.x, un.y + r * 0.9, r * 0.85, D.color('#000000', 0.16));
-
-    // 盾位：嘲讽范围常驻淡蓝光晕，脉动一下表示嘲讽在生效
-    if (d.cls === 'tank' && d.taunt) {
-      var pulse = un.tauntPulse > 0 ? un.tauntPulse / 0.45 : 0;
-      A.Render.setAdditive(true);
-      additiveGlow(un.x, un.y, d.taunt * 1.9, '#4f7fd0', 0.10 + pulse * 0.16, 0);
-      A.Render.setAdditive(false);
-      D.ring(un.x, un.y, d.taunt * (0.55 + 0.45 * (1 - pulse)), 2.2,
-        D.color('#8fc0ff', 0.22 + pulse * 0.5));
-    }
 
     if (rig) {
       D.circle(un.x, un.y, r + 3, D.color(d.color, 0.20));
       D.ring(un.x, un.y, r + 2, 1.3, D.color(d.color, 0.6));
-      if (d.id === 'tank') {
-        var a = un.anim === 'atk' ? 0.5 : 0.22;
-        A.Render.setAdditive(true);
-        additiveGlow(un.x, un.y + r * 0.2, r * 3.2, '#7fb2ff', a, 0);
-        A.Render.setAdditive(false);
-      }
-      var size = r * 3.05 * (0.86 + 0.14 * spawn);
+      var size = r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn);
       A.Anim.draw(rig, un, un.x, un.y - r * 0.15, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
@@ -215,12 +206,17 @@
   function drawProjectiles() {
     for (var i = 0; i < S.projectiles.length; i++) {
       var p = S.projectiles[i];
-      if (p.kind === 'arrow') {
+      if (p.kind === 'light') {
         var dx = p.tx - p.x, dy = p.ty - p.y;
         var len = Math.sqrt(dx * dx + dy * dy) || 1;
         var nx = dx / len, ny = dy / len;
-        D.circle(p.x, p.y, 2.6, D.color('#eaffd8'));
-        D.rect(p.x - nx * 6 - 1, p.y - ny * 6 - 1, 3, 3, D.color('#c8ffb0', 0.7));
+        // 单发光弹：短尾迹跟随目标方向，亮核只画一次投射物本体。
+        A.Render.setAdditive(true);
+        additiveGlow(p.x - nx * 3.5, p.y - ny * 3.5, 15, '#ffd38a', 0.72,
+          Math.atan2(dy, dx));
+        additiveGlow(p.x, p.y, 9, '#fff5d1', 0.92, 0);
+        A.Render.setAdditive(false);
+        D.circle(p.x, p.y, 2.2, D.color('#fff7d8', 0.96));
       } else if (p.kind === 'fire') {
         D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
         D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
@@ -229,6 +225,12 @@
         D.circle(p.x, p.y, 3, D.color('#e6fbff'));
       }
     }
+  }
+
+  var smokeFrames = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
+
+  function smokeFrame(t) {
+    return smokeFrames[Math.min(smokeFrames.length - 1, Math.floor(t * smokeFrames.length))];
   }
 
   function drawEffects() {
@@ -255,11 +257,11 @@
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
       } else if (e.type === 'smoke') {
-        var sp = Assets.sprite('fx-smoke');
+        var sp = Assets.sprite(smokeFrame(t));
         if (sp) {
-          var sc = (e.r || 10) * (1 + t * 1.1);
+          var sc = (e.r || 10) * 1.7;
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
-            e.x, e.y, sc * 2, { alpha: (1 - t) * 0.26, tint: D.color(e.color, 1) });
+            e.x, e.y, sc * 2, { alpha: 0.9, tint: D.color(e.color, 1) });
         }
       }
     }

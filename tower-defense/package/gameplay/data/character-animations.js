@@ -1,0 +1,5 @@
+/* 由 tools/gen-shiba-atlas.py 生成，请勿手改 */
+(function () {
+  var A = window.AIGCUtils = window.AIGCUtils || {};
+  A.CharacterAnimations = {"arch":{"frames":{"idle":"arch-back-idle","aim":"arch-back-aim","recoil":"arch-back-recoil","fireLeft":"arch-back-fire-left","fireRight":"arch-back-fire-right","defeat":"arch-back-defeat"},"states":{"idle":{"duration":2.2},"attack":{"duration":0.46,"hit":0.12,"directions":{"left":{"frame":"fireLeft","muzzle":[-15,-10]},"right":{"frame":"fireRight","muzzle":[15,-10]}}},"hurt":{"duration":0.22},"die":{"duration":0.46,"frame":"defeat"}}},"tank":{"frames":{"idle":"tank-back-idle","hurt":"tank-hurt","defeat":"tank-defeat"},"states":{"idle":{"duration":2.4},"hurt":{"duration":0.34,"frame":"hurt"},"die":{"duration":0.46,"frame":"defeat"}}}};
+})();
