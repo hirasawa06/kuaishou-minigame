@@ -15,6 +15,14 @@
     archer: '#4bd184',
     mage: '#a583f0',
   };
+  // 透明按钮图的有效像素范围；源图保留透明边，采样时只取按钮本身。
+  var MENU_BUTTONS = {
+    avatar: { asset: 'home-avatar-button', crop: [35, 22, 309, 324] },
+    stamina: { asset: 'home-stamina-button', crop: [46, 31, 417, 123] },
+    settings: { asset: 'home-settings-button', crop: [69, 60, 241, 252] },
+    rank: { asset: 'home-rank-button', crop: [49, 37, 280, 291] },
+    start: { asset: 'home-start-button', crop: [44, 24, 424, 126] },
+  };
 
   function fmt(n) {
     return String(Math.floor(n));
@@ -246,94 +254,64 @@
     var u = L.ui;
     var m = u.menu;
     if (!m) { drawMenuFallback(); return; }
+    var art = A.Assets.entry('figma-home');
+    var frame = u.menuArtwork;
+    if (!art || !frame) { drawMenuFallback(); return; }
 
-    // 背景：客厅全屏铺满（非交互视觉层）
-    var bg = A.Assets.entry('menu-bg');
-    if (bg) {
-      D.texture(bg.tex, bg.w, bg.h, 0, 0, bg.w, bg.h, 0, 0, u.w, u.h);
-    } else {
-      D.vGradient(0, 0, u.w, u.h, D.color('#fdf3e4'), D.color('#e9d2b6'), 20);
+    // 原图的 0..45.77 与 45.77..845 连续拼接；上段拉伸到安全区顶部。
+    var split = 45.77 / 845 * art.h;
+    D.texture(art.tex, art.w, art.h, 0, 0, art.w, split,
+      frame.x, 0, frame.w, u.contentTop);
+    D.texture(art.tex, art.w, art.h, 0, split, art.w, art.h - split,
+      frame.x, u.contentTop, frame.w, frame.h - 45.77 * frame.scale);
+    if (frame.x > 0) {
+      D.rect(0, 0, frame.x, u.h, D.color('#f3dec0'));
+      D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
     }
 
-    // 头像：点击进入「我的名片」，使用玩家在资料里选择的伙伴
-    var av = m.avatar;
-    var prof = A.Profile;
-    D.roundRect(av.x - 3, av.y - 3, av.w + 6, av.h + 6, 16, D.color('#fff6e6', 0.95));
-    D.roundRect(av.x, av.y, av.w, av.h, 14, D.color('#f6d79a'));
-    if (prof && A.ProfileUI) {
-      A.ProfileUI.avatar(prof.data.avatarIndex, av.x + av.w / 2, av.y + av.h / 2, av.w * 0.86);
-    } else {
-      icon('unit-tank-1', av.x + av.w / 2, av.y + av.h / 2, av.w * 0.82);
+    var keys = ['avatar', 'stamina', 'settings', 'rank', 'start'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var target = m[key];
+      var spec = MENU_BUTTONS[key];
+      var sprite = A.Assets.entry(spec.asset);
+      if (!target || !sprite) continue;
+      var active = S.menuPressed === key;
+      var feedback = S.menuFeedback && S.menuFeedback.key === key && S.menuFeedback.life > 0;
+      var progress = feedback ? 1 - S.menuFeedback.life / 0.18 : 1;
+      var scale = active ? 1.045 : feedback ?
+        1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress) : 1;
+      // 体力条紧邻头像，必须内接原槽位，避免等比铺满时横向溢出。
+      var fit = key === 'stamina'
+        ? Math.min(target.w / spec.crop[2], target.h / spec.crop[3])
+        : Math.max(target.w / spec.crop[2], target.h / spec.crop[3]);
+      var w = spec.crop[2] * fit * scale;
+      var h = spec.crop[3] * fit * scale;
+      D.texture(sprite.tex, sprite.w, sprite.h,
+        spec.crop[0], spec.crop[1], spec.crop[2], spec.crop[3],
+        target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
     }
+    if (S.menuPanel) drawMenuPanel(m);
+  }
 
-    // 体力
-    var stb = m.stamina;
-    D.roundRect(stb.x, stb.y, stb.w, stb.h, stb.h / 2, D.color('#fff7ea', 0.92));
-    D.strokeRect(stb.x, stb.y, stb.w, stb.h, 2, D.color('#e2c49a'));
-    icon('ui-bolt', stb.x + stb.h * 0.55, stb.y + stb.h / 2, stb.h * 0.72);
-    D.text('体力', stb.x + stb.h * 1.0, stb.y + (stb.h - 18) / 2, 18, D.color('#8a6a44'), 0);
-    D.text('30/30', stb.x + stb.w - 12, stb.y + (stb.h - 18) / 2, 18, D.color('#5b4126'), 2);
-
-    // 昵称：写在头像右侧、体力条下方，点名字同样进入名片
-    if (prof) {
-      var nameX = av.x + 2;
-      var nameMaxW = Math.max(60, m.settings.x - nameX - 10);
-      var name = prof.data.nickname;
-      while (name.length > 1 && D.textWidth(name, A.FontAtlas['18']) > nameMaxW) {
-        name = name.slice(0, name.length - 1);
-      }
-      var nameY = stb.y + stb.h + 6;
-      var nameH = Math.max(24, Math.round(av.h * 0.36));
-      var nameW = Math.min(nameMaxW + 12, D.textWidth(name, A.FontAtlas['18']) + 24);
-      D.roundRect(nameX, nameY, nameW, nameH, 12, D.color('#fff7ea', 0.86));
-      D.text(name, nameX + 10, nameY + (nameH - 18) / 2, 18, D.color('#6b4a2a'), 0);
-    }
-
-    // 设置
-    var sb = m.settings;
-    D.roundRect(sb.x, sb.y, sb.w, sb.h, 16, D.color('#fff7ea', 0.92));
-    D.strokeRect(sb.x, sb.y, sb.w, sb.h, 2, D.color('#e2c49a'));
-    icon('ui-setting', sb.x + sb.w / 2, sb.y + sb.h * 0.38, sb.h * 0.46);
-    D.text('设置', sb.x + sb.w / 2, sb.y + sb.h * 0.66, 18, D.color('#6b4a2a'), 1);
-
-    // 排行榜
-    var rb = m.rank;
-    D.roundRect(rb.x, rb.y, rb.w, rb.h + 18, 16, D.color('#fff7ea', 0.92));
-    D.strokeRect(rb.x, rb.y, rb.w, rb.h + 18, 2, D.color('#e2c49a'));
-    icon('ui-rank', rb.x + rb.w / 2, rb.y + rb.h * 0.38, rb.h * 0.5);
-    D.text('排行榜', rb.x + rb.w / 2, rb.y + rb.h * 0.7, 18, D.color('#6b4a2a'), 1);
-
-    // 章节横幅
-    var bn = m.banner;
-    D.roundRect(bn.x, bn.y, bn.w, bn.h, bn.h / 2, D.color('#7a5a3a', 0.92));
-    D.roundRect(bn.x + 3, bn.y + 3, bn.w - 6, bn.h - 6, (bn.h - 6) / 2, D.color('#fff3df', 0.95));
-    icon('ui-coin', bn.x + bn.w * 0.18, bn.y + bn.h / 2, bn.h * 0.42);
-    D.text('第3章 · 客厅防线', bn.x + bn.w / 2 + 6, bn.y + (bn.h - 28) / 2, 28,
-      D.color('#6b4222'), 1);
-
-    // 章节展示卡
-    var cd = m.card;
-    var pad = 4;
-    D.roundRect(cd.x - pad, cd.y - pad, cd.w + pad * 2, cd.h + pad * 2, 26,
-      D.color('#fff3df', 0.96));
-    D.strokeRect(cd.x - pad, cd.y - pad, cd.w + pad * 2, cd.h + pad * 2, 3,
-      D.color('#d9b98c'));
-    var card = A.Assets.entry('menu-card');
-    if (card) {
-      // 等比填充卡片区域
-      var s = Math.max(cd.w / card.w, cd.h / card.h);
-      var sw = cd.w / s, sh = cd.h / s;
-      var sx = (card.w - sw) / 2, sy = (card.h - sh) / 2;
-      D.texture(card.tex, card.w, card.h, sx, sy, sw, sh, cd.x, cd.y, cd.w, cd.h);
-    } else {
-      D.roundRect(cd.x, cd.y, cd.w, cd.h, 20, D.color('#f7e6cf'));
-    }
-
-    // 开始按钮
-    drawStartButton(m.start);
-
-    D.text('击杀掉金币 · 买英雄与席位 · 刷新卡池', u.w / 2, m.start.y + m.start.h + 12, 18,
-      D.color('#8a6a44'), 1);
+  function drawMenuPanel(m) {
+    var p = m.panel;
+    D.rect(0, 0, L.ui.w, L.ui.h, D.color('#321d15', 0.55));
+    D.roundRect(p.x, p.y, p.w, p.h, 22, D.color('#fff1d9'));
+    D.strokeRect(p.x, p.y, p.w, p.h, 3, D.color('#bd7c39'));
+    var title = S.menuPanel === 'settings' ? '设置' :
+      S.menuPanel === 'rank' ? '排行榜' : S.menuPanel === 'stamina' ? '体力' : '头像';
+    D.text(title, p.x + p.w / 2, p.y + 24, 28, D.color('#6b4222'), 1);
+    var detail = S.menuPanel === 'settings' ?
+      (S.menuSoundEnabled ? '音效：开启' : '音效：关闭') :
+      S.menuPanel === 'rank' ? '单机版暂无排行榜' :
+      S.menuPanel === 'stamina' ? '体力 30/30' : '客厅守护队';
+    D.text(detail, p.x + p.w / 2, p.y + p.h * 0.48, 18, D.color('#6b4222'), 1);
+    D.roundRect(m.panelAction.x, m.panelAction.y, m.panelAction.w, m.panelAction.h,
+      18, D.color('#f4aa3d'));
+    D.text(S.menuPanel === 'settings' ? '切换音效' : '关闭',
+      m.panelAction.x + m.panelAction.w / 2, m.panelAction.y + 10, 18,
+      D.color('#5a3208'), 1);
   }
 
   function drawMenuFallback() {

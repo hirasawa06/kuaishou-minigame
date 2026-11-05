@@ -208,7 +208,6 @@
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
     };
-
     // 暂停面板：继续 / 设置 / 重新开始 / 返回主页，四行竖排。
     // 面板整体居中，按钮高度按 contentH 缩放，短屏也不会挤出安全区。
     var pauseBtnW = Math.round(Math.min(240, safeW - pad * 4));
@@ -239,49 +238,30 @@
       gap: pauseGap,
       btn: function (kind) { return pauseRects[kind]; },
     };
-    // ── 进入游戏前的首页（参考图：头像 / 体力 / 设置 / 排行榜 / 章节卡 / 开始按钮）──
-    var mTop = contentTop;
-    var mH = contentH;
-    var av = Math.round(Math.max(46, Math.min(66, safeW * 0.15)));
-    ui.menu = {
-      avatar: { x: metrics.safeLeft + pad, y: mTop + 6, w: av, h: av },
-      stamina: {
-        x: metrics.safeLeft + pad + av + 10,
-        y: mTop + 12,
-        w: Math.min(180, safeW - av - pad * 2 - 10),
-        h: Math.round(av * 0.46),
-      },
-      settings: {
-        x: metrics.safeRight - pad - 62,
-        y: mTop + 8,
-        w: 62,
-        h: 62,
-      },
-      rank: {
-        x: metrics.safeLeft + pad,
-        y: mTop + av + 14,
-        w: 62,
-        h: 62,
-      },
-      banner: {
-        x: metrics.safeLeft + pad,
-        y: mTop + Math.round(Math.max(96, mH * 0.185)),
-        h: 56,
-      },
-      card: {
-        x: metrics.safeLeft + pad,
-        y: 0, // 依赖 banner，下面计算
-        h: 0,
-      },
-      start: { w: Math.round(Math.min(300, safeW - pad * 2)), h: 66 },
-    };
-    ui.menu.banner.w = safeW - pad * 2;
-    ui.menu.card.w = safeW - pad * 2;
-    ui.menu.card.y = ui.menu.banner.y + ui.menu.banner.h + 10;
-    var startY = Math.min(contentBottom - 26 - ui.menu.start.h, ui.menu.card.y + Math.round(mH * 0.52));
-    ui.menu.card.h = Math.max(120, startY - ui.menu.card.y - 14);
-    ui.menu.start.x = metrics.safeLeft + (safeW - ui.menu.start.w) / 2;
-    ui.menu.start.y = startY;
+    // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
+    var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
+    var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
+    var figmaY = contentTop - 45.77 * figmaScale;
+    function figmaRect(x, y, width, height) {
+      return { x: figmaX + x * figmaScale, y: figmaY + y * figmaScale,
+        w: width * figmaScale, h: height * figmaScale };
+    }
+    ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
+      h: 845 * figmaScale, scale: figmaScale };
+    ui.menu = {};
+    ui.menu.avatar = figmaRect(11.44, 45.77, 80.56, 82.4);
+    ui.menu.stamina = figmaRect(93.84, 63.17, 141.9, 45.78);
+    ui.menu.settings = figmaRect(308.98, 45.77, 73.24, 82.4);
+    ui.menu.rank = figmaRect(10.99, 137.32, 82.4, 84.68);
+    ui.menu.banner = figmaRect(8.24, 244.89, 373.06, 64.09);
+    ui.menu.card = figmaRect(8.24, 308.98, 373.06, 286.09);
+    ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
+    var panelW = Math.min(300, safeW - pad * 2);
+    var panelH = Math.min(210, contentH * 0.45);
+    ui.menu.panel = { x: metrics.safeLeft + (safeW - panelW) / 2,
+      y: contentTop + (contentH - panelH) / 2, w: panelW, h: panelH };
+    ui.menu.panelAction = { x: ui.menu.panel.x + (panelW - 126) / 2,
+      y: ui.menu.panel.y + panelH - 60, w: 126, h: 42 };
 
     // ── 设置 / 名片 / 头像 / 昵称 / 排行榜 / 邀请 的界面几何 ──
     // 所有弹窗与全屏页都从同一份可交互区域派生：标题栏、按钮、行高都由 contentH 缩放。

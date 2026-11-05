@@ -37,6 +37,17 @@
     return inInteractiveArea(x, y) && pointIn(rect, x, y, pad);
   }
 
+  function menuHitKey(x, y) {
+    var m = L.ui.menu;
+    if (!m || !inInteractiveArea(x, y)) return null;
+    if (hitControl(m.start, x, y, 12)) return 'start';
+    if (hitControl(m.settings, x, y, 6)) return 'settings';
+    if (hitControl(m.rank, x, y, 6)) return 'rank';
+    if (hitControl(m.avatar, x, y, 6)) return 'avatar';
+    if (hitControl(m.stamina, x, y, 6)) return 'stamina';
+    return null;
+  }
+
   // 命中商店卡：返回卡片索引与矩形
   function shopAt(x, y) {
     var u = L.ui;
@@ -55,6 +66,7 @@
     if (!down) return;
     // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
     if (A.ProfileUI && A.ProfileUI.isOpen()) return;
+    if (S.phase === 'menu' && !S.menuPanel) S.menuPressed = menuHitKey(px, py);
     if (S.phase !== 'playing') return;
     var hit = shopAt(px, py);
     if (!hit) return;
@@ -74,6 +86,9 @@
   }
 
   function onMove(px, py) {
+    if (S.phase === 'menu' && S.menuPressed && menuHitKey(px, py) !== S.menuPressed) {
+      S.menuPressed = null;
+    }
     if (!down || !drag) return;
     drag.x = px;
     drag.y = py;
@@ -84,6 +99,7 @@
   }
 
   function onUp(px, py) {
+    if (S.phase === 'menu') S.menuPressed = null;
     if (!down && !drag) { tap(px, py); return; }
     down = false;
     if (S.phase !== 'playing') {
@@ -137,11 +153,18 @@
     if (!inInteractiveArea(px, py)) return;
 
     if (S.phase === 'menu') {
-      // 首页按钮：开始 / 头像名片 / 设置 / 排行榜
-      if (hitControl(u.btnRect('menu'), px, py, 12)) { A.Game.start(); return; }
-      if (u.menu && hitControl(u.menu.avatar, px, py, 6)) { A.ProfileUI.open('profile'); return; }
-      if (u.menu && hitControl(u.menu.settings, px, py, 6)) { A.ProfileUI.open('settings'); return; }
-      if (u.menu && hitControl(u.menu.rank, px, py, 6)) { A.ProfileUI.open('rank'); return; }
+      if (S.menuStartDelay > 0) return;
+      if (S.menuPanel) {
+        S.menuPanel = null;
+        return;
+      }
+      var key = menuHitKey(px, py);
+      if (key) S.menuFeedback = { key: key, life: 0.18 };
+      if (key === 'start') { S.menuStartDelay = 0.18; return; }
+      if (key === 'settings') { A.ProfileUI.open('settings'); return; }
+      if (key === 'rank') { A.ProfileUI.open('rank'); return; }
+      if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
+      if (key === 'stamina') { S.menuPanel = 'stamina'; return; }
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {

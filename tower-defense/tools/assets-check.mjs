@@ -33,8 +33,10 @@ function makeGl(textureMode) {
 
 function createHarness(textureMode = 'ok') {
   const requests = []
+  const timers = []
   const sandbox = {
     console,
+    setTimeout(callback) { timers.push(callback) },
     KwaiRender: { loadImage: (options) => requests.push(options) },
     AIGCUtils: {
       FontAtlas: { 18: { src: 'font-18.png' } },
@@ -50,29 +52,35 @@ function createHarness(textureMode = 'ok') {
   vm.runInContext(fs.readFileSync(ASSETS_FILE, 'utf8'), vm.createContext(sandbox), {
     filename: 'gameplay/assets.js',
   })
-  return { sandbox, requests }
+  return { sandbox, requests, timers }
 }
 
 function complete(mode, textureMode) {
   const harness = createHarness(textureMode)
   let result = null
   harness.sandbox.AIGCUtils.Assets.init((value) => { result = value })
-  for (const request of harness.requests) {
-    if (mode === '404') request.onFail(new Error(`404 ${request.src}`))
-    else request.onSuccess({ width: 64, height: 64, src: request.src })
+  let next = 0
+  while (next < harness.requests.length || harness.timers.length) {
+    while (next < harness.requests.length) {
+      const request = harness.requests[next++]
+      if (mode === '404') request.onFail(new Error(`404 ${request.src}`))
+      else request.onSuccess({ width: 64, height: 64, src: request.src })
+    }
+    while (harness.timers.length) harness.timers.shift()()
   }
   return { result, harness }
 }
 
 const failed = complete('404').result
-if (!failed || failed.ok !== false || failed.failed.length !== 3) {
+const expectedCount = complete('success').harness.requests.length
+if (!failed || failed.ok !== false || failed.failed.length !== expectedCount) {
   throw new Error(`404 未被阻断：${JSON.stringify(failed)}`)
 }
 console.log('asset failure gate: ok', failed.failed.map((item) => item.key))
 
 for (const mode of ['null', 'throw']) {
   const upload = complete('success', mode).result
-  if (!upload || upload.ok !== false || upload.failed.length !== 3) {
+  if (!upload || upload.ok !== false || upload.failed.length !== expectedCount) {
     throw new Error(`纹理上传失败未被阻断 (${mode})：${JSON.stringify(upload)}`)
   }
 }
@@ -116,7 +124,7 @@ vm.runInContext(
   { filename: 'gameplay/game.js' },
 )
 gameSandbox.AIGCUtils.Game.applyAssetResult(failed)
-if (state.phase !== 'error' || state.assetErrors.length !== 3) {
+if (state.phase !== 'error' || state.assetErrors.length !== expectedCount) {
   throw new Error(`游戏未进入资源错误状态：${JSON.stringify(state)}`)
 }
 console.log('game error phase gate: ok')
