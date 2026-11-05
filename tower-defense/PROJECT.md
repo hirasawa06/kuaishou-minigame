@@ -86,6 +86,7 @@ node ../ks-yoola-devkit/scripts/validate-package.mjs --dir .
 
 ### 动画与特效
 - 角色新增、动作选择、图集接入与验收以 [角色行动动画制作规范](../docs/角色行动动画制作规范.md) 为准；用户仅提供角色图与特点时，按该规范的决策矩阵自动制定行动方案。
+- 角色体型遵循“防御 > 近战 > 远程”的逻辑占地与可见主体阶梯；武器、尾巴和特效不扩大占地。当前 `radius` 尚未拆分为 `footprintRadius` / `hitRadius` / `renderScale`，将既有单位迁入该模型必须单列为数值回归任务。
 - 单位分件动画在 `gameplay/anim/`：`rig.js`（关键帧采样 + 绘制）、`defs.js`（各单位 `states`）
 - 角色动作的单一数据源是 `tools/src/animation-specs/<角色id>.json`；`gen-shiba-atlas.py` 生成 `data/character-animations.js`，Rig 读取该数据，禁止重复手填关键战斗时刻。
 - 有 `A.Rigs[cardId]` 的单位走分件动画，没有的仍走整图 `Scene.icon`，新增单位可逐个接入
