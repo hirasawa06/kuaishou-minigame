@@ -98,6 +98,8 @@
     if (A.ProfileUI) A.ProfileUI.close();
     S.phase = 'menu';
     S.dragging = null;
+    S.shopPressed = null;
+    S.shopFeedback = null;
     S.drag = null;
     S.inspect = null;
     S.inspectT = 0;
@@ -125,6 +127,7 @@
   function update(dt) {
     if (S.inspectT > 0) S.inspectT -= dt;
     if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
+    if (S.shopFeedback && S.shopFeedback.life > 0) S.shopFeedback.life -= dt;
     if (S.phase === 'menu' && S.menuStartDelay > 0) {
       S.menuStartDelay -= dt;
       if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
@@ -143,6 +146,7 @@
   function drawBattle() {
     var D = A.Render.draw;
     Scene.drawBackground();
+    Scene.drawFieldGuides();
     Scene.drawBase();
 
     var i;

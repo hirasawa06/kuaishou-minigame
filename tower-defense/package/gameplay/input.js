@@ -8,6 +8,7 @@
   var canvas = null;
   var down = false;
   var drag = null;
+  var shopPressStarted = false;
   var MOVE_TOL = 6;
   var LONG_PRESS = 0.22;   // 按住不动超过这个时间显示详情
 
@@ -62,12 +63,25 @@
   }
 
   function onDown(px, py) {
+    shopPressStarted = false;
     down = inInteractiveArea(px, py);
     if (!down) return;
     // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
     if (A.ProfileUI && A.ProfileUI.isOpen()) return;
     if (S.phase === 'menu' && !S.menuPanel) S.menuPressed = menuHitKey(px, py);
     if (S.phase !== 'playing') return;
+    var u = L.ui;
+    if (S.gold >= S.refreshCost && hitControl(u.refreshBtn, px, py, 0)) {
+      S.shopPressed = 'refresh';
+      shopPressStarted = true;
+      return;
+    }
+    if (S.heroCap < C.UNIT_CAP_MAX && S.gold >= S.capCost &&
+        hitControl(u.capBtn, px, py, 0)) {
+      S.shopPressed = 'cap';
+      shopPressStarted = true;
+      return;
+    }
     var hit = shopAt(px, py);
     if (!hit) return;
     var def = S.heroById(hit.slot.cardId);
@@ -89,6 +103,10 @@
     if (S.phase === 'menu' && S.menuPressed && menuHitKey(px, py) !== S.menuPressed) {
       S.menuPressed = null;
     }
+    if (S.shopPressed) {
+      var r = S.shopPressed === 'refresh' ? L.ui.refreshBtn : L.ui.capBtn;
+      if (!hitControl(r, px, py, 0)) S.shopPressed = null;
+    }
     if (!down || !drag) return;
     drag.x = px;
     drag.y = py;
@@ -100,6 +118,21 @@
 
   function onUp(px, py) {
     if (S.phase === 'menu') S.menuPressed = null;
+    var validShopRelease = false;
+    if (S.shopPressed) {
+      var pressedRect = S.shopPressed === 'refresh' ? L.ui.refreshBtn : L.ui.capBtn;
+      if (hitControl(pressedRect, px, py, 0)) {
+        S.shopFeedback = { key: S.shopPressed, life: 0.18 };
+        validShopRelease = true;
+      }
+      S.shopPressed = null;
+    }
+    if (shopPressStarted) {
+      shopPressStarted = false;
+      down = false;
+      if (validShopRelease) tap(px, py);
+      return;
+    }
     if (!down && !drag) { tap(px, py); return; }
     down = false;
     if (S.phase !== 'playing') {
@@ -202,6 +235,8 @@
     down = false;
     drag = null;
     S.dragging = null;
+    S.shopPressed = null;
+    shopPressStarted = false;
   }
 
   function bind(cv) {

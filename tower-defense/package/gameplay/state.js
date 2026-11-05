@@ -48,6 +48,8 @@
     menuSoundEnabled: true,
     menuPressed: null,
     menuFeedback: null,
+    shopPressed: null,
+    shopFeedback: null,
     menuStartDelay: 0,
   };
 
@@ -175,6 +177,8 @@
     S.menuPanel = null;
     S.menuPressed = null;
     S.menuFeedback = null;
+    S.shopPressed = null;
+    S.shopFeedback = null;
     S.menuStartDelay = 0;
     S.rollShop();
   };

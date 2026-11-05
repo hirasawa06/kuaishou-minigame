@@ -15,6 +15,9 @@
     archer: '#4bd184',
     mage: '#a583f0',
   };
+  var CARD_TEXT_COLOR = {
+    tank: '#456d9a', warrior: '#9b5a28', archer: '#397b4d', mage: '#76539a',
+  };
   // 透明按钮图的有效像素范围；源图保留透明边，采样时只取按钮本身。
   var MENU_BUTTONS = {
     avatar: { asset: 'home-avatar-button', crop: [35, 22, 309, 324] },
@@ -28,47 +31,52 @@
     return String(Math.floor(n));
   }
 
-  // ── 顶部 HUD：波次 / 基地 / 金币 / 席位 / 暂停 ───────────────
+  // ── 顶部 HUD：波次 / 敌人 / 基地血量 / 已上场 / 暂停 ──────
   function drawHud() {
     var u = L.ui;
     var h = u.hud;
-    D.vGradient(0, 0, u.w, h.y + h.h + 8, D.color('#1b2233', 0.95), D.color('#121826', 0.62), 10);
-    var pad = u.safeLeft + u.pad;
-    var top = h.y + 8;
-
-    D.text('波次', pad, top + 2, 18, COL.textDim, 0);
-    var waveNo = Math.min(S.waveIndex + 1, C.WAVES.length);
-    D.text(waveNo + '/' + C.WAVES.length, pad, top + 24, 28, COL.textMain, 0);
-    var remain = A.Battle.remainingEnemies();
-    D.text('剩余 ' + remain, pad, top + 56, 18, COL.textDim, 0);
-
-    // 基地血量：固定在屏幕中线略左，给右侧金币区留出空间
-    var hpRatio = Math.max(0, S.baseHp) / C.BASE_HP;
-    var cx = u.w * 0.36;
-    icon('ui-heart', cx - 26, top + 16, 26);
-    D.text(String(Math.ceil(Math.max(0, S.baseHp))), cx - 8, top + 2, 28,
-      hpRatio > 0.4 ? COL.textMain : COL.hpRed, 0);
-    D.roundRect(cx - 30, top + 38, 76, 7, 4, COL.hpBack);
-    D.roundRect(cx - 29, top + 39, Math.max(0, 74 * hpRatio), 5, 3,
-      hpRatio > 0.5 ? COL.hpGreen : hpRatio > 0.25 ? COL.hpOrange : COL.hpRed);
-    D.text('基地', cx - 30, top + 50, 18, COL.textDim, 0);
-
-    // 金币与上场席位：整体靠右对齐到暂停按钮左侧。
-    // 席位文字贴右边界，金币数字和图标依次往左排，互不覆盖。
-    var rightEdge = u.pauseBtn.x - 10;
-    var slotLabel = '席位 ' + S.liveUnits() + '/' + S.heroCap;
-    D.text(slotLabel, rightEdge, top + 38, 18, COL.textDim, 2);
-    // 金币和席位都右对齐到同一条竖线：金币在上、席位在下，避免互相挤占
-    var goldText = fmt(S.gold);
-    var goldW = D.textWidth(goldText, A.FontAtlas['28']);
-    D.text(goldText, rightEdge, top + 2, 28, COL.gold, 2);
-    icon('ui-coin', rightEdge - goldW - 16, top + 16, 26);
-
-    // 暂停
     var pb = u.pauseBtn;
-    D.roundRect(pb.x, pb.y, pb.w, pb.h, 12, D.color('#1e2d52', 0.95));
-    D.strokeRect(pb.x, pb.y, pb.w, pb.h, 1, D.color('#3a5085'));
-    icon(S.phase === 'paused' ? 'ui-play' : 'ui-pause', pb.x + pb.w / 2, pb.y + pb.h / 2, 19);
+    var panelX = u.safeLeft + u.pad;
+    var panelY = h.y + Math.max(0, (h.h - 70) / 2);
+    var panelW = Math.max(1, pb.x - panelX - 5);
+    var panel = A.Assets.entry('hud-panel');
+    if (panel) {
+      D.texture(panel.tex, panel.w, panel.h, 0, 0, panel.w, panel.h,
+        panelX, panelY, panelW, 70);
+    } else {
+      D.roundRect(panelX, panelY, panelW, 70, 24, D.color('#ffe4bd'));
+    }
+    var brown = D.color('#78432b');
+    var muted = D.color('#a0603c');
+    // 避开面板两侧的爪印和底部描边；两列两行共用固定基线。
+    var left = panelX + 48;
+    var right = panelX + panelW * 0.54;
+    var row1 = panelY + 14;
+    var row2 = panelY + 36;
+    var waveNo = Math.min(S.waveIndex + 1, C.WAVES.length);
+    D.text('第 ' + waveNo + '/' + C.WAVES.length + ' 波', left, row1, 18, brown, 0);
+    var remain = A.Battle.remainingEnemies();
+    D.text('剩余敌人 ' + remain, right, row1, 18, brown, 0);
+
+    // 目标血量仍由实时状态绘制；细条与文字共享面板坐标。
+    var hpRatio = Math.max(0, S.baseHp) / C.BASE_HP;
+    icon('ui-heart', left + 5, row2 + 10, 16);
+    D.text('基地血量 ' + String(Math.ceil(Math.max(0, S.baseHp))), left + 18, row2, 18,
+      hpRatio > 0.4 ? brown : COL.hpRed, 0);
+    D.text('已上场 ' + S.liveUnits() + '/' + S.heroCap,
+      right, row2, 18, muted, 0);
+
+    // 暂停按钮的绘制与命中区同用 Layout.ui.pauseBtn。
+    D.roundRect(pb.x, pb.y, pb.w, pb.h, pb.h / 2, D.color('#ad6732'));
+    D.roundRect(pb.x + 3, pb.y + 3, pb.w - 6, pb.h - 6, (pb.h - 6) / 2,
+      D.color('#ffdeb0'));
+    if (S.phase === 'paused') {
+      D.roundRect(pb.x + 14, pb.y + 11, 18, 22, 6, brown);
+      icon('ui-play', pb.x + pb.w / 2, pb.y + pb.h / 2, 16);
+    } else {
+      D.roundRect(pb.x + 15, pb.y + 13, 5, 18, 2, brown);
+      D.roundRect(pb.x + 25, pb.y + 13, 5, 18, 2, brown);
+    }
   }
 
   // ── 金币条 ────────────────────────────────────────────────
@@ -76,45 +84,66 @@
     var u = L.ui;
     var gb = u.goldBar;
     if (!gb) return;
-    D.roundRect(gb.x, gb.y, gb.w, gb.h, gb.h / 2, D.color('#2a2118', 0.9));
-    icon('ui-coin', gb.x + gb.h * 0.55, gb.y + gb.h / 2, gb.h * 0.78);
-    D.text(fmt(S.gold), gb.x + gb.h * 1.05, gb.y + (gb.h - 22) / 2, 28, COL.gold, 0);
-    D.text('席位 ' + S.liveUnits() + '/' + S.heroCap,
-      gb.x + gb.w - 10, gb.y + (gb.h - 18) / 2, 18, D.color('#c8b49a'), 2);
+    var statusW = u.safeRight - u.pad - gb.x;
+    D.roundRect(gb.x, gb.y, statusW, gb.h, gb.h / 2, D.color('#a46537'));
+    D.roundRect(gb.x + 2, gb.y + 2, statusW - 4, gb.h - 4,
+      (gb.h - 4) / 2, D.color('#ffe8c7'));
+    icon('ui-coin', gb.x + gb.h * 0.55, gb.y + gb.h / 2, gb.h * 0.74);
+    D.text('金币 ' + fmt(S.gold), gb.x + gb.h * 1.08, gb.y + (gb.h - 18) / 2,
+      18, D.color('#78432b'), 0);
+    D.text('已上场 ' + S.liveUnits() + '/' + S.heroCap,
+      gb.x + statusW - 12, gb.y + (gb.h - 18) / 2,
+      18, D.color('#865137'), 2);
   }
 
   // ── 商店按钮 ──────────────────────────────────────────────
-  function drawShopButton(rect, label, sub, enabled, accent) {
-    var bg = enabled ? D.color(accent, 0.22) : D.color('#1a1a22', 0.55);
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, rect.h / 2, bg);
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1,
-      enabled ? D.color(accent, 0.8) : D.color('#3a3a46'));
-    var col = enabled ? D.color(accent) : D.color('#6b6b78');
-    if (sub) {
-      D.text(label, rect.x + 12, rect.y + 4, 18, col, 0);
-      D.text(sub, rect.x + rect.w - 10, rect.y + 6, 18, col, 2);
+  function drawShopButton(rect, label, sub, enabled, accent, key) {
+    var pressed = enabled && S.shopPressed === key;
+    var feedback = enabled && S.shopFeedback && S.shopFeedback.key === key && S.shopFeedback.life > 0;
+    var progress = feedback ? 1 - S.shopFeedback.life / 0.18 : 1;
+    var scale = pressed ? 0.94 : feedback ? 1 + 0.045 * Math.sin(Math.PI * progress) * (1 - progress) : 1;
+    var w = rect.w * scale, h = rect.h * scale;
+    var x = rect.x + (rect.w - w) / 2, y = rect.y + (rect.h - h) / 2;
+    var art = A.Assets.entry('shop-button');
+    if (art) {
+      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h, x, y, w, h,
+        enabled ? D.color('#ffffff') : D.color('#9a968e', 0.88));
     } else {
-      D.text(label, rect.x + rect.w / 2, rect.y + (rect.h - 22) / 2, 18, col, 1);
+      D.roundRect(x, y, w, h, h / 2,
+        enabled ? D.color(accent) : D.color('#a69b8b'));
+    }
+    var col = enabled ? D.color('#704026') : D.color('#5f5750');
+    if (sub) {
+      D.text(label, x + 12, y + (h - 18) / 2, 18, col, 0);
+      D.text(sub, x + w - 10, y + (h - 18) / 2, 18, col, 2);
+    } else {
+      D.text(label, x + w / 2, y + (h - 18) / 2, 18, col, 1);
     }
   }
 
   function drawShop() {
     var u = L.ui;
     var t = u.tray;
-    D.vGradient(0, t.y, u.w, u.h - t.y, D.color('#191a22'), D.color('#0f1016'), 10);
-    D.rect(0, t.y, t.w, 1, D.color('#3a3326'));
+    var trayArt = A.Assets.entry('shop-tray');
+    if (trayArt) {
+      // 木质底板属于展示层，可延伸至屏幕底部；按钮和卡牌仍受安全区布局约束。
+      D.texture(trayArt.tex, trayArt.w, trayArt.h, 0, 0, trayArt.w, trayArt.h,
+        0, t.y, u.w, u.h - t.y);
+    } else {
+      D.vGradient(0, t.y, u.w, u.h - t.y, D.color('#c5874b'), D.color('#925832'), 10);
+    }
     drawGoldBar();
 
     // 刷新 / 扩建
     drawShopButton(u.refreshBtn,
       '刷新 ' + S.refreshCost,
       null,
-      S.gold >= S.refreshCost, '#ffd166');
+      S.gold >= S.refreshCost, '#ffd166', 'refresh');
     var capFull = S.heroCap >= C.UNIT_CAP_MAX;
     drawShopButton(u.capBtn,
       capFull ? '席位已满' : '扩建 +' + C.UNIT_CAP_STEP + '  ' + S.capCost,
       null,
-      !capFull && S.gold >= S.capCost, '#7fd1ff');
+      !capFull && S.gold >= S.capCost, '#ffd166', 'cap');
 
     // 4 格卡池
     for (var i = 0; i < C.cardCount; i++) {
@@ -133,19 +162,23 @@
       drawHeroCell(def, rect, 1, i);
     }
 
-    D.text('点卡自动落地 · 拖到战场指定位置 · 击杀掉金币',
-      u.w / 2, u.contentBottom - 18, 18, D.color('#8a8172'), 1);
+    // 底边只留木质展示层，操作说明由后续引导层负责。
   }
 
   function drawEmptyCell(rect) {
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 12, D.color('#14151d', 0.85));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, D.color('#262833'));
+    var art = A.Assets.entry('shop-card');
+    if (art) {
+      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+        rect.x, rect.y, rect.w, rect.h, D.color('#ffffff', 0.72));
+    } else {
+      D.roundRect(rect.x, rect.y, rect.w, rect.h, 12, D.color('#ffe6c3'));
+    }
   }
 
   function drawSoldCell(rect) {
     drawEmptyCell(rect);
     D.text('已上阵', rect.x + rect.w / 2, rect.y + rect.h / 2 - 9, 18,
-      D.color('#3f4354'), 1);
+      D.color('#815d48'), 1);
   }
 
   // 英雄卡：横向紧凑版（约 49~60px 高），左立绘 + 右两行文字 + 右上费用
@@ -154,23 +187,26 @@
     var capFull = S.liveUnits() >= S.heroCap;
     var usable = afford && !capFull;
     var a = alpha === undefined ? 1 : alpha;
-    var clsCol = D.color(CLS_COLOR[def.cls] || '#777777');
-
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#1d2029', a));
-    D.hGradient(rect.x, rect.y, rect.w, rect.h,
-      D.color(def.color, 0.30 * a), D.color('#1a1d26', 0.9 * a), 8);
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1,
-      usable ? D.color(def.color, 0.85) : D.color('#2e3140', a));
-    // 左侧职业色条
-    D.roundRect(rect.x + 3, rect.y + 7, 4, rect.h - 14, 2, clsCol);
+    var clsCol = D.color(CARD_TEXT_COLOR[def.cls] || '#76533b');
+    var drag = S.dragging;
+    if (drag && drag.index === index && !drag.active) {
+      rect = { x: rect.x + 2, y: rect.y + 1, w: rect.w - 4, h: rect.h - 2 };
+    }
+    var art = A.Assets.entry('shop-card');
+    if (art) {
+      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+        rect.x, rect.y, rect.w, rect.h, D.color('#ffffff', a));
+    } else {
+      D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#ffe6c3', a));
+    }
 
     // 立绘：占满卡片高度，留 3px 内边距
-    var iconSize = rect.h - 6;
-    icon(def.icon, rect.x + 9 + iconSize / 2, rect.y + rect.h / 2, iconSize, a);
+    var iconSize = rect.h - 4;
+    Scene.heroArt(def, rect.x + 5 + iconSize / 2, rect.y + rect.h / 2, iconSize, a);
 
-    var tx = rect.x + 14 + iconSize;
-    var nameY = rect.y + Math.max(3, rect.h * 0.5 - 20);
-    D.text(def.name, tx, nameY, 18, D.color('#f2f6ff', a), 0);
+    var tx = rect.x + 10 + iconSize;
+    var nameY = rect.y + 5;
+    D.text(def.name, tx, nameY, 18, D.color('#663c2b', a), 0);
     // 职业 + 关键数值压到一行，避免溢出
     var line1 = def.cls === 'tank'
       ? def.clsName + ' · 生命 ' + def.hp
@@ -181,50 +217,78 @@
     var cr = Math.max(12, Math.min(16, rect.h * 0.24));
     var ccx = rect.x + rect.w - cr - 6;
     var ccy = rect.y + cr + 4;
-    D.circle(ccx, ccy, cr, afford ? D.color('#3a2f16', a) : D.color('#3c1524', a));
-    D.ring(ccx, ccy, cr - 0.7, 1.4, afford ? D.color('#ffd166', a) : D.color('#ff6b7f', a));
+    D.circle(ccx, ccy, cr, afford ? D.color('#ffcb68', a) : D.color('#b9a99a', a));
+    D.ring(ccx, ccy, cr - 0.7, 1.4, D.color('#a66b3b', a));
     D.text(String(def.cost), ccx, ccy - 9, 18,
-      afford ? D.color('#ffe8b0', a) : D.color('#ff8598', a), 1);
+      afford ? D.color('#6f3a20', a) : D.color('#695b52', a), 1);
 
-    if (!usable) D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#05080f', 0.35 * a));
+    if (!usable) D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#f0e0cf', 0.35 * a));
   }
 
   function drawInspect() {
     if (!S.inspect || !S.inspectT || S.inspectT <= 0) return;
     var def = S.inspect;
     var a = Math.min(1, S.inspectT / 0.45);
-    var w = 248;
-    var h = 132;
+    var w = Math.min(300, L.ui.interactiveRect.w - 16);
+    var h = 172;
     var x = S.inspectX === undefined ? L.ui.safeLeft + 8 : S.inspectX;
     var y = S.inspectY === undefined ? L.ui.contentTop + 90 : S.inspectY;
-    x = Math.max(6, Math.min(L.ui.w - w - 6, x));
+    x = Math.max(L.ui.safeLeft + 8, Math.min(L.ui.safeRight - w - 8, x));
     y = Math.max(L.ui.contentTop + 6, Math.min(L.ui.tray.y - h - 6, y));
-    D.roundRect(x, y, w, h, 14, D.color('#0c1630', 0.96 * a));
-    D.strokeRect(x, y, w, h, 1, D.color('#2c4270', a));
-    icon(def.icon, x + 42, y + 46, 56, a);
-    D.text(def.name, x + 78, y + 10, 28, D.color('#ffffff', a), 0);
-    D.text(def.clsName + ' · ' + def.cost + ' 金币', x + 78, y + 42, 18,
-      D.color(CLS_COLOR[def.cls], a), 0);
-    D.text(def.desc, x + 78, y + 64, 18, D.color('#a8b8d8', a), 0);
-    var stats = '生命 ' + def.hp + '  攻击 ' + def.atk +
-      '  射程 ' + (def.range || 0) + '  攻速 ' + def.interval + 's';
-    D.text(stats, x + 14, y + 92, 18, D.color('#7f92b6', a), 0);
-    var extra = def.cls === 'tank'
-      ? '嘲讽半径 ' + def.taunt
-      : def.splash ? '群攻半径 ' + def.splash
-        : def.cls === 'warrior' ? '移动速度 ' + def.moveSpeed : '移动速度 0（驻守）';
-    D.text(extra, x + 14, y + 112, 18, D.color('#6f7f9e', a), 0);
+    D.roundRect(x, y, w, h, 14, D.color('#a7663d', 0.96 * a));
+    D.roundRect(x + 3, y + 3, w - 6, h - 6, 12, D.color('#fff0d9', 0.98 * a));
+    Scene.heroArt(def, x + 38, y + 35, 56, a);
+    D.text(def.name, x + 72, y + 10, 28, D.color('#704026', a), 0);
+    D.text(def.clsName + ' · ' + def.cost + ' 金币', x + 72, y + 43, 18,
+      D.color(CARD_TEXT_COLOR[def.cls], a), 0);
+    var maxLineW = w - 28;
+    var line = '', line2 = '';
+    for (var i = 0; i < def.desc.length; i++) {
+      var next = line + def.desc.charAt(i);
+      if (!line2 && D.textWidth(next, A.FontAtlas['18']) <= maxLineW) line = next;
+      else line2 += def.desc.charAt(i);
+    }
+    D.text(line, x + 14, y + 70, 18, D.color('#76513c', a), 0);
+    if (line2) D.text(line2, x + 14, y + 91, 18, D.color('#76513c', a), 0);
+    D.text('生命 ' + def.hp + ' · 攻击 ' + def.atk,
+      x + 14, y + 119, 18, D.color('#8b634a', a), 0);
+    D.text('射程 ' + (def.range || 0) + ' · 攻速 ' + def.interval,
+      x + 14, y + 143, 18, D.color('#8b634a', a), 0);
   }
 
   function drawToast() {
-    if (!S.toast) return;
     var u = L.ui;
+    if (!S.toast) {
+      if (S.phase === 'playing' && S.cardsPlaced === 0) {
+        var hintY = u.field.y + u.field.h * 0.42;
+        D.roundRect(u.w / 2 - 127, hintY, 254, 58, 20,
+          D.color('#fff0d9', 0.9));
+        D.strokeRect(u.w / 2 - 127, hintY, 254, 58, 2,
+          D.color('#ae7548', 0.85));
+        D.text('点击卡牌自动上场', u.w / 2, hintY + 7, 18,
+          D.color('#704026'), 1);
+        D.text('拖动卡牌指定位置', u.w / 2, hintY + 31, 18,
+          D.color('#704026'), 1);
+      }
+      return;
+    }
     var a = Math.min(1, S.toast.life / 0.3);
     var w = 244;
     var y = u.field.y + u.field.h * 0.3;
-    D.roundRect(u.w / 2 - w / 2, y, w, 42, 21, D.color('#08111f', 0.9 * a));
-    D.strokeRect(u.w / 2 - w / 2, y, w, 42, 1, D.color('#2b4470', a));
-    D.text(S.toast.text, u.w / 2, y + 10, 18, D.color('#d7e8ff', a), 1);
+    D.roundRect(u.w / 2 - w / 2, y, w, 42, 21, D.color('#a96638', 0.94 * a));
+    D.roundRect(u.w / 2 - w / 2 + 2, y + 2, w - 4, 38, 19,
+      D.color('#ffe7c2', 0.98 * a));
+    D.text(S.toast.text, u.w / 2, y + 10, 18, D.color('#704026', a), 1);
+  }
+
+  function drawModalPanel(x, y, w, h) {
+    var art = A.Assets.entry('modal-panel');
+    if (art) {
+      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h, x, y, w, h);
+    } else {
+      D.roundRect(x, y, w, h, 22, D.color('#fff0d9'));
+      D.strokeRect(x, y, w, h, 3, D.color('#a7663d'));
+    }
   }
 
   function drawButton(label, rectOrY, primary, fontSize, subtle) {
@@ -236,17 +300,22 @@
         y: rectOrY, w: u.btnW, h: u.btnH,
       };
     var size = fontSize || 28;
-    var bg = primary ? D.color('#f0a02a')
-      : subtle ? D.color('#1b2333', 0.86) : D.color('#2a3040');
-    D.roundRect(r.x, r.y, r.w, r.h, r.h / 2, bg);
+    var art = primary ? A.Assets.entry('shop-button') : null;
+    if (art) {
+      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+        r.x, r.y, r.w, r.h);
+    } else {
+      D.roundRect(r.x, r.y, r.w, r.h, r.h / 2,
+        primary ? D.color('#f0a02a') : D.color('#ffe4bd'));
+    }
     if (primary) {
-      D.roundRect(r.x + 3, r.y + 3, r.w - 6, r.h * 0.42, r.h / 2, D.color('#ffcf6a', 0.55));
-      D.strokeRect(r.x, r.y, r.w, r.h, 2, D.color('#a86a14'));
-    } else if (subtle) {
-      D.strokeRect(r.x, r.y, r.w, r.h, 1.4, D.color('#3b4a66'));
+      if (!art) D.strokeRect(r.x, r.y, r.w, r.h, 2, D.color('#a86a14'));
+    } else {
+      D.strokeRect(r.x, r.y, r.w, r.h, 2,
+        D.color(subtle ? '#9a7152' : '#bb8555'));
     }
     D.text(label, r.x + r.w / 2, r.y + (r.h - size) / 2,
-      size, primary ? D.color('#5a3208') : COL.textMain, 1);
+      size, D.color('#633b25'), 1);
   }
 
   // ── 首页（参考图：客厅 + 头像 + 体力 + 设置 / 排行榜 + 章节卡 + 开始） ──
@@ -332,12 +401,14 @@
 
   function drawPaused() {
     var u = L.ui;
-    D.roundRect(0, 0, u.w, u.h, 0, D.color('#04080f', 0.72));
-    var y = u.contentTop + u.contentH * 0.16;
-    D.text('已暂停', u.w / 2, y, 48, COL.textMain, 1);
-    D.text('点击右上角按钮继续游戏', u.w / 2, y + 62, 18, COL.textDim, 1);
-
-
+    D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
+    var y = u.pausePanel.titleY;
+    var home = u.pausePanel.btn('home');
+    var pw = Math.min(u.interactiveRect.w - 20, u.pausePanel.w + 64);
+    var px = u.safeLeft + (u.interactiveRect.w - pw) / 2;
+    var py = Math.max(u.contentTop + 4, y - 43);
+    drawModalPanel(px, py, pw, home.y + home.h + 20 - py);
+    D.text('已暂停', u.w / 2, y, 48, D.color('#704026'), 1);
     // 主操作与设置/主页入口都从 layout 取几何，绘制与命中一致
     drawButton('继续游戏', u.pausePanel.btn('resume'), true, 28);
     drawButton('设置', u.pausePanel.btn('settings'), false, 28);
@@ -347,12 +418,17 @@
 
   function drawResult(win) {
     var u = L.ui;
-    D.roundRect(0, 0, u.w, u.h, 0, D.color('#04080f', 0.82));
+    D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.5));
     var y = u.contentTop + u.contentH * 0.16;
+    var resultBtn = u.btnRect('result');
+    var pw = Math.min(u.interactiveRect.w - 20, 330);
+    var px = u.safeLeft + (u.interactiveRect.w - pw) / 2;
+    var py = Math.max(u.contentTop + 4, y - 44);
+    drawModalPanel(px, py, pw, resultBtn.y + resultBtn.h + 20 - py);
     D.text(win ? '胜利' : '失败', u.w / 2, y, 48,
-      win ? COL.gold : COL.hpRed, 1);
+      win ? D.color('#a86a24') : D.color('#b04f4c'), 1);
     D.text(win ? '你守住了客厅！' : '客厅失守了', u.w / 2, y + 62, 28,
-      COL.textDim, 1);
+      D.color('#704026'), 1);
     var cleared = win ? C.WAVES.length : S.waveIndex;
     var stats = [
       '抵达波次  ' + Math.max(1, Math.min(cleared, C.WAVES.length)) + '/' + C.WAVES.length,
@@ -362,7 +438,8 @@
       '剩余基地  ' + Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP,
     ];
     for (var i = 0; i < stats.length; i++) {
-      D.text(stats[i], u.w / 2, y + 112 + i * 32, 28, COL.textMain, 1);
+      D.text(stats[i], u.w / 2, y + 112 + i * 32, 28,
+        D.color('#76513c'), 1);
     }
     drawButton('再玩一次', u.btnY.result, true);
   }

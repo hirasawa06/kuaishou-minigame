@@ -34,49 +34,63 @@
       { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
   }
 
+  function heroArt(def, cx, cy, size, alpha) {
+    var atlas = Assets.entry('hero-pets-atlas');
+    var cell = null;
+    if (def.id === 'tank') cell = [0, 0];
+    else if (def.id === 'war') cell = [1, 0];
+    else if (def.id === 'arch') cell = [0, 1];
+    else if (def.id === 'mage') cell = [1, 1];
+    if (!atlas || !cell) {
+      icon(def.icon, cx, cy, size, alpha);
+      return;
+    }
+    var cw = atlas.w / 2, ch = atlas.h / 2;
+    D.texture(atlas.tex, atlas.w, atlas.h, cell[0] * cw, cell[1] * ch, cw, ch,
+      cx - size / 2, cy - size / 2, size, size,
+      { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
+  }
+
   function drawBackground() {
     var u = L.ui;
-    // 客厅背景铺满全屏（与首页同一张），避免换场景时跳色
-    var bg = Assets.entry('menu-bg') || Assets.entry('home-bg');
+    // 环境层覆盖整个画布，按中心裁切保持原图比例；不受交互安全区约束。
+    var bg = Assets.entry('in-game-background');
     if (bg) {
-      D.texture(bg.tex, bg.w, bg.h, 0, 0, bg.w, bg.h, 0, 0, u.w, u.h);
+      var targetRatio = u.w / u.h;
+      var sourceRatio = bg.w / bg.h;
+      var sx = 0, sy = 0, sw = bg.w, sh = bg.h;
+      if (sourceRatio > targetRatio) {
+        sw = bg.h * targetRatio;
+        sx = (bg.w - sw) / 2;
+      } else {
+        sh = bg.w / targetRatio;
+        sy = (bg.h - sh) / 2;
+      }
+      D.texture(bg.tex, bg.w, bg.h, sx, sy, sw, sh, 0, 0, u.w, u.h);
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
     }
-    // 战场压暗，让敌人和英雄从客厅背景里浮出来
-    var f = u.field;
-    D.vGradient(0, 0, u.w, u.h, D.color('#141018', 0.58), D.color('#0d0b10', 0.72), 18);
-    // 三条通道
-    for (var i = 0; i < u.lanes.length; i++) {
-      D.rect(u.lanes[i] - f.w * 0.15, f.y, f.w * 0.30, f.h, D.color('#3a2c22', 0.16));
-    }
-    for (var k = 1; k < u.lanes.length; k++) {
-      var x = (u.lanes[k - 1] + u.lanes[k]) / 2;
-      D.rect(x - 0.5, f.y, 1, f.h, D.color('#6b5442', 0.28));
-    }
-    D.strokeRect(f.x, f.y, f.w, f.h, 1, D.color('#a8845e', 0.35));
-    // 顶部生成区指示
-    D.hGradient(f.x + 1, f.y + 1, f.w - 2, 34, D.color('#5a2b44', 0.55), D.color('#0d1526', 0), 8);
   }
 
   function drawBase(dt) {
     var u = L.ui;
     var b = u.base;
-    D.roundRect(b.x + 1, b.y, b.w - 2, b.h, 12, COL.baseTop);
-    D.roundRect(b.x + 1, b.y + 4, b.w - 2, b.h - 4, 12, D.color('#223054'));
-    // 城墙垛口
-    var n = 14;
-    var cw = (b.w - 10) / n;
-    for (var i = 0; i < n; i++) {
-      D.rect(b.x + 5 + i * cw + cw * 0.15, b.y - 6, cw * 0.7, 10, D.color('#35496f'));
+    var sofa = Assets.entry('guardian-sofa');
+    if (sofa) {
+      var sofaW = Math.min(b.w * 0.66, b.h * 5);
+      var sofaH = sofaW * sofa.h / sofa.w;
+      // 沙发是独立游戏对象，靠近战场底边；生命条仍实时绘制在它前方。
+      D.texture(sofa.tex, sofa.w, sofa.h, 0, 0, sofa.w, sofa.h,
+        b.x + (b.w - sofaW) / 2, b.y - sofaH * 0.56, sofaW, sofaH);
     }
     var ratio = Math.max(0, S.baseHp) / C.BASE_HP;
-    var bx = b.x + 14, bw = b.w - 28;
-    D.roundRect(bx, b.y + b.h * 0.42, bw, 10, 5, COL.hpBack);
+    var bx = b.x + b.w * 0.16, bw = b.w * 0.68;
+    var barY = b.y + b.h * 0.69;
+    D.roundRect(bx - 4, barY - 4, bw + 8, 18, 9, D.color('#784436', 0.95));
+    D.roundRect(bx, barY, bw, 10, 5, COL.hpBack);
     var hpCol = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
-    D.roundRect(bx + 1, b.y + b.h * 0.42 + 1, Math.max(0, (bw - 2) * ratio), 8, 4, hpCol);
-    D.text(String(Math.ceil(Math.max(0, S.baseHp))), bx + bw - 4, b.y + b.h * 0.42 - 17, 18, COL.textMain, 2);
-    D.text('基地', bx + 2, b.y + b.h * 0.42 - 17, 18, COL.textDim, 0);
+    D.roundRect(bx + 1, barY + 1, Math.max(0, (bw - 2) * ratio), 8, 4, hpCol);
+    D.text(String(Math.ceil(Math.max(0, S.baseHp))), bx + bw - 2, barY - 21, 18, COL.textMain, 2);
     // 基地范围提示
     if (S.shake > 0.05) {
       var a = S.shake * 1.6;
@@ -85,8 +99,19 @@
   }
 
   function hpBar(x, y, w, ratio, col) {
+    D.roundRect(x - 1, y - 1, w + 2, 6, 3, D.color('#5d382d', 0.88));
     D.roundRect(x, y, w, 4, 2, COL.hpBack);
     if (ratio > 0) D.roundRect(x, y, Math.max(1.5, w * ratio), 4, 2, col);
+  }
+
+  // 2×2 透明特效图集：箭矢、魔法弹、爪印命中、烟雾。
+  function fxArt(cellX, cellY, cx, cy, w, h, alpha, rot) {
+    var atlas = Assets.entry('battle-fx-atlas');
+    if (!atlas) return false;
+    var cw = atlas.w / 2, ch = atlas.h / 2;
+    D.sprite(atlas.tex, atlas.w, atlas.h, cellX * cw, cellY * ch, cw, ch,
+      cx, cy, Math.max(w, h), { w: w, h: h, rot: rot || 0, alpha: alpha });
+    return true;
   }
 
   function drawEnemy(e) {
@@ -108,13 +133,27 @@
         tilt = 6 * (1 - k) - 4 * k * (1 - k);
       }
     }
-    // 影子
-    D.circle(e.x, e.y + rr * 0.85, rr * 0.8, D.color('#000000', 0.28));
+    var atlas = Assets.entry('enemy-furniture-atlas');
+    var cell = null;
+    if (e.def.id === 'small') cell = [0, 0];
+    else if (e.def.id === 'normal') cell = [1, 0];
+    else if (e.def.id === 'elite') cell = [0, 1];
+    else if (e.def.id === 'boss') cell = [1, 1];
+    if (!atlas || !cell) D.circle(e.x, e.y + rr * 0.85, rr * 0.8, D.color('#000000', 0.28));
     if (e.slowT > 0) {
       D.circle(e.x, e.y, rr + 7, D.color('#5ab6e8', 0.18));
       D.ring(e.x, e.y, rr + 5, 1.4, D.color('#8fe0ff', 0.55));
     }
-    icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
+    if (atlas && cell) {
+      var cw = atlas.w / 2, ch = atlas.h / 2;
+      // 图集每格保留透明边距；只放大美术，不改变单位半径与碰撞规则。
+      var size = rr * (e.def.id === 'small' ? 5.0 : e.def.id === 'normal' ? 4.6 : 4.2);
+      D.texture(atlas.tex, atlas.w, atlas.h, cell[0] * cw, cell[1] * ch, cw, ch,
+        e.x - size / 2, e.y + wind - size / 2, size, size,
+        { r: 1, g: 1, b: 1, a: spawn });
+    } else {
+      icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
+    }
     if (e.hitFlash > 0) {
       D.circle(e.x, e.y, rr, D.color('#ffffff', e.hitFlash * 3.2));
     }
@@ -193,7 +232,7 @@
       D.circle(un.x, un.y, r + 3, D.color(d.color, 0.18));
       D.ring(un.x, un.y, r + 2, 1.2, D.color(d.color, 0.55));
       var alpha = 0.25 + 0.75 * spawn;
-      icon(d.icon, un.x, un.y, r * 2.35 * (0.8 + 0.2 * spawn), alpha);
+      heroArt(d, un.x, un.y - r * 0.12, r * 3.4 * (0.8 + 0.2 * spawn), alpha);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
@@ -219,11 +258,15 @@
         var dx = p.tx - p.x, dy = p.ty - p.y;
         var len = Math.sqrt(dx * dx + dy * dy) || 1;
         var nx = dx / len, ny = dy / len;
-        D.circle(p.x, p.y, 2.6, D.color('#eaffd8'));
-        D.rect(p.x - nx * 6 - 1, p.y - ny * 6 - 1, 3, 3, D.color('#c8ffb0', 0.7));
+        if (!fxArt(0, 0, p.x, p.y, 28, 20, 1, Math.atan2(ny, nx))) {
+          D.circle(p.x, p.y, 2.6, D.color('#eaffd8'));
+          D.rect(p.x - nx * 6 - 1, p.y - ny * 6 - 1, 3, 3, D.color('#c8ffb0', 0.7));
+        }
       } else if (p.kind === 'fire') {
-        D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
-        D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
+        if (!fxArt(1, 0, p.x, p.y, 24, 24, 1, 0)) {
+          D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
+          D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
+        }
       } else {
         D.circle(p.x, p.y, 5.6, D.color(p.color, 0.6));
         D.circle(p.x, p.y, 3, D.color('#e6fbff'));
@@ -240,8 +283,11 @@
         var rr = (e.r || 8) + ((e.r2 || e.r * 1.8) - (e.r || 8)) * t;
         D.ring(e.x, e.y, rr, 2.2 * (1 - t) + 0.6, D.color(e.color, (1 - t) * 0.8));
       } else if (e.type === 'pop') {
-        D.circle(e.x, e.y, e.r * (1 + t * 0.8), D.color(e.color, (1 - t) * 0.55));
-        D.ring(e.x, e.y, e.r * (1 + t * 1.6), 2, D.color(e.color, (1 - t) * 0.7));
+        var popSize = e.r * (2.6 + t * 1.4);
+        if (!fxArt(0, 1, e.x, e.y, popSize, popSize, 1 - t, 0)) {
+          D.circle(e.x, e.y, e.r * (1 + t * 0.8), D.color(e.color, (1 - t) * 0.55));
+          D.ring(e.x, e.y, e.r * (1 + t * 1.6), 2, D.color(e.color, (1 - t) * 0.7));
+        }
       } else if (e.type === 'slash') {
         drawSlashTrail(e, t);
       } else if (e.type === 'spark') {
@@ -255,11 +301,13 @@
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
       } else if (e.type === 'smoke') {
-        var sp = Assets.sprite('fx-smoke');
-        if (sp) {
-          var sc = (e.r || 10) * (1 + t * 1.1);
+        var sc = (e.r || 10) * (1 + t * 1.1);
+        if (!fxArt(1, 1, e.x, e.y, sc * 2, sc * 2, (1 - t) * 0.42, 0)) {
+          var sp = Assets.sprite('fx-smoke');
+          if (sp) {
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
             e.x, e.y, sc * 2, { alpha: (1 - t) * 0.26, tint: D.color(e.color, 1) });
+          }
         }
       }
     }
@@ -306,16 +354,49 @@
     if (S.waveState === 'prep') {
       var t = Math.max(0, S.waveTimer);
       var label = S.waveIndex < C.WAVES.length
-        ? '第 ' + (S.waveIndex + 1) + ' 波 ' + t.toFixed(1) + 's'
+        ? '第 ' + (S.waveIndex + 1) + ' 波准备 ' + t.toFixed(1)
         : '';
       if (label) {
-        D.roundRect(u.field.x + u.field.w / 2 - 78, u.field.y + 10, 156, 32, 16, D.color('#0b1324', 0.85));
-        D.text(label, u.field.x + u.field.w / 2, u.field.y + 17, 18, COL.gold, 1);
+        D.roundRect(u.field.x + u.field.w / 2 - 80, u.field.y + 10, 160, 32, 16,
+          D.color('#a96638', 0.94));
+        D.roundRect(u.field.x + u.field.w / 2 - 78, u.field.y + 12, 156, 28, 14,
+          D.color('#ffe7c2', 0.97));
+        D.text(label, u.field.x + u.field.w / 2, u.field.y + 17, 18,
+          D.color('#704026'), 1);
       }
     } else if (S.waveState === 'spawning') {
       var a = 0.35 + Math.sin(S.time * 6) * 0.15;
       D.rect(u.field.x + 2, u.field.y + 1, u.field.w - 4, 3, D.color('#ff5a6e', a));
     }
+  }
+
+  function drawFieldGuides() {
+    if (S.phase !== 'playing') return;
+    var u = L.ui;
+    var field = u.field;
+    var drag = S.dragging || (A.Input && A.Input.getDrag && A.Input.getDrag());
+    if (S.waveState === 'prep' || S.waveState === 'spawning') {
+      var pulse = 0.52 + 0.18 * Math.sin(S.time * 5);
+      for (var i = 0; i < u.lanes.length; i++) {
+        var x = u.lanes[i], y = field.y + 55;
+        D.circle(x, y, 13, D.color('#fff0cf', 0.62 * pulse));
+        D.ring(x, y, 13, 2, D.color('#ab6438', pulse));
+        // 三路入口的向下箭头；仅提示敌人方向，不改变生成点。
+        D.roundRect(x - 2, y - 7, 4, 10, 2, D.color('#a95136', pulse));
+        D.roundRect(x - 7, y + 2, 14, 3, 1.5, D.color('#a95136', pulse));
+        D.roundRect(x - 4, y + 5, 8, 3, 1.5, D.color('#a95136', pulse));
+      }
+    }
+    if (!drag || !drag.active || !drag.def || drag.y >= u.tray.y) return;
+    var top = Math.max(field.y - 24, u.interactiveRect.y);
+    var bottom = Math.min(u.base.y + 10, u.tray.y - 4,
+      u.interactiveRect.y + u.interactiveRect.h);
+    var h = bottom - top;
+    if (h <= 0) return;
+    // 部署是连续坐标，不绘制虚假的格子。
+    D.roundRect(field.x, top, field.w, h, 8, D.color('#73e5a0', 0.055));
+    D.roundRect(field.x, top, field.w, 2, 1, D.color('#eaffbd', 0.56));
+    D.roundRect(field.x, bottom - 2, field.w, 2, 1, D.color('#eaffbd', 0.56));
   }
 
   function drawDragGhost() {
@@ -328,15 +409,15 @@
     var x = drag.x, y = drag.y;
     if (!overField) {
       // 手指还在商店里：卡片跟手，不显示落地预览
-      D.roundRect(x - 52, y - 34, 104, 68, 12, D.color('#0d1220', 0.55));
-      icon(def.icon, x - 20, y, 40, 0.96);
-      D.text(def.name, x + 4, y - 20, 18, D.color('#ffffff', 0.95), 0);
-      D.text(def.cost + ' 金币', x + 4, y + 2, 18, D.color('#ffd166', 0.95), 0);
+      D.roundRect(x - 52, y - 34, 104, 68, 12, D.color('#a96638', 0.9));
+      D.roundRect(x - 49, y - 31, 98, 62, 10, D.color('#fff0d9', 0.96));
+      heroArt(def, x - 20, y, 40, 0.96);
+      D.text(def.name, x + 4, y - 20, 18, D.color('#704026', 0.95), 0);
+      D.text(def.cost + ' 金币', x + 4, y + 2, 18, D.color('#9b5b30', 0.95), 0);
       return;
     }
-    var live = S.liveUnits();
-    var ok = A.Battle.canAfford(def) && live < S.heroCap &&
-      y > u.field.y - 30 && y < u.base.y;
+    var reason = A.Battle.deployBlockReason(def, x, y);
+    var ok = !reason && y < u.tray.y - 4;
     var col = ok ? '#6ff0a8' : '#ff6b7f';
 
     // 攻击半径（盾位无攻击，改画嘲讽半径）
@@ -355,9 +436,9 @@
     }
     D.circle(x, y, def.radius + 4, D.color(col, 0.22));
     D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
-    icon(def.icon, x, y, def.radius * 2.2, 0.94);
+    heroArt(def, x, y, def.radius * 3.4, 0.94);
     if (!ok) {
-      D.text(live >= S.heroCap ? '席位已满' : '金币不足', x, y + def.radius + 12, 18,
+      D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' : '请拖到战场', x, y + def.radius + 12, 18,
         D.color('#ff9aa8', 0.95), 1);
     }
   }
@@ -367,6 +448,7 @@
   A.Scene = {
     COL: COL,
     icon: icon,
+    heroArt: heroArt,
     ic: spriteIcon,
     frame: frame,
     additiveGlow: additiveGlow,
@@ -378,6 +460,7 @@
     drawEffects: drawEffects,
     drawFloats: drawFloats,
     drawSpawnHint: drawSpawnHint,
+    drawFieldGuides: drawFieldGuides,
     drawDragGhost: drawDragGhost,
   };
 })();

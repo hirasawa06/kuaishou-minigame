@@ -131,7 +131,7 @@
 
     // ── 商店托盘：金币条 + 两块功能按钮 + 4 格英雄卡池 ──
     var shopTop = tray.y + Math.max(8, Math.round(trayH * 0.045));
-    var headH = Math.max(26, Math.round(trayH * 0.14));
+    var headH = Math.max(36, Math.round(trayH * 0.14));
     var goldBar = {
       x: metrics.safeLeft + pad,
       y: shopTop,

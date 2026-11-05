@@ -128,19 +128,27 @@
 
   function canAfford(def) { return S.gold >= def.cost; }
 
-  function tryDeploy(card, x, y) {
+  function deployBlockReason(card, x, y) {
     var u = L.ui;
     var interactive = u.interactiveRect;
     if (x < interactive.x || x > interactive.x + interactive.w ||
-        y < interactive.y || y > interactive.y + interactive.h) return false;
-    if (x < u.field.x || x > u.field.x + u.field.w) return false;
-    if (y < u.field.y - 24 || y > u.base.y + 10) return false;
-    if (!canAfford(card)) {
+        y < interactive.y || y > interactive.y + interactive.h) return 'outside';
+    if (x < u.field.x || x > u.field.x + u.field.w) return 'outside';
+    if (y < u.field.y - 24 || y > u.base.y + 10) return 'outside';
+    if (!canAfford(card)) return 'gold';
+    // 死亡动画中的英雄不算占位
+    if (S.liveUnits() >= S.heroCap) return 'cap';
+    return null;
+  }
+
+  function tryDeploy(card, x, y) {
+    var reason = deployBlockReason(card, x, y);
+    if (reason === 'outside') return false;
+    if (reason === 'gold') {
       S.toastMsg('金币不足', 0.9);
       return false;
     }
-    // 死亡动画中的英雄不算占位
-    if (S.liveUnits() >= S.heroCap) {
+    if (reason === 'cap') {
       S.toastMsg('上场席位已满（' + S.heroCap + '），可花金币扩建', 1.3);
       return false;
     }
@@ -703,6 +711,7 @@
     update: update,
     tryDeploy: tryDeploy,
     canAfford: canAfford,
+    deployBlockReason: deployBlockReason,
     buyCard: buyCard,
     buyCardAtCenter: buyCardAtCenter,
     remainingEnemies: remainingEnemies,
