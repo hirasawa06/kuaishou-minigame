@@ -45,9 +45,9 @@
       hpRatio > 0.5 ? COL.hpGreen : hpRatio > 0.25 ? COL.hpOrange : COL.hpRed);
     D.text('基地', cx - 30, top + 50, 18, COL.textDim, 0);
 
-    // 金币与上场席位：整体靠右对齐到设置按钮左侧。
+    // 金币与上场席位：整体靠右对齐到暂停按钮左侧。
     // 席位文字贴右边界，金币数字和图标依次往左排，互不覆盖。
-    var rightEdge = u.gearBtn.x - 10;
+    var rightEdge = u.pauseBtn.x - 10;
     var slotLabel = '席位 ' + S.liveUnits() + '/' + S.heroCap;
     D.text(slotLabel, rightEdge, top + 38, 18, COL.textDim, 2);
     // 金币和席位都右对齐到同一条竖线：金币在上、席位在下，避免互相挤占
@@ -56,12 +56,7 @@
     D.text(goldText, rightEdge, top + 2, 28, COL.gold, 2);
     icon('ui-coin', rightEdge - goldW - 16, top + 16, 26);
 
-    // 设置 + 暂停：两个按钮同尺寸，命中区都与绘制矩形一致
-    var gb = u.gearBtn;
-    D.roundRect(gb.x, gb.y, gb.w, gb.h, 12, D.color('#1e2d52', 0.95));
-    D.strokeRect(gb.x, gb.y, gb.w, gb.h, 1, D.color('#3a5085'));
-    icon('ui-setting', gb.x + gb.w / 2, gb.y + gb.h / 2, gb.w * 0.5);
-
+    // 暂停
     var pb = u.pauseBtn;
     D.roundRect(pb.x, pb.y, pb.w, pb.h, 12, D.color('#1e2d52', 0.95));
     D.strokeRect(pb.x, pb.y, pb.w, pb.h, 1, D.color('#3a5085'));

@@ -123,22 +123,21 @@ async function main() {
   console.log('phase after start:', await evaluate('AIGCUtils.State.phase'))
   await shot('01-battle')
 
-  // HUD 设置按钮
-  await tapRect('AIGCUtils.Layout.ui.gearBtn')
-  console.log('gear -> phase:', await evaluate('AIGCUtils.State.phase'),
-    'panel:', await evaluate('AIGCUtils.ProfileUI.top()'))
-  await shot('02-settings-in-battle')
+  // HUD 只保留暂停按钮：确认设置按钮已移除
+  console.log('gearBtn exists:', await evaluate('!!AIGCUtils.Layout.ui.gearBtn'))
 
-  // 关闭设置：应回到暂停态
+  // 暂停面板
+  await tapRect('AIGCUtils.Layout.ui.pauseBtn')
+  console.log('pause -> phase:', await evaluate('AIGCUtils.State.phase'))
+  await shot('02-paused')
+
+  // 暂停面板：设置 → 关闭回暂停
+  await tapRect('AIGCUtils.Layout.ui.pausePanel.btn("settings")')
+  console.log('pause settings:', await evaluate('AIGCUtils.ProfileUI.top()'))
+  await shot('03-settings-from-pause')
   await tapRect('AIGCUtils.Layout.ui.settings.close')
   console.log('after close -> phase:', await evaluate('AIGCUtils.State.phase'),
     'panel:', await evaluate('AIGCUtils.ProfileUI.top()'))
-  await shot('03-paused')
-
-  // 暂停面板：设置 → 关闭 → 继续
-  await tapRect('AIGCUtils.Layout.ui.pausePanel.btn("settings")')
-  console.log('pause settings:', await evaluate('AIGCUtils.ProfileUI.top()'))
-  await tapRect('AIGCUtils.Layout.ui.settings.close')
 
   // 音效开关即时生效
   const sfxBefore = await evaluate('AIGCUtils.Profile.data.sfx')

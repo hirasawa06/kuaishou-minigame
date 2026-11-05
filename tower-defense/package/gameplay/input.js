@@ -158,7 +158,6 @@
       return;
     }
     if (S.phase === 'playing') {
-      if (hitControl(u.gearBtn, px, py, 10)) { A.Game.openSettings(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) { A.Game.togglePause(); return; }
       if (hitControl(u.refreshBtn, px, py, 4)) {
         S.refreshShop();
