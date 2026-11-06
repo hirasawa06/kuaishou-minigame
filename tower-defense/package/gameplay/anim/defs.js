@@ -9,6 +9,7 @@
   var tankSpec = A.CharacterAnimations.tank;
   var lampSpec = A.CharacterAnimations.lamp;
   var warSpec = A.CharacterAnimations.war;
+  var mageSpec = A.CharacterAnimations.mage;
 
   // 护盾柴犬：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
   var shiba = {
@@ -218,6 +219,49 @@
   var meleeCatFront = meleeCat('front');
   var meleeCatBack = meleeCat('back');
 
+  // 哈利边牧：法师位固定使用背面，紫色范围法术由运行时投射物与落点光圈表达。
+  var mageDog = {
+    scale: 1.02,
+    muzzle: mageSpec.states.attack.muzzle,
+    parts: [{ icon: mageSpec.frames.idle, pivot: [0.50, 0.88] }],
+    states: {
+      idle: {
+        dur: mageSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: mageSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 1.10, mods: [{ icon: mageSpec.frames.idle, dy: -0.8, sy: 1.016, sx: 0.994 }] },
+          { t: mageSpec.states.idle.duration, mods: [{ icon: mageSpec.frames.idle, dy: 0, sy: 1 }] },
+        ],
+      },
+      atk: {
+        dur: mageSpec.states.attack.duration, ease: 'inOutSine', hit: mageSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: mageSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.16, mods: [{ icon: mageSpec.frames.windup, dy: -1.1, rot: -1.2, sx: 0.99 }] },
+          { t: mageSpec.states.attack.hit, mods: [{ icon: mageSpec.frames.release, dy: -1.8, rot: 1.1, sx: 1.015 }] },
+          { t: 0.38, mods: [{ icon: mageSpec.frames.recover, dy: 0.5, rot: 0.3, sx: 1.005 }] },
+          { t: mageSpec.states.attack.duration, mods: [{ icon: mageSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+        ],
+      },
+      hurt: {
+        dur: mageSpec.states.hurt.duration, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: mageSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.09, mods: [{ icon: mageSpec.frames.hurt, dy: 2.0, rot: -2.0, sx: 1.01 }] },
+          { t: mageSpec.states.hurt.duration, mods: [{ icon: mageSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+        ],
+      },
+      die: {
+        dur: mageSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: mageSpec.frames.idle, alpha: 1, dy: 0 }] },
+          { t: 0.18, mods: [{ icon: mageSpec.frames.defeat, alpha: 1, dy: 3.0 }] },
+          { t: mageSpec.states.die.duration, mods: [{ icon: mageSpec.frames.defeat, alpha: 1, dy: 3.0 }] },
+        ],
+      },
+    },
+  };
+
   // 盾位：柴犬分件动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
     tank: shiba,
@@ -227,6 +271,7 @@
     war: meleeCatBack,
     'war-front': meleeCatFront,
     'war-back': meleeCatBack,
+    mage: mageDog,
     small: lampMinion,
   };
 })();

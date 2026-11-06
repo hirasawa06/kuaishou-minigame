@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>70° 正北俯视透视验证</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: #151722; color: #f7f0e5; font: 14px system-ui, sans-serif; }
+  main { width: min(100vw, 1040px); margin: auto; padding: 18px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 14px; }
+  label { display: flex; align-items: center; gap: 8px; }
+  .readout { color: #f6cb7d; font-weight: 700; min-width: 42px; }
+  canvas { width: 100%; aspect-ratio: 1.25; display: block; border: 1px solid #4e4165; border-radius: 14px; background: #292735; }
+  .hint { color: #cfc6dd; margin: 12px 0 0; line-height: 1.55; }
+</style>
+<main>
+  <div class="bar">
+    <strong>固定镜头：正南 → 正北 · 俯角 <span class="readout">70°</span></strong>
+  </div>
+  <canvas id="scene" width="1000" height="800"></canvas>
+  <p class="hint">相机位于战场正南、朝正北。紫色椭圆是贴在地面上的范围扩散；金色饼干沿地面方向飞行。角色、家具和特效都以同一个相机投影绘制。</p>
+</main>
+<script>
+(() => {
+  const canvas = document.querySelector('#scene');
+  const ctx = canvas.getContext('2d');
+  const elevation = 70;
+
+  function norm(v) {
+    const n = Math.hypot(v.x, v.y, v.z) || 1;
+    return { x: v.x / n, y: v.y / n, z: v.z / n };
+  }
+
+  function cross(a, b) {
+    return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };
+  }
+
+  function dot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+
+  function camera() {
+    const e = elevation * Math.PI / 180;
+    // 相机固定在战场正南，视线沿正北方向推进；不引入横向斜视。
+    const azimuth = 0;
+    const distance = 11;
+    const horizontal = distance * Math.cos(e);
+    const pos = { x: Math.sin(azimuth) * horizontal, y: -Math.cos(azimuth) * horizontal, z: distance * Math.sin(e) };
+    const forward = norm({ x: -pos.x, y: -pos.y, z: -pos.z });
+    const right = norm(cross(forward, { x: 0, y: 0, z: 1 }));
+    const up = cross(right, forward);
+    return { pos, forward, right, up, focal: 980 };
+  }
+
+  function project(p, cam) {
+    const rel = { x: p.x - cam.pos.x, y: p.y - cam.pos.y, z: p.z - cam.pos.z };
+    const depth = dot(rel, cam.forward);
+    const scale = cam.focal / Math.max(1, depth);
+    return { x: canvas.width * 0.5 + dot(rel, cam.right) * scale, y: canvas.height * 0.53 - dot(rel, cam.up) * scale, depth, scale };
+  }
+
+  function polygon(points, fill, stroke) {
+    ctx.beginPath();
+    points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+  }
+
+  function groundCircle(x, y, r, z, cam, fill, stroke, width = 1) {
+    const points = [];
+    for (let i = 0; i < 32; i++) {
+      const a = i / 32 * Math.PI * 2;
+      points.push(project({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r, z }, cam));
+    }
+    ctx.lineWidth = width;
+    polygon(points, fill, stroke);
+  }
+
+  function box(x, y, z, w, d, h, cam) {
+    const v = [
+      { x: x - w / 2, y: y - d / 2, z }, { x: x + w / 2, y: y - d / 2, z },
+      { x: x + w / 2, y: y + d / 2, z }, { x: x - w / 2, y: y + d / 2, z },
+      { x: x - w / 2, y: y - d / 2, z: z + h }, { x: x + w / 2, y: y - d / 2, z: z + h },
+      { x: x + w / 2, y: y + d / 2, z: z + h }, { x: x - w / 2, y: y + d / 2, z: z + h },
+    ].map((p) => project(p, cam));
+    polygon([v[0], v[1], v[5], v[4]], '#8b563a', '#edbd8a');
+    polygon([v[1], v[2], v[6], v[5]], '#69402f', '#db9b73');
+    polygon([v[4], v[5], v[6], v[7]], '#c67a4d', '#ffd2a1');
+  }
+
+  function capsule(x, y, cam) {
+    groundCircle(x, y, 0.54, 0.02, cam, 'rgba(0,0,0,.18)');
+    const foot = project({ x, y, z: 0.04 }, cam);
+    const head = project({ x, y, z: 1.15 }, cam);
+    const width = foot.scale * 0.78;
+    ctx.fillStyle = '#f0a14c';
+    ctx.beginPath();
+    ctx.ellipse(foot.x, foot.y - width * .16, width * .58, width * .37, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#574044';
+    ctx.beginPath();
+    ctx.ellipse(head.x, head.y, width * .6, width * .54, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff0df';
+    ctx.beginPath();
+    ctx.ellipse(head.x, head.y + width * .08, width * .32, width * .22, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function biscuit(x, y, z, cam, alpha = 1) {
+    const center = project({ x, y, z }, cam);
+    const size = center.scale * .65;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(center.x, center.y);
+    ctx.rotate(-.32);
+    ctx.fillStyle = '#f8bd55';
+    ctx.strokeStyle = '#fff1ab';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-size, -size * .32, size * 2, size * .64, size * .24);
+    ctx.fill(); ctx.stroke();
+    [[-size, -size * .38], [size, -size * .38], [-size, size * .38], [size, size * .38]].forEach(([px, py]) => {
+      ctx.beginPath(); ctx.arc(px, py, size * .33, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function grid(cam) {
+    for (let n = -4; n <= 4; n++) {
+      const a = project({ x: n, y: -4, z: 0 }, cam);
+      const b = project({ x: n, y: 4, z: 0 }, cam);
+      const c = project({ x: -4, y: n, z: 0 }, cam);
+      const d = project({ x: 4, y: n, z: 0 }, cam);
+      ctx.strokeStyle = n === 0 ? '#8e78a8' : '#514b60';
+      ctx.lineWidth = n === 0 ? 1.4 : .8;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+    }
+  }
+
+  function draw() {
+    const cam = camera();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    bg.addColorStop(0, '#302b42'); bg.addColorStop(1, '#171824');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    grid(cam);
+    box(2.7, .8, 0, 2.4, 1.8, 1.25, cam);
+    capsule(-1.8, 2.1, cam);
+    capsule(1.1, -1.5, cam);
+    groundCircle(2.1, 2.35, 2.1, .025, cam, 'rgba(169,81,255,.13)', '#d994ff', 2.4);
+    groundCircle(2.1, 2.35, 1.35, .03, cam, 'rgba(194,105,255,.14)', '#f1c5ff', 1.6);
+    biscuit(2.1, 2.35, .10, cam);
+    biscuit(-.05, .55, .7, cam, .96);
+    const origin = project({ x: -.05, y: .55, z: .6 }, cam);
+    const target = project({ x: 2.1, y: 2.35, z: .16 }, cam);
+    ctx.strokeStyle = 'rgba(231,164,255,.8)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.quadraticCurveTo((origin.x + target.x) / 2, (origin.y + target.y) / 2 - 26, target.x, target.y); ctx.stroke();
+    ctx.fillStyle = '#f3e7ff';
+    ctx.fillText('角色：立体胶囊', 28, 38);
+    ctx.fillText('家具：方盒', 28, 60);
+    ctx.fillText('飞弹与扩散：贴地 / 低空', 28, 82);
+  }
+
+  draw();
+})();
+</script>

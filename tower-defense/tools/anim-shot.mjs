@@ -147,6 +147,10 @@ const POSE = (state, t, fx) => `(function () {
     if (un.def.id === 'arch') {
       S.projectiles.push({ kind: 'light', x: cx + 8, y: cy - 7,
         tx: cx + 50, ty: cy - 44, color: un.def.color });
+    } else if (un.def.id === 'mage') {
+      S.projectiles.push({ kind: 'magic', x: cx, y: cy, tx: cx + 52, ty: cy - 34, color: un.def.color });
+      S.addEffect({ type: 'mage-biscuit-impact', x: un.x + 34, y: un.y - 30, r: 34,
+        life: 0.25, max: 0.5, color: un.def.color });
     } else {
       S.addEffect({ type: 'slash', x: un.x, y: un.y, tx: un.x + 34, ty: un.y - 30,
                     life: 0.12, max: 0.18, color: '#ffd9a0' });

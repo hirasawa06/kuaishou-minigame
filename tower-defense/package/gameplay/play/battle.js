@@ -327,7 +327,7 @@
       tx: target.x, ty: target.y,
       targetUid: target.uid,
       speed: def.cls === 'archer' ? 680 : 420,
-      kind: def.cls === 'archer' ? 'light' : 'fire',
+      kind: def.cls === 'archer' ? 'light' : def.cls === 'mage' ? 'magic' : 'fire',
       dmg: def.atk,
       splash: def.splash || 0,
       slow: def.slow || null,
@@ -350,10 +350,13 @@
       }
       damageEnemy(e, p.dmg, true);
     }
-    S.addEffect({
-      type: 'ring', x: cx, y: cy, r: p.splash * 0.35, r2: p.splash,
-      life: 0.34, max: 0.34, color: p.color,
-    });
+    // 法师有自己的贴地饼干扩散，不再叠一层通用正面圆环。
+    if (p.kind !== 'magic') {
+      S.addEffect({
+        type: 'ring', x: cx, y: cy, r: p.splash * 0.35, r2: p.splash,
+        life: 0.34, max: 0.34, color: p.color,
+      });
+    }
   }
 
   // ── 卡池（固定 4 格，不再滚动）──────────────────────────────
@@ -738,6 +741,12 @@
         p.y = p.ty;
         if (target) damageEnemy(target, p.dmg, false);
         if (p.splash) applySplash(p, p.x, p.y);
+        if (p.kind === 'magic') {
+          S.addEffect({
+            type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
+            life: 0.5, max: 0.5, color: p.color,
+          });
+        }
         else if (p.slow && target) {
           target.slowT = Math.max(target.slowT, p.slow.duration);
           target.slowFactor = p.slow.factor;

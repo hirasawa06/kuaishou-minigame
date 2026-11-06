@@ -150,6 +150,15 @@
     return sp;
   }
 
+  function mageVfx(name, cx, cy, w, h, rot, alpha, tint) {
+    var fx = A.MageVfx && A.MageVfx.effects[name];
+    var tex = Assets.entry('mage-vfx');
+    if (!fx || !tex) return;
+    tint = tint || { r: 1, g: 1, b: 1 };
+    D.sprite(tex.tex, tex.w, tex.h, fx[0], fx[1], fx[2], fx[3], cx, cy, w,
+      { rot: rot || 0, w: w, h: h, tint: { r: tint.r, g: tint.g, b: tint.b, a: alpha } });
+  }
+
   // 加法混合光斑：rgb 预先乘 alpha，这样加法混合下淡出才不会“越淡越亮”
   function additiveGlow(cx, cy, size, hex, alpha, rot) {
     var sp = glowTex();
@@ -159,6 +168,33 @@
       rot: rot || 0,
       tint: { r: c.r * alpha, g: c.g * alpha, b: c.b * alpha, a: 1 },
     });
+  }
+
+  // 70°正北俯视：地面上的圆形能量在屏幕中应是横向椭圆。
+  function additiveGroundGlow(cx, cy, width, height, hex, alpha) {
+    var sp = glowTex();
+    if (!sp) return;
+    var c = D.color(hex, 1);
+    D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, cx, cy, width, {
+      w: width, h: height, tint: { r: c.r * alpha, g: c.g * alpha, b: c.b * alpha, a: 1 },
+    });
+  }
+
+  function drawMageImpactParticles(e, t) {
+    var fade = 1 - t;
+    var burst = Math.min(1, t * 2.4);
+    A.Render.setAdditive(true);
+    additiveGroundGlow(e.x, e.y + 4, 42 + burst * 108, 20 + burst * 52, '#7130ff', fade * 0.92);
+    additiveGroundGlow(e.x, e.y + 4, 20 + burst * 58, 9 + burst * 28, '#d8baff', fade * 0.56);
+    for (var i = 0; i < 18; i++) {
+      var angle = i * Math.PI * 2 / 18 + 0.38;
+      var distance = 8 + burst * (44 + (i % 4) * 9);
+      var px = e.x + Math.cos(angle) * distance;
+      var py = e.y + 4 + Math.sin(angle) * distance * 0.52;
+      var color = i % 4 === 0 ? '#f2dcff' : '#b368ff';
+      additiveGlow(px, py, 7 + (i % 3) * 2, color, fade * (0.72 - (i % 3) * 0.08), 0);
+    }
+    A.Render.setAdditive(false);
   }
 
   function drawUnit(un) {
@@ -220,6 +256,11 @@
       } else if (p.kind === 'fire') {
         D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
         D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
+      } else if (p.kind === 'magic') {
+        var mdx = p.tx - p.x, mdy = p.ty - p.y;
+        // 源图的北向是画面上方；从这个基准绕中心转向实际目标方向。
+        var magicRot = Math.atan2(mdy, mdx) + Math.PI / 2;
+        mageVfx('flight', p.x, p.y, 58, 88, magicRot, 1);
       } else {
         D.circle(p.x, p.y, 5.6, D.color(p.color, 0.6));
         D.circle(p.x, p.y, 3, D.color('#e6fbff'));
@@ -256,6 +297,12 @@
         var g = 1 - t;
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
+      } else if (e.type === 'mage-biscuit-impact') {
+        // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。
+        var biscuitSize = (e.r || 34) * (1.85 + t * 0.28);
+        drawMageImpactParticles(e, t);
+        // 饼干是命中残留物：保持完整 0.5 秒，到时由效果生命周期直接移除。
+        mageVfx('impact', e.x, e.y + 3, biscuitSize, biscuitSize * 0.92, 0, 1);
       } else if (e.type === 'smoke') {
         var sp = Assets.sprite(smokeFrame(t));
         if (sp) {

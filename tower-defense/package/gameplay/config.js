@@ -69,7 +69,7 @@
       },
       {
         id: 'mage', name: '哈利边牧', cls: 'mage', clsName: '法师',
-        icon: 'unit-mage-1', cost: 9,
+        icon: 'mage-back-idle', cost: 9,
         hp: 150, atk: 54, interval: 1.5,
         range: 170, radius: 14, moveSpeed: 0,
         taunt: 0, splash: 70,
