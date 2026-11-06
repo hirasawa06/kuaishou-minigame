@@ -248,7 +248,7 @@ def spec_sheet_frame(spec, source_dir, name):
 
 
 def tank_frame(name):
-    """盾狗受击、晕倒与三帧光盾。"""
+    """柴不破的背面待机、受击与仰面倒地帧。"""
     frame = TANK_SPEC["frames"][name]
     if "columns" in frame:
         return spec_sheet_frame(TANK_SPEC, TANK_DOG_DIR, name)
@@ -558,7 +558,7 @@ def build():
     cell(ARCHER_SPEC["frames"]["defeat"]["icon"], archer_back_defeat())
     cell("fx-smoke-3", defeat_smoke(2))
 
-    # 盾狗：背面待机、受击与晕倒均为完整姿势帧。
+    # 柴不破：背面待机、受击与晕倒均为完整姿势帧。
     cell(TANK_SPEC["frames"]["idle"]["icon"], tank_frame("idle"))
     cell(TANK_SPEC["frames"]["hurt"]["icon"], tank_frame("hurt"))
     cell(TANK_SPEC["frames"]["defeat"]["icon"], tank_frame("defeat"))

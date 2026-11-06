@@ -11,7 +11,7 @@
   var warSpec = A.CharacterAnimations.war;
   var mageSpec = A.CharacterAnimations.mage;
 
-  // 护盾柴犬：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
+  // 柴不破：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
   var shiba = {
     parts: [
       { icon: tankSpec.frames.idle, pivot: [0.50, 0.88] },
@@ -26,15 +26,15 @@
           { t: 2.4, mods: [{ icon: tankSpec.frames.idle, dy: 0, sy: 1.00 }] },
         ],
       },
-      // 受击：改用情绪版同风格的完整姿势；第二分件隐藏，避免双盾重影。
+      // 受击：完整背面姿势配合轻微位移；不缩放，避免出现“压扁”观感。
       hurt: {
         dur: tankSpec.states.hurt.duration, ease: 'outQuad',
         keys: [
           { t: 0.00, mods: [{ icon: tankSpec.frames.idle, alpha: 1 }] },
           // 向镜头方向轻退并失衡：保持原体积，不做“受击被压扁”的夸张形变。
-          { t: 0.065, mods: [{ icon: tankSpec.frames.hurt, alpha: 1, dy: 1.8, sx: 1.01, sy: 1.00, rot: -1.5 }] },
-          { t: 0.17, mods: [{ icon: tankSpec.frames.hurt, alpha: 1, dy: 3.6, sx: 1.02, sy: 0.99, rot: -3.0 }] },
-          { t: 0.27, mods: [{ icon: tankSpec.frames.idle, alpha: 1, dy: 1.2, sx: 1.01, sy: 1.00, rot: -1.0 }] },
+          { t: 0.065, mods: [{ icon: tankSpec.frames.hurt, alpha: 1, dy: 1.8, rot: -1.5 }] },
+          { t: 0.17, mods: [{ icon: tankSpec.frames.hurt, alpha: 1, dy: 3.6, rot: -3.0 }] },
+          { t: 0.27, mods: [{ icon: tankSpec.frames.idle, alpha: 1, dy: 1.2, rot: -1.0 }] },
           { t: tankSpec.states.hurt.duration, mods: [{ icon: tankSpec.frames.idle, alpha: 1, dy: 0, sx: 1, sy: 1, rot: 0 }] },
         ],
       },
