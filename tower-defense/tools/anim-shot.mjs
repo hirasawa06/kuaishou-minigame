@@ -2,10 +2,9 @@
 /**
  * anim-shot.mjs — 定格动画帧截图
  *
- * 用 CDP 打开本地预览，在运行时摆一只盾犬和一个敌人，
- * 定格待机、受击与退场姿势；盾犬当前不执行攻击。
+ * 用 CDP 打开本地预览，定格盾犬或射手猫的战场姿势。
  *
- * 用法：node tools/anim-shot.mjs [--port 8099] [--out /tmp/tdanim]
+ * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|arch] [--out /tmp/tdanim]
  */
 
 import fs from 'node:fs'
@@ -15,6 +14,8 @@ import { spawn } from 'node:child_process'
 const args = process.argv.slice(2)
 const port = Number(args[args.indexOf('--port') + 1]) || 8099
 const outDir = args[args.indexOf('--out') + 1] || '/tmp/tdanim'
+const heroId = args.includes('--hero') ? args[args.indexOf('--hero') + 1] : 'tank'
+if (heroId !== 'tank' && heroId !== 'arch') throw new Error('只支持 tank 或 arch')
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -100,12 +101,12 @@ const SETUP = `(function () {
   S.toast = null;
   S.cardsPlaced = 1;
   S.waveState = 'fighting';
-  var card = S.heroById('tank');
+  var card = S.heroById(${JSON.stringify(heroId)});
   var un = {
     uid: 900, def: card,
     x: u.field.x + u.field.w * 0.40, y: u.field.y + u.field.h * 0.58,
     hp: card.hp, maxHp: card.hp, atkTimer: 9999, hitFlash: 0, slowT: 0,
-    spawnT: 0, dead: false, anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
+    spawnT: 0, dead: false, facing: 1, anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
   };
   S.units.push(un);
   S.enemies.push({
@@ -115,23 +116,20 @@ const SETUP = `(function () {
     anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
   });
   window.__un = un;
+  window.__enemy = S.enemies[0];
   // 冻结逻辑推进：只保留渲染，才能定格到精确帧
   window.__battleUpdate = A.Battle.update;
   A.Battle.update = function () {};
   return { x: Math.round(un.x), y: Math.round(un.y), phase: S.phase };
 })()`
 
-const POSE = (state, t, fx) => `(function () {
+const POSE = (state, t, facing = 1) => `(function () {
   var A = window.AIGCUtils, S = A.State, un = window.__un;
   un.anim = ${JSON.stringify(state)};
   un.animT = ${t};
-  if (${fx ? 'true' : 'false'}) {
-    var cx = un.x + 16, cy = un.y - 22;
-    S.effects.length = 0;
-    S.addEffect({ type: 'glow', x: cx, y: cy, r: 16, life: 0.13, max: 0.16, color: '#ffd9a0' });
-    S.addEffect({ type: 'slash', x: un.x, y: un.y, tx: un.x + 34, ty: un.y - 30,
-                  life: 0.12, max: 0.18, color: '#ffd9a0' });
-  }
+  un.facing = ${facing};
+  window.__enemy.x = un.x + ${facing} * 34;
+  S.effects.length = 0;
   return true;
 })()`
 
@@ -169,21 +167,28 @@ async function main() {
   if (renderCheck.errors.length) throw new Error(renderCheck.errors.join('\n'))
   const spriteCheck = await evaluate(`(function () {
     var A = window.AIGCUtils;
-    var name = A.Rigs.tank.parts[0].icon;
+    var name = A.Rigs[${JSON.stringify(heroId)}].parts[0].icon;
     var sp = A.Assets.sprite(name);
     return !!sp && !!A.Assets.tex('game') && !!A.GameAtlas.icons[name];
   })()`)
-  if (!spriteCheck) throw new Error('盾犬战场帧未加载')
+  if (!spriteCheck) throw new Error('角色战场帧未加载')
 
-  await evaluate(POSE('idle', 1.2, false))
+  await evaluate(POSE('idle', 1.2))
   await shot('01-idle')
 
-  const frames = [
-    ['02-hurt', 0.06, false],
-    ['03-die', 0.30, false],
+  const frames = heroId === 'arch' ? [
+    ['02-aim', 'atk', 0.04, 1],
+    ['03-fire-right', 'atk', 0.07, 1],
+    ['04-recoil', 'atk', 0.26, 1],
+    ['05-fire-left', 'atk', 0.07, -1],
+    ['06-hurt', 'hurt', 0.06, 1],
+    ['07-die', 'die', 0.30, 1],
+  ] : [
+    ['02-hurt', 'hurt', 0.06, 1],
+    ['03-die', 'die', 0.30, 1],
   ]
-  for (const [name, t, fx] of frames) {
-    await evaluate(POSE(name.includes('die') ? 'die' : name.includes('hurt') ? 'hurt' : 'atk', t, fx))
+  for (const [name, state, t, facing] of frames) {
+    await evaluate(POSE(state, t, facing))
     await shot(name)
   }
 

@@ -15,7 +15,7 @@
     "idle": { "duration": 2.2 },
     "attack": {
       "duration": 0.46,
-      "hit": 0.12,
+      "hit": 0.07,
       "directions": {
         "left": { "frame": "fireLeft", "muzzle": [-15, -10] },
         "right": { "frame": "fireRight", "muzzle": [15, -10] }

@@ -197,7 +197,8 @@
     var d = un.def;
     var r = d.radius;
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
-    var rig = A.Rigs && A.Rigs[d.id];
+    var rig = A.Rigs && (d.id === 'arch' && un.facing < 0
+      ? A.Rigs['arch-left'] : A.Rigs[d.id]);
     D.circle(un.x, un.y + r * 0.9, r * 0.85, D.color('#000000', 0.16));
 
     // 盾位：嘲讽范围常驻淡蓝光晕，脉动一下表示嘲讽在生效
@@ -219,7 +220,7 @@
         additiveGlow(un.x, un.y + r * 0.2, r * 3.2, '#7fb2ff', a, 0);
         A.Render.setAdditive(false);
       }
-      var size = r * 3.05 * (0.86 + 0.14 * spawn);
+      var size = r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn);
       A.Anim.draw(rig, un, un.x, un.y - r * 0.15, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
