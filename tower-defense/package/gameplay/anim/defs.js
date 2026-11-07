@@ -13,6 +13,8 @@
 
   // 柴不破：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
   var shiba = {
+    // 22.8 * 3.05 * 0.863 ≈ 60：按整体 1.2 倍放大后的贴图上限。
+    scale: 0.863,
     parts: [
       { icon: tankSpec.frames.idle, pivot: [0.50, 0.88] },
     ],
@@ -58,7 +60,8 @@
     var direction = states.attack.directions[side];
     var fireIcon = frames[direction.frame];
     return {
-      scale: 1.30,
+      // 20.4 * 3.05 * 0.887 ≈ 55.2。
+      scale: 0.887,
       muzzle: direction.muzzle,
       parts: [
         { icon: frames.idle, pivot: [0.50, 0.88] },
@@ -167,7 +170,8 @@
     var states = warSpec.states;
     var key = side === 'front' ? 'front' : 'back';
     return {
-      scale: 1.12,
+      // 21.6 * 3.05 * 0.874 ≈ 57.6。
+      scale: 0.874,
       parts: [{ icon: frames[key + 'Idle'], pivot: [0.50, 0.88] }],
       states: {
         idle: {
@@ -221,7 +225,8 @@
 
   // 哈利边牧：法师位固定使用背面，紫色范围法术由运行时投射物与落点光圈表达。
   var mageDog = {
-    scale: 1.02,
+    // 20.4 * 3.05 * 0.887 ≈ 55.2。
+    scale: 0.887,
     muzzle: mageSpec.states.attack.muzzle,
     parts: [{ icon: mageSpec.frames.idle, pivot: [0.50, 0.88] }],
     states: {

@@ -5,7 +5,7 @@
  * 用最小 WebGL / DOM mock 在 Node 里加载全部 gameplay 代码，跑真实主循环，
  * 用脚本化操作验证：能量积攒、拖卡布阵、丢卡、刷怪、结算。
  *
- * 用法：node tools/sim.mjs [--seconds 180] [--verbose]
+ * 用法：node tools/sim.mjs [--seconds 180] [--seed 1] [--hero-radius-scale 1] [--hero-action-scale 1] [--hero-stat-scale 1] [--base-hp-scale 1] [--verbose]
  */
 
 import fs from 'node:fs'
@@ -20,6 +20,23 @@ const PKG = path.join(ROOT, 'package')
 const args = process.argv.slice(2)
 const verbose = args.includes('--verbose')
 const seconds = Number(args[args.indexOf('--seconds') + 1]) || 180
+const seedArg = Number(args[args.indexOf('--seed') + 1])
+const heroRadiusScale = Number(args[args.indexOf('--hero-radius-scale') + 1]) || 1
+const heroActionScale = Number(args[args.indexOf('--hero-action-scale') + 1]) || 1
+const heroStatScale = Number(args[args.indexOf('--hero-stat-scale') + 1]) || 1
+const baseHpScale = Number(args[args.indexOf('--base-hp-scale') + 1]) || 1
+
+// 可选固定随机序列：用于比较同一波次与同一卡池下的数值差异。
+let random = Math.random
+if (Number.isFinite(seedArg)) {
+  let state = (seedArg >>> 0) || 1
+  random = () => {
+    state = (state * 1664525 + 1013904223) >>> 0
+    return state / 4294967296
+  }
+}
+const sandboxMath = Object.create(Math)
+sandboxMath.random = random
 
 // ── 最小 WebGL mock ────────────────────────────────────────────
 const GL_ENUM = {
@@ -115,7 +132,7 @@ const sandbox = {
   Uint16Array,
   Uint8Array,
   Float32Array,
-  Math,
+  Math: sandboxMath,
   Date,
   JSON,
   parseInt,
@@ -170,6 +187,25 @@ for (const f of FILES) {
 }
 
 const A = sandbox.AIGCUtils
+
+if (baseHpScale !== 1) A.Config.BASE_HP *= baseHpScale
+if (heroRadiusScale !== 1) {
+  for (const hero of A.Config.HEROES) hero.radius *= heroRadiusScale
+}
+if (heroActionScale !== 1) {
+  for (const hero of A.Config.HEROES) {
+    hero.range *= heroActionScale
+    if (hero.taunt) hero.taunt *= heroActionScale
+    if (hero.aggro) hero.aggro *= heroActionScale
+    if (hero.splash) hero.splash *= heroActionScale
+  }
+}
+if (heroStatScale !== 1) {
+  for (const hero of A.Config.HEROES) {
+    hero.hp *= heroStatScale
+    hero.atk *= heroStatScale
+  }
+}
 
 // 图片加载 mock：直接回调成功，宽高用真实图集尺寸
 const imageDims = {
@@ -283,8 +319,8 @@ for (let i = 0; i < totalFrames; i++) {
           if (sc > bestScore) { bestScore = sc; bestX = x }
         }
         const y = front
-          ? u.base.y - 40 - Math.random() * 40
-          : u.base.y - 120 - Math.random() * 70
+          ? u.base.y - 40 - random() * 40
+          : u.base.y - 120 - random() * 70
         if (A.Battle.buyCard(pick.index, bestX, y)) {
           placed++
           fielded = true

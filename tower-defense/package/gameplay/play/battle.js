@@ -83,10 +83,11 @@
     var u = L.ui;
     x = S.clamp(x, u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
     y = S.clamp(y, u.placeTop, u.placeBottom);
-    var minGap = C.UNIT_MIN_GAP;
     for (var pi = 0; pi < S.units.length; pi++) {
       var other = S.units[pi];
       if (other.dead) continue;
+      // 先按两只宠物的脚底占地避让；32 是旧场景所需的最小保底间距。
+      var minGap = Math.max(C.UNIT_MIN_GAP, card.radius + other.def.radius);
       var d = Math.sqrt(S.dist2(x, y, other.x, other.y));
       if (d >= minGap) continue;
       var nx = x - other.x, ny = y - other.y;
@@ -744,7 +745,7 @@
         if (p.kind === 'magic') {
           S.addEffect({
             type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
-            life: 0.5, max: 0.5, color: p.color,
+            life: 0.2, max: 0.2, color: p.color,
           });
         }
         else if (p.slow && target) {

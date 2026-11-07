@@ -109,12 +109,7 @@
         tilt = 6 * (1 - k) - 4 * k * (1 - k);
       }
     }
-    // 影子
-    D.circle(e.x, e.y + rr * 0.85, rr * 0.8, D.color('#000000', 0.28));
-    if (e.slowT > 0) {
-      D.circle(e.x, e.y, rr + 7, D.color('#5ab6e8', 0.18));
-      D.ring(e.x, e.y, rr + 5, 1.4, D.color('#8fe0ff', 0.55));
-    }
+    drawGroundShadow(e.x, e.y + rr * 0.84, rr * 0.70, 0.48 * spawn);
     if (rig) {
       A.Anim.draw(rig, e, e.x, e.y - r * 0.15, r * 3.05 * (rig.scale || 1) * scale, {
         alpha: 0.3 + 0.7 * spawn,
@@ -129,9 +124,6 @@
     var ratio = Math.max(0, e.hp / e.maxHp);
     if (!e.dead) hpBar(e.x - w / 2, e.y - rr - 12, w, ratio,
       e.def.id === 'boss' ? D.color('#ff6b9d') : COL.hpRed);
-    if (!e.dead && e.def.id === 'boss') {
-      D.ring(e.x, e.y, rr + 6 + Math.sin(S.time * 3) * 2, 1.6, D.color('#ffd166', 0.6));
-    }
   }
 
   // 图集帧绘制：优先用 frame 名字直接查 A.SpriteAtlas
@@ -148,6 +140,19 @@
   function glowTex() {
     var sp = Assets.sprite('fx-glow');
     return sp;
+  }
+
+  // 地面阴影复用柔边光斑纹理，正常混合下染成近黑色并压成椭圆。
+  // 它不是角色光环，边缘会随贴图 alpha 自然羽化。
+  function drawGroundShadow(cx, cy, radius, alpha) {
+    var sp = glowTex();
+    if (!sp) return;
+    var width = radius * 2;
+    D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, cx, cy, width, {
+      w: width,
+      h: radius * 0.56,
+      tint: { r: 0.02, g: 0.02, b: 0.03, a: alpha },
+    });
   }
 
   function mageVfx(name, cx, cy, w, h, rot, alpha, tint) {
@@ -202,12 +207,14 @@
     var r = d.radius;
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
     var rig = A.Rigs && A.Rigs[un.rigId || d.id];
-    D.circle(un.x, un.y + r * 0.9, r * 0.85, D.color('#000000', 0.16));
+    var size = rig
+      ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
+      : r * 2.35 * (0.8 + 0.2 * spawn);
+    // 动作贴图明显高于逻辑半径；阴影要按实际脚底而不是单位中心定位，避免被身体盖住。
+    var shadowY = rig ? un.y - r * 0.15 + size * 0.40 : un.y + size * 0.42;
 
+    drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     if (rig) {
-      D.circle(un.x, un.y, r + 3, D.color(d.color, 0.20));
-      D.ring(un.x, un.y, r + 2, 1.3, D.color(d.color, 0.6));
-      var size = r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn);
       A.Anim.draw(rig, un, un.x, un.y - r * 0.15, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
@@ -217,20 +224,9 @@
         A.Render.setAdditive(false);
       }
     } else {
-      D.circle(un.x, un.y, r + 3, D.color(d.color, 0.18));
-      D.ring(un.x, un.y, r + 2, 1.2, D.color(d.color, 0.55));
       var alpha = 0.25 + 0.75 * spawn;
-      icon(d.icon, un.x, un.y, r * 2.35 * (0.8 + 0.2 * spawn), alpha);
+      icon(d.icon, un.x, un.y, size, alpha);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
-    }
-
-    // 战士出击时脚下留一条回到驻点的虚线，便于读出动线
-    if (d.cls === 'warrior' && d.moveSpeed > 0) {
-      var dx = un.x - un.homeX, dy = un.y - un.homeY;
-      if (dx * dx + dy * dy > 900) {
-        D.ring(un.homeX, un.homeY, 8, 1.2, D.color(d.color, 0.35));
-        D.rect(un.homeX - 1, un.homeY - 1, 2, 2, D.color(d.color, 0.45));
-      }
     }
 
     var w = Math.max(22, r * 2.1);
@@ -301,7 +297,7 @@
         // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。
         var biscuitSize = (e.r || 34) * (1.85 + t * 0.28);
         drawMageImpactParticles(e, t);
-        // 饼干是命中残留物：保持完整 0.5 秒，到时由效果生命周期直接移除。
+        // 饼干是命中残留物：保持完整 0.2 秒，到时由效果生命周期直接移除。
         mageVfx('impact', e.x, e.y + 3, biscuitSize, biscuitSize * 0.92, 0, 1);
       } else if (e.type === 'smoke') {
         var sp = Assets.sprite(smokeFrame(t));
