@@ -47,7 +47,7 @@
         desc: '嘲讽周围敌人，只会格挡，不造成伤害',
       },
       {
-        id: 'war', name: '冲锋犬', cls: 'warrior', clsName: '战',
+        id: 'war', name: '近战猫', cls: 'warrior', clsName: '战',
         icon: 'unit-war-1', cost: 6,
         hp: 420, atk: 42, interval: 0.8,
         range: 46, radius: 15, moveSpeed: 52,
@@ -66,7 +66,7 @@
         desc: '射程最远，血量最少，单体高伤',
       },
       {
-        id: 'mage', name: '魔法猫', cls: 'mage', clsName: '法师',
+        id: 'mage', name: '法师狗', cls: 'mage', clsName: '法师',
         icon: 'unit-mage-1', cost: 9,
         hp: 150, atk: 54, interval: 1.5,
         range: 170, radius: 14, moveSpeed: 0,

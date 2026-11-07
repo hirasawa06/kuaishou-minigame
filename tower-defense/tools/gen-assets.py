@@ -45,7 +45,8 @@ STRINGS = [
     "费用攻击生命",
     "下一波",
 ]
-EXTRA = " 0123456789/:.+-%x×()！？，。·ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+# 保留既有图集字形，避免资源重生成时旧文案或历史界面缺字。
+EXTRA = " 0123456789/:.+-%x×()！？，。·ABCDEFGHIJKLMNOPQRSTUVWXYZ冲半径按移群落角钮锋驻魔狗"
 
 
 def collect_js_chars():

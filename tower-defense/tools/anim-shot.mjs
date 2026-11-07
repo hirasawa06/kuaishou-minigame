@@ -2,9 +2,9 @@
 /**
  * anim-shot.mjs — 定格动画帧截图
  *
- * 用 CDP 打开本地预览，定格盾犬、射手猫、台灯小怪或通用退场烟雾。
+ * 用 CDP 打开本地预览，定格英雄、台灯小怪或通用退场烟雾。
  *
- * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|arch] [--smoke|--lamp] [--out /tmp/tdanim]
+ * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|war|arch|mage] [--smoke|--lamp] [--out /tmp/tdanim]
  */
 
 import fs from 'node:fs'
@@ -16,7 +16,7 @@ const port = Number(args[args.indexOf('--port') + 1]) || 8099
 const outDir = args[args.indexOf('--out') + 1] || '/tmp/tdanim'
 const heroId = args.includes('--hero') ? args[args.indexOf('--hero') + 1] : 'tank'
 const smokeOnly = args.includes('--smoke')
-if (heroId !== 'tank' && heroId !== 'arch') throw new Error('只支持 tank 或 arch')
+if (!['tank', 'war', 'arch', 'mage'].includes(heroId)) throw new Error('未知英雄 ID')
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -168,6 +168,8 @@ async function main() {
   if (renderCheck.errors.length) throw new Error(renderCheck.errors.join('\n'))
   const spriteCheck = await evaluate(`(function () {
     var A = window.AIGCUtils;
+    var artKey = { war: 'melee-cat-back', mage: 'mage-dog-back' }[${JSON.stringify(heroId)}];
+    if (artKey) return !!A.Assets.entry(artKey);
     var name = A.Rigs[${JSON.stringify(heroId)}].parts[0].icon;
     var sp = A.Assets.sprite(name);
     return !!sp && !!A.Assets.tex('game') && !!A.GameAtlas.icons[name];

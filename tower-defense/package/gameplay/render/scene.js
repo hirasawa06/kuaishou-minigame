@@ -35,7 +35,19 @@
       { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
   }
 
-  function heroArt(def, cx, cy, size, alpha) {
+  function heroArt(def, cx, cy, size, alpha, view, facing) {
+    var artKey = null;
+    if (def.id === 'war') artKey = view === 'battle' ? 'melee-cat-back' : 'melee-cat-front';
+    else if (def.id === 'mage') artKey = view === 'battle' ? 'mage-dog-back' : 'mage-dog-front';
+    var art = artKey && Assets.entry(artKey);
+    if (art) {
+      var w = size * art.w / art.h;
+      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+        cx - w / 2, cy - size / 2, w, size,
+        { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha },
+        { flipX: facing < 0 });
+      return;
+    }
     var atlas = Assets.entry('hero-pets-atlas');
     var cell = null;
     if (def.id === 'tank') cell = [0, 0];
@@ -243,7 +255,7 @@
       D.circle(un.x, un.y, r + 3, D.color(d.color, 0.18));
       D.ring(un.x, un.y, r + 2, 1.2, D.color(d.color, 0.55));
       var alpha = 0.25 + 0.75 * spawn;
-      heroArt(d, un.x, un.y - r * 0.12, r * 3.4 * (0.8 + 0.2 * spawn), alpha);
+      heroArt(d, un.x, un.y - r * 0.12, r * 3.4 * (0.8 + 0.2 * spawn), alpha, 'battle', un.facing);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 

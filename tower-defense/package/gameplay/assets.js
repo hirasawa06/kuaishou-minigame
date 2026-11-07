@@ -100,6 +100,10 @@
     manifest.push(['enemy-furniture-atlas', 'res/Image/enemy-furniture-atlas.png']);
     manifest.push(['lamp-small', 'res/Image/lamp-small.png']);
     manifest.push(['hero-pets-atlas', 'res/Image/hero-pets-atlas.png']);
+    manifest.push(['melee-cat-front', 'res/Image/melee-cat-front.png']);
+    manifest.push(['melee-cat-back', 'res/Image/melee-cat-back.png']);
+    manifest.push(['mage-dog-front', 'res/Image/mage-dog-front.png']);
+    manifest.push(['mage-dog-back', 'res/Image/mage-dog-back.png']);
     manifest.push(['battle-fx-atlas', 'res/Image/battle-fx-atlas.png']);
     manifest.push(['hud-panel', 'res/Image/hud-panel.png']);
     manifest.push(['shop-tray', 'res/Image/shop-tray.png']);
