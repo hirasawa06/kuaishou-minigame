@@ -65,6 +65,7 @@ require("./kwaiOpenApi/kwai-storage.js"); // 本地存档（资料与设置）
 require("./gameplay/data/font-atlas.js"); // 字形图集数据
 require("./gameplay/data/sprites.js"); // 图标精灵图数据
 require("./gameplay/data/rigs.js"); // 战斗图集元数据（柴犬分件 + 特效）
+require("./gameplay/data/character-animations.js"); // 角色动作素材规格
 require("./gameplay/config.js"); // 数值配置
 require("./gameplay/layout.js"); // 竖屏布局
 require("./gameplay/state.js"); // 运行时数据模型

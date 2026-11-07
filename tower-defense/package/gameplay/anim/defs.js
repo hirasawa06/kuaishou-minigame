@@ -5,51 +5,38 @@
  */
 (function () {
   var A = window.AIGCUtils;
+  var tankFrames = A.CharacterAnimations.tank.frames;
 
-  // 护盾柴犬：身体 + 盾牌两件
-  // pivot 取分件在图集单元格内的握持点（盾牌绕爪子转，身体绕脚底转）
+  // 盾犬战场背视：完整姿势帧与角色动画规格共用图集。
+  // 卡牌正面图独立保留，不改变角色配置和碰撞范围。
   var shiba = {
     parts: [
-      { icon: 'unit-tank-1-body', pivot: [0.50, 0.88] },
-      { icon: 'unit-tank-1-shield', pivot: [0.70, 0.78] },
+      { icon: tankFrames.idle, pivot: [0.50, 0.88] },
     ],
     states: {
-      // 待机：呼吸（身体轻微上下 + 纵向缩放），盾牌滞后半拍
       idle: {
         dur: 2.4, loop: true, ease: 'inOutSine',
         keys: [
-          { t: 0.0, mods: [{ dy: 0, sy: 1.00 }, { dy: 0, rot: 0 }] },
-          { t: 1.2, mods: [{ dy: -1.1, sy: 1.022, sx: 0.994 }, { dy: -0.6, rot: -1.8 }] },
-          { t: 2.4, mods: [{ dy: 0, sy: 1.00 }, { dy: 0, rot: 0 }] },
+          { t: 0.0, mods: [{ icon: tankFrames.idle, dy: 0, sy: 1 }] },
+          { t: 1.2, mods: [{ icon: tankFrames.idle, dy: -1.1, sy: 1.022, sx: 0.994 }] },
+          { t: 2.4, mods: [{ icon: tankFrames.idle, dy: 0, sy: 1 }] },
         ],
       },
-      // 攻击：后拉蓄力 → 顶盾 → 回位。hit=0.17 时结算伤害
-      // 敌人自上而下，所以顶盾方向是右上（dy 为负）
-      atk: {
-        dur: 0.46, ease: 'outQuad', hit: 0.17,
-        keys: [
-          { t: 0.00, mods: [{ rot: 0, dx: 0, dy: 0 }, { rot: 0, dx: 0, dy: 0 }] },
-          { t: 0.09, mods: [{ rot: -5, dx: -1.6, dy: 1.0, sy: 0.968 }, { rot: -8, dx: -1.5, dy: 1.4 }] },
-          { t: 0.17, mods: [{ rot: 7, dx: 3.4, dy: -2.4, sx: 1.05, sy: 0.955 }, { rot: 16, dx: 2.6, dy: -5.0 }] },
-          { t: 0.28, mods: [{ rot: 3, dx: 1.6, dy: -1.2 }, { rot: 8, dx: 1.4, dy: -2.4 }] },
-          { t: 0.46, mods: [{ rot: 0, dx: 0, dy: 0 }, { rot: 0, dx: 0, dy: 0 }] },
-        ],
-      },
-      // 受击：向后仰一下
       hurt: {
         dur: 0.22, ease: 'outQuad',
         keys: [
-          { t: 0.00, mods: [{ rot: 0, dy: 0 }, { rot: 0 }] },
-          { t: 0.06, mods: [{ rot: 5, dy: 2.2, sx: 1.04, sy: 0.96 }, { rot: -8 }] },
-          { t: 0.22, mods: [{ rot: 0, dy: 0 }, { rot: 0 }] },
+          { t: 0.00, mods: [{ icon: tankFrames.idle, dy: 0, rot: 0 }] },
+          { t: 0.06, mods: [{ icon: tankFrames.hurt, dy: 2.2, rot: -3 }] },
+          { t: 0.17, mods: [{ icon: tankFrames.hurt, dy: 3.6, rot: -3 }] },
+          { t: 0.22, mods: [{ icon: tankFrames.idle, dy: 0, rot: 0 }] },
         ],
       },
-      // 死亡：缩扁 + 淡出，配合 effector 的烟尘
       die: {
         dur: 0.4, ease: 'inQuad',
         keys: [
-          { t: 0.00, mods: [{ sy: 1, sx: 1, dy: 0, alpha: 1 }, { rot: 0, dy: 0, alpha: 1 }] },
-          { t: 0.40, mods: [{ sy: 0.55, sx: 1.15, dy: 9, alpha: 0.15 }, { rot: -24, dy: 7, alpha: 0.1 }] },
+          { t: 0.00, mods: [{ icon: tankFrames.idle, alpha: 1, dy: 0 }] },
+          { t: 0.13, mods: [{ icon: tankFrames.defeat, alpha: 1, dy: 2.4 }] },
+          { t: 0.4, mods: [{ icon: tankFrames.defeat, alpha: 1, dy: 2.4 }] },
         ],
       },
     },

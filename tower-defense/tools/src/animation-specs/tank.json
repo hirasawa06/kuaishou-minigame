@@ -1,0 +1,16 @@
+{
+  "id": "tank",
+  "entity": "hero",
+  "render": "split-and-effect",
+  "sourceDir": "characters/角色/盾狗",
+  "frames": {
+    "idle": { "icon": "tank-back-idle", "file": "shield-dog-back-idle.png" },
+    "hurt": { "icon": "tank-hurt", "file": "shield-dog-back-hurt-v2.png" },
+    "defeat": { "icon": "tank-defeat", "file": "shield-dog-action-sheet.png", "index": 1, "columns": 2 }
+  },
+  "states": {
+    "idle": { "duration": 2.4 },
+    "hurt": { "duration": 0.34, "frame": "hurt" },
+    "die": { "duration": 0.46, "frame": "defeat" }
+  }
+}

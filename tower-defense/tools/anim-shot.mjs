@@ -2,8 +2,8 @@
 /**
  * anim-shot.mjs — 定格动画帧截图
  *
- * 用 CDP 打开本地预览，直接在运行时摆一个柴犬 + 一个敌人，
- * 按指定 animT 定格，逐帧截图，用于比对分件动画与特效。
+ * 用 CDP 打开本地预览，在运行时摆一只盾犬和一个敌人，
+ * 定格待机、受击与退场姿势；盾犬当前不执行攻击。
  *
  * 用法：node tools/anim-shot.mjs [--port 8099] [--out /tmp/tdanim]
  */
@@ -98,7 +98,9 @@ const SETUP = `(function () {
   S.effects.length = 0;
   S.floats.length = 0;
   S.toast = null;
-  var card = S.cardById('tank-a');
+  S.cardsPlaced = 1;
+  S.waveState = 'fighting';
+  var card = S.heroById('tank');
   var un = {
     uid: 900, def: card,
     x: u.field.x + u.field.w * 0.40, y: u.field.y + u.field.h * 0.58,
@@ -107,7 +109,7 @@ const SETUP = `(function () {
   };
   S.units.push(un);
   S.enemies.push({
-    uid: 901, def: A.Config.ENEMIES.grunt,
+    uid: 901, def: A.Config.ENEMIES.small,
     x: un.x + 34, y: un.y - 30, hp: 400, maxHp: 400, atk: 1, speed: 0,
     slowT: 0, slowFactor: 1, atkTimer: 9999, hitFlash: 0, spawnT: 0, dead: false,
     anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
@@ -147,21 +149,38 @@ async function main() {
   }
   await send('Runtime.enable')
   await send('Page.enable')
-  await sleep(2200)
+  for (let i = 0; i < 50; i++) {
+    if (await evaluate(`window.AIGCUtils && window.AIGCUtils.Assets && window.AIGCUtils.Assets.isReady()`)) break
+    await sleep(200)
+  }
+  const failures = await evaluate(`window.AIGCUtils.Assets.failures()`)
+  if (failures.length) throw new Error('资源加载失败: ' + JSON.stringify(failures))
 
   const pos = await evaluate(SETUP)
   console.log('unit at', pos)
+  const renderCheck = await evaluate(`(function () {
+    var A = window.AIGCUtils, errors = [], old = console.error;
+    console.error = function () { errors.push(Array.prototype.join.call(arguments, ' ')); };
+    A.Game.render.__logged = false;
+    A.Game.render();
+    console.error = old;
+    return { errors: errors, units: A.State.units.length, phase: A.State.phase };
+  })()`)
+  if (renderCheck.errors.length) throw new Error(renderCheck.errors.join('\n'))
+  const spriteCheck = await evaluate(`(function () {
+    var A = window.AIGCUtils;
+    var name = A.Rigs.tank.parts[0].icon;
+    var sp = A.Assets.sprite(name);
+    return !!sp && !!A.Assets.tex('game') && !!A.GameAtlas.icons[name];
+  })()`)
+  if (!spriteCheck) throw new Error('盾犬战场帧未加载')
 
   await evaluate(POSE('idle', 1.2, false))
   await shot('01-idle')
 
   const frames = [
-    ['02-atk-windup', 0.09, false],
-    ['03-atk-hit', 0.17, false],
-    ['03b-atk-hit-fx', 0.17, true],
-    ['04-atk-follow', 0.28, true],
-    ['05-hurt', 0.06, false],
-    ['06-die', 0.30, false],
+    ['02-hurt', 0.06, false],
+    ['03-die', 0.30, false],
   ]
   for (const [name, t, fx] of frames) {
     await evaluate(POSE(name.includes('die') ? 'die' : name.includes('hurt') ? 'hurt' : 'atk', t, fx))
