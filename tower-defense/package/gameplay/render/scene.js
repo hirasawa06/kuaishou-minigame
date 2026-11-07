@@ -210,8 +210,9 @@
     var size = rig
       ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
       : r * 2.35 * (0.8 + 0.2 * spawn);
-    // 动作贴图明显高于逻辑半径；阴影要按实际脚底而不是单位中心定位，避免被身体盖住。
-    var shadowY = rig ? un.y - r * 0.15 + size * 0.40 : un.y + size * 0.42;
+    // 阴影中心须落在脚底稍下方：此前放在贴图内部，几乎被身体完全盖住。
+    var spriteFootY = rig ? un.y - r * 0.15 + size * 0.50 : un.y + size * 0.50;
+    var shadowY = spriteFootY + r * 0.18;
 
     drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     if (rig) {
