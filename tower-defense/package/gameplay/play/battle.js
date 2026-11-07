@@ -199,6 +199,7 @@
       S.goldEarned += g;
       S.addFloat(e.x, e.y - e.def.radius - 20, '+' + g, '#ffd166');
       S.addEffect({ type: 'pop', x: e.x, y: e.y, r: e.def.radius, life: 0.42, max: 0.42, color: e.def.color });
+      S.addEffect({ type: 'smoke', x: e.x, y: e.y, r: e.def.radius, life: 0.55, max: 0.55, color: '#fff0e3' });
       if (e.def.tier === 'boss') onBossDeath(e);
     }
   }
@@ -232,7 +233,6 @@
       u.anim = 'die';
       u.animT = 0;
       u.dieT = 0.4;
-      S.addEffect({ type: 'smoke', x: u.x, y: u.y, r: u.def.radius, life: 0.55, max: 0.55, color: '#b9c2d8' });
       S.addEffect({ type: 'pop', x: u.x, y: u.y, r: u.def.radius, life: 0.4, max: 0.4, color: '#8e97b8' });
     }
   }
@@ -398,6 +398,8 @@
         un.animT += dt;
         un.dieT -= dt;
         if (un.dieT > 0) alive.push(un);
+        else S.addEffect({ type: 'smoke', x: un.x, y: un.y, r: un.def.radius,
+          life: 0.55, max: 0.55, color: '#fff0e3' });
         continue;
       }
       if (un.spawnT > 0) un.spawnT -= dt;

@@ -2,9 +2,9 @@
 /**
  * anim-shot.mjs — 定格动画帧截图
  *
- * 用 CDP 打开本地预览，定格盾犬或射手猫的战场姿势。
+ * 用 CDP 打开本地预览，定格盾犬、射手猫或通用退场烟雾。
  *
- * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|arch] [--out /tmp/tdanim]
+ * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|arch] [--smoke] [--out /tmp/tdanim]
  */
 
 import fs from 'node:fs'
@@ -15,6 +15,7 @@ const args = process.argv.slice(2)
 const port = Number(args[args.indexOf('--port') + 1]) || 8099
 const outDir = args[args.indexOf('--out') + 1] || '/tmp/tdanim'
 const heroId = args.includes('--hero') ? args[args.indexOf('--hero') + 1] : 'tank'
+const smokeOnly = args.includes('--smoke')
 if (heroId !== 'tank' && heroId !== 'arch') throw new Error('只支持 tank 或 arch')
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
@@ -172,6 +173,35 @@ async function main() {
     return !!sp && !!A.Assets.tex('game') && !!A.GameAtlas.icons[name];
   })()`)
   if (!spriteCheck) throw new Error('角色战场帧未加载')
+
+  if (smokeOnly) {
+    const smokeReady = await evaluate(`(function () {
+      var A = window.AIGCUtils;
+      return ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'].every(function (name) {
+        return !!A.Assets.sprite(name);
+      });
+    })()`)
+    if (!smokeReady) throw new Error('退场烟雾三帧未加载')
+    for (const [name, progress] of [
+      ['01-smoke-start', 0.08],
+      ['02-smoke-middle', 0.50],
+      ['03-smoke-end', 0.84],
+    ]) {
+      await evaluate(`(function () {
+        var A = window.AIGCUtils, S = A.State, un = window.__un;
+        S.units.length = 0;
+        S.enemies.length = 0;
+        S.effects.length = 0;
+        S.addEffect({ type: 'smoke', x: un.x, y: un.y, r: un.def.radius,
+          life: 0.55 * (1 - ${progress}), max: 0.55, color: '#fff0e3' });
+      })()`)
+      await shot(name)
+    }
+    console.log('烟雾截图目录:', outDir)
+    ws.close()
+    chrome.kill()
+    process.exit(0)
+  }
 
   await evaluate(POSE('idle', 1.2))
   await shot('01-idle')

@@ -6,6 +6,7 @@
   var L = A.Layout;
   var D = A.Render.draw;
   var Assets = A.Assets;
+  var SMOKE_FRAMES = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
 
   var COL = {
     bgTop: D.color('#101a33'),
@@ -303,12 +304,12 @@
         A.Render.setAdditive(false);
       } else if (e.type === 'smoke') {
         var sc = (e.r || 10) * (1 + t * 1.1);
-        if (!fxArt(1, 1, e.x, e.y, sc * 2, sc * 2, (1 - t) * 0.42, 0)) {
-          var sp = Assets.sprite('fx-smoke');
-          if (sp) {
+        var sp = Assets.sprite(SMOKE_FRAMES[Math.min(2, Math.floor(t * 3))]);
+        if (sp) {
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
-            e.x, e.y, sc * 2, { alpha: (1 - t) * 0.26, tint: D.color(e.color, 1) });
-          }
+            e.x, e.y, sc * 2, { alpha: 0.9 * (1 - t * t * t), tint: D.color(e.color, 1) });
+        } else {
+          fxArt(1, 1, e.x, e.y, sc * 2, sc * 2, (1 - t) * 0.42, 0);
         }
       }
     }

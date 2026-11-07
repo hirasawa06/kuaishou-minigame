@@ -355,4 +355,25 @@ if (!(S.phase === 'win' || S.phase === 'lose' || simTime > 5)) {
   console.error('仿真提前结束')
   process.exit(1)
 }
+
+// 退场姿势结束后才播放烟雾，且只触发一次。
+S.reset()
+S.waveTimer = 100
+S.units.push({ dead: true, dieT: 0.1, animT: 0, x: 120, y: 360,
+  def: S.heroById('tank') })
+A.Battle.update(0.05)
+if (S.units.length !== 1 || S.effects.some((e) => e.type === 'smoke')) {
+  console.error('退场姿势结束前出现烟雾')
+  process.exit(1)
+}
+A.Battle.update(0.06)
+if (S.units.length !== 0 || S.effects.filter((e) => e.type === 'smoke').length !== 1) {
+  console.error('退场姿势结束时未正确播放烟雾')
+  process.exit(1)
+}
+A.Battle.update(0.06)
+if (S.effects.filter((e) => e.type === 'smoke').length !== 1) {
+  console.error('退场烟雾重复触发')
+  process.exit(1)
+}
 console.log('\nOK')
