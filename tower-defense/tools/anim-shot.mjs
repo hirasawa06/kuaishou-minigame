@@ -2,9 +2,9 @@
 /**
  * anim-shot.mjs — 定格动画帧截图
  *
- * 用 CDP 打开本地预览，定格盾犬、射手猫或通用退场烟雾。
+ * 用 CDP 打开本地预览，定格盾犬、射手猫、台灯小怪或通用退场烟雾。
  *
- * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|arch] [--smoke] [--out /tmp/tdanim]
+ * 用法：node tools/anim-shot.mjs [--port 8099] [--hero tank|arch] [--smoke|--lamp] [--out /tmp/tdanim]
  */
 
 import fs from 'node:fs'
@@ -173,6 +173,24 @@ async function main() {
     return !!sp && !!A.Assets.tex('game') && !!A.GameAtlas.icons[name];
   })()`)
   if (!spriteCheck) throw new Error('角色战场帧未加载')
+
+  if (args.includes('--lamp')) {
+    const lampReady = await evaluate(`(function () {
+      var A = window.AIGCUtils;
+      if (!A.Assets.entry('lamp-small')) return false;
+      var u = A.Layout.ui, e = A.State.enemies[0];
+      e.x = u.field.x + u.field.w * 0.57;
+      e.y = u.field.y + u.field.h * 0.45;
+      e.spawnT = 0;
+      return true;
+    })()`)
+    if (!lampReady) throw new Error('台灯小怪素材未加载')
+    await shot('01-lamp-in-battle')
+    console.log('台灯截图目录:', outDir)
+    ws.close()
+    chrome.kill()
+    process.exit(0)
+  }
 
   if (smokeOnly) {
     const smokeReady = await evaluate(`(function () {

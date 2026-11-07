@@ -135,6 +135,7 @@
       }
     }
     var atlas = Assets.entry('enemy-furniture-atlas');
+    var lamp = e.def.id === 'small' ? Assets.entry('lamp-small') : null;
     var cell = null;
     if (e.def.id === 'small') cell = [0, 0];
     else if (e.def.id === 'normal') cell = [1, 0];
@@ -145,7 +146,15 @@
       D.circle(e.x, e.y, rr + 7, D.color('#5ab6e8', 0.18));
       D.ring(e.x, e.y, rr + 5, 1.4, D.color('#8fe0ff', 0.55));
     }
-    if (atlas && cell) {
+    if (lamp) {
+      // 设定板提取的台灯单图保持原始纵横比；底部阴影单独绘制。
+      var lampH = rr * 5.0;
+      var lampW = lampH * lamp.w / lamp.h;
+      D.circle(e.x, e.y + lampH * 0.43, rr * 1.35, D.color('#57321f', 0.16 * spawn));
+      D.texture(lamp.tex, lamp.w, lamp.h, 0, 0, lamp.w, lamp.h,
+        e.x - lampW / 2, e.y + wind - lampH / 2, lampW, lampH,
+        { r: 1, g: 1, b: 1, a: spawn });
+    } else if (atlas && cell) {
       var cw = atlas.w / 2, ch = atlas.h / 2;
       // 图集每格保留透明边距；只放大美术，不改变单位半径与碰撞规则。
       var size = rr * (e.def.id === 'small' ? 5.0 : e.def.id === 'normal' ? 4.6 : 4.2);

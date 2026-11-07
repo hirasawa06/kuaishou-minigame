@@ -98,6 +98,7 @@
     manifest.push(['in-game-background', 'res/Image/in-game-background.png']);
     manifest.push(['guardian-sofa', 'res/Image/guardian-sofa.png']);
     manifest.push(['enemy-furniture-atlas', 'res/Image/enemy-furniture-atlas.png']);
+    manifest.push(['lamp-small', 'res/Image/lamp-small.png']);
     manifest.push(['hero-pets-atlas', 'res/Image/hero-pets-atlas.png']);
     manifest.push(['battle-fx-atlas', 'res/Image/battle-fx-atlas.png']);
     manifest.push(['hud-panel', 'res/Image/hud-panel.png']);
