@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen-shiba-atlas.py — 战斗精灵图集（128 单元格，1024x1024 内装得下）
+gen-shiba-atlas.py — 战斗精灵图集（128 单元格，自动扩展至 1024x1152）
 
 输入（tools/src/）：
   shiba-front.png   从角色设定图抠出的护盾柴犬正视图（RGBA）
@@ -9,7 +9,7 @@ gen-shiba-atlas.py — 战斗精灵图集（128 单元格，1024x1024 内装得�
   package/res/Image/game.png        128 单元格图集（2x 绘制后缩放）
   package/gameplay/data/rigs.js     分件坐标 + 高分辨率特效元数据
 
-图集布局：8 列 × 8 行，单元格 128px（含 4px padding，有效区 120px）。
+图集布局：8 列 × 9 行，单元格 128px（含 4px padding，有效区 120px）。
 帧按注册顺序自动排格；运行时只能通过稳定帧名查找，不能依赖行列位置。
 """
 
@@ -29,7 +29,7 @@ SRC_DIR = os.path.join(ROOT, "tools", "src")
 CELL = 128
 PAD = 4
 COLS = 8
-ROWS = 8
+ROWS = 9
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
 
@@ -67,6 +67,8 @@ TANK_SPEC = load_animation_spec("tank")
 TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
 LAMP_SPEC = load_animation_spec("lamp")
 LAMP_DIR = os.path.join(SRC_DIR, LAMP_SPEC["sourceDir"])
+NORMAL_SPEC = load_animation_spec("normal")
+NORMAL_DIR = os.path.join(SRC_DIR, NORMAL_SPEC["sourceDir"])
 WAR_SPEC = load_animation_spec("war")
 WAR_CAT_DIR = os.path.join(SRC_DIR, WAR_SPEC["sourceDir"])
 MAGE_SPEC = load_animation_spec("mage")
@@ -245,6 +247,14 @@ def spec_sheet_frame(spec, source_dir, name):
     x0, x1 = col * width // columns, (col + 1) * width // columns
     y0, y1 = row * height // rows, (row + 1) * height // rows
     return fit_visible(sheet.crop((x0, y0, x1, y1)))
+
+
+def normal_cabinet_frame(name):
+    """普通柜怪动作源含生图留下的极低 alpha 彩点；和 fit_visible 的阈值保持一致清除。"""
+    img = spec_sheet_frame(NORMAL_SPEC, NORMAL_DIR, name)
+    rgba = np.asarray(img).copy()
+    rgba[rgba[:, :, 3] < 16] = 0
+    return Image.fromarray(rgba, "RGBA")
 
 
 def tank_frame(name):
@@ -567,6 +577,10 @@ def build():
     for frame_name, frame in LAMP_SPEC["frames"].items():
         cell(frame["icon"], lamp_frame(frame_name))
 
+    # 普通柜怪：待机、迈步、整体后仰蓄力与柜体前探撞击。
+    for frame_name, frame in NORMAL_SPEC["frames"].items():
+        cell(frame["icon"], normal_cabinet_frame(frame_name))
+
     # 近战猫：正背朝向分别提供待机、走步、挥锤、受击和倒地姿势。
     for frame_name, frame in WAR_SPEC["frames"].items():
         cell(frame["icon"], war_frame(frame_name))
@@ -594,7 +608,13 @@ def build():
             im = im.resize((CELL - 2 * PAD, CELL - 2 * PAD), Image.LANCZOS)
             cell(name, im)
 
-    atlas.save(os.path.join(IMG_DIR, "game.png"))
+    # 图集扩容后仍需满足快手主包 6 MiB 门槛。游戏内角色最大显示尺寸远小于图集单元，
+    # 统一为 256 色并关闭抖动，既避免肉眼可见的噪点，也把主包留在平台限制以内。
+    atlas.quantize(
+        colors=256,
+        method=Image.Quantize.FASTOCTREE,
+        dither=Image.Dither.NONE,
+    ).save(os.path.join(IMG_DIR, "game.png"), optimize=True, compress_level=9)
 
     anchor_json = {}
     for name, ox, oy, w_, h_ in (
@@ -604,7 +624,7 @@ def build():
         anchor_json[name] = [round(ox, 1), round(oy, 1)]
 
     data = {
-        "src": "res/Image/game.png",
+        "src": "res/Image/game.png?v=6",
         "texW": ATLAS_W,
         "texH": ATLAS_H,
         "cell": CELL,
@@ -632,7 +652,7 @@ def write_rigs(atlas_data, mage_vfx):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, WAR_SPEC, MAGE_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],

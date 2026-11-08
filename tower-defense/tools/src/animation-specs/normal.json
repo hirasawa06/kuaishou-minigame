@@ -1,0 +1,17 @@
+{
+  "id": "normal",
+  "entity": "enemy",
+  "render": "whole",
+  "sourceDir": "characters/角色/普通柜怪",
+  "frames": {
+    "idle": { "icon": "normal-cabinet-idle", "file": "普通柜怪动作-v1.png", "index": 0, "columns": 2, "rows": 2 },
+    "step": { "icon": "normal-cabinet-step", "file": "普通柜怪动作-v1.png", "index": 1, "columns": 2, "rows": 2 },
+    "windup": { "icon": "normal-cabinet-windup", "file": "普通柜怪动作-v1.png", "index": 2, "columns": 2, "rows": 2 },
+    "impact": { "icon": "normal-cabinet-impact", "file": "普通柜怪动作-v1.png", "index": 3, "columns": 2, "rows": 2 }
+  },
+  "states": {
+    "idle": { "duration": 2.2 },
+    "move": { "duration": 0.48, "frame": "step" },
+    "attack": { "duration": 0.44, "hit": 0.24, "windup": "windup", "impact": "impact" }
+  }
+}

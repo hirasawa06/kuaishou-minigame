@@ -8,6 +8,7 @@
   var archSpec = A.CharacterAnimations.arch;
   var tankSpec = A.CharacterAnimations.tank;
   var lampSpec = A.CharacterAnimations.lamp;
+  var normalSpec = A.CharacterAnimations.normal;
   var warSpec = A.CharacterAnimations.war;
   var mageSpec = A.CharacterAnimations.mage;
 
@@ -164,6 +165,43 @@
     },
   };
 
+  // 普通柜怪：移动是四脚交替的短步，攻击是眼部朝前的整体撞击，抽屉始终闭合。
+  var normalCabinet = {
+    // 20 * 3.05 * 0.92 ≈ 56：符合普通柜怪 55–60 的可见主体宽度。
+    scale: 0.92,
+    parts: [
+      { icon: normalSpec.frames.idle, pivot: [0.50, 0.88] },
+    ],
+    states: {
+      idle: {
+        dur: normalSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 1.10, mods: [{ icon: normalSpec.frames.idle, dy: -0.7, sy: 1.012, sx: 0.996 }] },
+          { t: normalSpec.states.idle.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      move: {
+        dur: normalSpec.states.move.duration, loop: true, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0, sy: 1 }] },
+          { t: 0.15, mods: [{ icon: normalSpec.frames.step, dy: -1.3, rot: -1.2, sy: 0.99, sx: 1.01 }] },
+          { t: normalSpec.states.move.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      atk: {
+        dur: normalSpec.states.attack.duration, ease: 'inOutSine', hit: normalSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+          { t: 0.14, mods: [{ icon: normalSpec.frames.windup, dy: -1.5, rot: -2.5, sy: 0.99 }] },
+          { t: normalSpec.states.attack.hit, mods: [{ icon: normalSpec.frames.impact, dy: 3.8, rot: 2.2, sx: 1.025 }] },
+          { t: 0.34, mods: [{ icon: normalSpec.frames.impact, dy: 1.2, rot: 0.8, sx: 1.01 }] },
+          { t: normalSpec.states.attack.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+    },
+  };
+
   // 近战猫：根据目标与移动方向切换正面 / 背面整姿势帧。
   function meleeCat(side) {
     var frames = warSpec.frames;
@@ -278,5 +316,6 @@
     'war-back': meleeCatBack,
     mage: mageDog,
     small: lampMinion,
+    normal: normalCabinet,
   };
 })();

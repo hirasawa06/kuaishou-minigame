@@ -271,7 +271,7 @@ function assertNoBodyOverlap() {
       const minimum = a.def.radius + b.def.radius + A.Config.ACTOR_BODY_GAP
       // 0.1 逻辑像素以内只可能来自浮点累计，不会形成可见穿模。
       if (distance + 0.1 < minimum) {
-        throw new Error(`角色体积重叠：${a.uid}(${a.def.id}) 与 ${b.uid}(${b.def.id})，距离 ${distance.toFixed(2)} < ${minimum.toFixed(2)}`)
+        throw new Error(`角色体积重叠：${a.uid}(${a.def.id})@${a.x.toFixed(2)},${a.y.toFixed(2)} 与 ${b.uid}(${b.def.id})@${b.x.toFixed(2)},${b.y.toFixed(2)}，距离 ${distance.toFixed(2)} < ${minimum.toFixed(2)}`)
       }
     }
   }

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>70° 正北俯视透视验证</title>
+<title>60° 正北俯视透视验证</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; background: #151722; color: #f7f0e5; font: 14px system-ui, sans-serif; }
@@ -15,7 +15,7 @@
 </style>
 <main>
   <div class="bar">
-    <strong>固定镜头：正南 → 正北 · 俯角 <span class="readout">70°</span></strong>
+    <strong>固定镜头：正南 → 正北 · 俯角 <span class="readout">60°</span></strong>
   </div>
   <canvas id="scene" width="1000" height="800"></canvas>
   <p class="hint">相机位于战场正南、朝正北。紫色椭圆是贴在地面上的范围扩散；金色饼干沿地面方向飞行。角色、家具和特效都以同一个相机投影绘制。</p>
@@ -24,7 +24,7 @@
 (() => {
   const canvas = document.querySelector('#scene');
   const ctx = canvas.getContext('2d');
-  const elevation = 70;
+  const elevation = 60;
 
   function norm(v) {
     const n = Math.hypot(v.x, v.y, v.z) || 1;

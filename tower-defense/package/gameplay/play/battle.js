@@ -51,13 +51,22 @@
     var def = C.ENEMIES[spec.id];
     var u = L.ui;
     var lane = S.randInt(u.lanes.length);
-    var laneSpread = u.field.w * 0.62 / 3;
-    var laneX = u.lanes[lane] + (Math.random() - 0.5) * laneSpread;
+    // 敌人走固定三路。此前出生时在整条路宽内随机横移，又让所有怪物互相
+    // 四向推开；普通柜怪放大后会在同一团里被来回弹开，表现成原地踏步。
+    var laneX = u.lanes[lane];
+    var spawnY = u.spawnY - S.rand(12);
+    // 同一路的新怪从前一只的身后开始排队，避免刚出生就与前排重叠。
+    for (var i = 0; i < S.enemies.length; i++) {
+      var ahead = S.enemies[i];
+      if (ahead.dead || ahead.lane !== lane) continue;
+      var spacing = def.radius + ahead.def.radius + C.ACTOR_BODY_GAP + 0.5;
+      if (spawnY + spacing > ahead.y) spawnY = ahead.y - spacing;
+    }
     var e = {
       uid: S.uid++,
       def: def,
-      x: S.clamp(laneX, u.field.x + 26, u.field.x + u.field.w - 26),
-      y: u.spawnY - S.rand(24),
+      x: S.clamp(laneX, u.field.x + def.radius, u.field.x + u.field.w - def.radius),
+      y: spawnY,
       lane: lane,
       hp: Math.round(def.hp * spec.hp),
       maxHp: Math.round(def.hp * spec.hp),
@@ -84,7 +93,7 @@
     x = S.clamp(x, u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
     y = S.clamp(y, u.placeTop, u.placeBottom);
     // 新宠物被挤开后可能靠近前一只，因此重复扫几轮，直到所有脚底体积都分开。
-    for (var pass = 0; pass < 8; pass++) {
+    for (var pass = 0; pass < 24; pass++) {
       var adjusted = false;
       for (var pi = 0; pi < S.units.length; pi++) {
         var other = S.units[pi];
@@ -114,14 +123,14 @@
       var check = S.units[ci];
       if (check.dead) continue;
       var required = Math.max(C.UNIT_MIN_GAP,
-        card.radius + check.def.radius + C.ACTOR_BODY_GAP);
+        card.radius + check.def.radius + C.ACTOR_BODY_GAP + 0.5);
       if (Math.sqrt(S.dist2(x, y, check.x, check.y)) + 0.02 < required) return null;
     }
     // 部署不允许直接压在行进中的怪物上；避免刚落地的一帧就出现穿模。
     for (var ei = 0; ei < S.enemies.length; ei++) {
       var enemy = S.enemies[ei];
       if (enemy.dead) continue;
-      var enemyGap = card.radius + enemy.def.radius + C.ACTOR_BODY_GAP;
+      var enemyGap = card.radius + enemy.def.radius + C.ACTOR_BODY_GAP + 0.5;
       if (Math.sqrt(S.dist2(x, y, enemy.x, enemy.y)) + 0.02 < enemyGap) return null;
     }
     var unit = {
@@ -312,6 +321,7 @@
   }
 
   function deathSmoke(unit) {
+    // 仅宠物保留死亡烟雾；所有怪物的倒地/受击动作结束后直接从场上移除。
     S.addEffect({
       type: 'smoke', x: unit.x, y: unit.y, r: unit.def.radius,
       life: 0.45, max: 0.45, color: '#ffffff',
@@ -445,16 +455,90 @@
       if (!S.enemies[i].dead) actors.push({ actor: S.enemies[i], kind: 'enemy' });
     }
 
+    // 跨路避让与同路排队会互相改变位置；交替收敛几轮，确保最终帧同时
+    // 满足两者，而不是留下半像素重叠或把同路怪重新揉成一团。
+    for (var settle = 0; settle < 6; settle++) {
+      resolveBodyPairs(actors);
+      resolveEnemyLaneQueues();
+    }
+    resolveWarriorClearance(actors);
+  }
+
+  function resolveBodyPairs(actors) {
     // 多轮清开同一帧的连锁挤压；没有重叠时立即退出，密集阵位才会用满上限。
-    for (var pass = 0; pass < 24; pass++) {
+    var i;
+    for (var pass = 0; pass < 8; pass++) {
       var adjusted = false;
       for (i = 0; i < actors.length; i++) {
         for (var j = i + 1; j < actors.length; j++) {
+          // 敌人已按 lane 前后排队。若仍在这里做圆形四向推开，后排会每帧
+          // 推动前排并被前排反推，造成成团横跳和移动动作空转。
+          if (actors[i].kind === 'enemy' && actors[j].kind === 'enemy' &&
+              actors[i].actor.lane === actors[j].actor.lane) continue;
           if (separateBodies(actors[i], actors[j])) adjusted = true;
         }
       }
       if (!adjusted) break;
     }
+  }
+
+  // 宠物碰撞会把队首向北挪动；在所有宠物碰撞都落定后，从队首向后重排，
+  // 让同一路敌人始终保持脚底间距，不能留下“差半个像素”的累积重叠。
+  function resolveEnemyLaneQueues() {
+    var u = L.ui;
+    for (var lane = 0; lane < u.lanes.length; lane++) {
+      var queue = [];
+      for (var i = 0; i < S.enemies.length; i++) {
+        var e = S.enemies[i];
+        if (!e.dead && e.lane === lane) queue.push(e);
+      }
+      // y 更大的在前（更靠近基地），从前向后逐只排开。
+      queue.sort(function (a, b) { return b.y - a.y; });
+      for (var q = 1; q < queue.length; q++) {
+        var front = queue[q - 1];
+        var rear = queue[q];
+        var minY = front.y - (front.def.radius + rear.def.radius + C.ACTOR_BODY_GAP + 0.5);
+        if (rear.y > minY) rear.y = minY;
+      }
+    }
+  }
+
+  // 当近战猫同时挨着多个目标时，逐对推开会在两个接触面之间来回摆动。
+  // 只在仍有重叠时搜索一个同时避开所有脚底体积的附近站位，作为本帧最终位置。
+  function resolveWarriorClearance(actors) {
+    for (var i = 0; i < actors.length; i++) {
+      var body = actors[i];
+      if (body.kind !== 'unit' || body.actor.def.cls !== 'warrior') continue;
+      var warrior = body.actor;
+      if (hasBodyClearance(warrior, actors)) continue;
+      var ox = warrior.x;
+      var oy = warrior.y;
+      var best = null;
+      for (var radius = 2; radius <= 40 && !best; radius += 2) {
+        for (var step = 0; step < 24; step++) {
+          var angle = step * Math.PI * 2 / 24;
+          warrior.x = ox + Math.cos(angle) * radius;
+          warrior.y = oy + Math.sin(angle) * radius;
+          clampBody(body);
+          if (hasBodyClearance(warrior, actors)) {
+            best = { x: warrior.x, y: warrior.y };
+            break;
+          }
+        }
+      }
+      warrior.x = best ? best.x : ox;
+      warrior.y = best ? best.y : oy;
+    }
+  }
+
+  function hasBodyClearance(actor, actors) {
+    for (var i = 0; i < actors.length; i++) {
+      var other = actors[i].actor;
+      if (other === actor) continue;
+      var required = actor.def.radius + other.def.radius + C.ACTOR_BODY_GAP + 0.5;
+      if (S.dist2(actor.x, actor.y, other.x, other.y) < required * required) return false;
+    }
+    return true;
   }
 
   function separateBodies(a, b) {
@@ -491,6 +575,7 @@
       // 怪物推进方向是向南。撞上固定宠物时必须先退回北侧排队，不能被挤到
       // 宠物和基地之间；战士则维持原来的接触方向。
       var queueNorth = movable.kind === 'enemy' && fixed.kind === 'unit';
+      if (queueNorth) return placeEnemyNorthOfUnit(movable, fixed, targetDistance);
       var direction = queueNorth ? -Math.PI / 2
         : moveA > 0 ? Math.atan2(-ny, -nx) : Math.atan2(ny, nx);
       return placeOutsideBody(movable, fixed, targetDistance, direction, queueNorth);
@@ -502,6 +587,19 @@
     bb.y += ny * overlap * moveB / total;
     clampBody(a);
     clampBody(b);
+    return true;
+  }
+
+  function placeEnemyNorthOfUnit(movable, fixed, targetDistance) {
+    var mover = movable.actor;
+    var anchor = fixed.actor;
+    // 保留怪物原本的 lane x，只在竖直方向排到宠物北侧。旧做法把所有怪物
+    // 的 x 强行设成宠物 x，导致原本三路的怪又被揉成同一个碰撞团。
+    mover.x = S.clamp(mover.x, L.ui.field.x + mover.def.radius, L.ui.field.x + L.ui.field.w - mover.def.radius);
+    var dx = mover.x - anchor.x;
+    var yOffset = Math.sqrt(Math.max(0, targetDistance * targetDistance - dx * dx));
+    mover.y = anchor.y - yOffset;
+    clampBody(movable);
     return true;
   }
 
@@ -540,6 +638,9 @@
   function bodyMoveWeight(body, other) {
     // 固定宠物是玩家部署的阵位；主动出击的战士和怪物都属于可被挤开的移动角色。
     if (body.kind === 'unit') return body.actor.def.cls === 'warrior' ? 1 : 0;
+    // 近战猫主动接近敌人时，发生极小的边界重叠应由猫后退，而不是把敌人
+    // 推回队列、带动后排重新排队。
+    if (other.kind === 'unit' && other.actor.def.cls === 'warrior') return 0;
     return 1;
   }
 
@@ -653,14 +754,15 @@
         var ty = un.homeY;
         if (chase) {
           tx = chase.x;
-          ty = chase.y - def.range * 0.55;
+          // 近战猫走到脚底接触距离即停，不能继续朝怪物中心走后再被碰撞弹回。
+          ty = chase.y - (def.radius + chase.def.radius + C.ACTOR_BODY_GAP + 8);
         }
         var dx = tx - un.x;
         var dy = ty - un.y;
         var d = Math.sqrt(dx * dx + dy * dy);
-        if (d > 4) {
+        if (d > 1) {
           selectVerticalRig(un, ty);
-          var step = Math.min(d, def.moveSpeed * dt);
+          var step = Math.min(d - 1, def.moveSpeed * dt);
           un.x += dx / d * step;
           un.y += dy / d * step;
           un.facing = dx >= 0 ? 1 : -1;
@@ -781,7 +883,7 @@
         e.animT += dt;
         e.dieT -= dt;
         if (e.dieT > 0) alive.push(e);
-        else deathSmoke(e);
+        // 怪物退场不播放烟雾，避免死亡反馈在密集战场上叠成一片。
         continue;
       }
       if (e.spawnT > 0) e.spawnT -= dt;
@@ -861,14 +963,34 @@
         }
       } else {
         var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
-        e.y += sp * dt;
-        if (e.y > u.baseStopY) e.y = u.baseStopY;
-        if (e.anim === 'idle' || e.anim === 'move') enterAnimation(e, 'move');
+        var nextY = Math.min(u.baseStopY, e.y + sp * dt);
+        var front = frontEnemyInLane(e);
+        if (front) {
+          var queueGap = e.def.radius + front.def.radius + C.ACTOR_BODY_GAP + 0.5;
+          nextY = Math.min(nextY, front.y - queueGap);
+        }
+        // 队首不动时，后排直接等待；不要继续播放走路帧制造“原地踏步”。
+        if (nextY > e.y + 0.01) {
+          e.y = nextY;
+          if (e.anim === 'idle' || e.anim === 'move') enterAnimation(e, 'move');
+        } else if (e.anim === 'move') {
+          enterAnimation(e, 'idle');
+        }
       }
       e.x = S.clamp(e.x, u.field.x + e.def.radius, u.field.x + u.field.w - e.def.radius);
       alive.push(e);
     }
     if (alive.length !== S.enemies.length) S.enemies = alive;
+  }
+
+  function frontEnemyInLane(e) {
+    var front = null;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var other = S.enemies[i];
+      if (other === e || other.dead || other.lane !== e.lane || other.y <= e.y) continue;
+      if (!front || other.y < front.y) front = other;
+    }
+    return front;
   }
 
   function updateProjectiles(dt) {

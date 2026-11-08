@@ -100,7 +100,8 @@
       normal: {
         id: 'normal', name: '普通怪', tier: 'normal', icon: 'enemy-normal',
         hp: 240, atk: 16, interval: 1.0, speed: 38,
-        radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
+        // 普通柜怪：逻辑直径 40；贴图主体宽度 55–60，不以透明留白或前探动作扩大占地。
+        radius: 20, color: '#d9a05a', baseDamage: 4, gold: 5,
       },
       elite: {
         id: 'elite', name: '精英怪', tier: 'elite', icon: 'enemy-elite',
