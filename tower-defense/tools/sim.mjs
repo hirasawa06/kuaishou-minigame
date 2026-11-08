@@ -5,7 +5,7 @@
  * 用最小 WebGL / DOM mock 在 Node 里加载全部 gameplay 代码，跑真实主循环，
  * 用脚本化操作验证：能量积攒、拖卡布阵、丢卡、刷怪、结算。
  *
- * 用法：node tools/sim.mjs [--seconds 180] [--seed 1] [--hero-radius-scale 1] [--hero-action-scale 1] [--hero-stat-scale 1] [--base-hp-scale 1] [--verbose]
+ * 用法：node tools/sim.mjs [--seconds 180] [--seed 1] [--hero-radius-scale 1] [--hero-action-scale 1] [--hero-stat-scale 1] [--base-hp-scale 1] [--assert-bodies] [--verbose]
  */
 
 import fs from 'node:fs'
@@ -25,6 +25,7 @@ const heroRadiusScale = Number(args[args.indexOf('--hero-radius-scale') + 1]) ||
 const heroActionScale = Number(args[args.indexOf('--hero-action-scale') + 1]) || 1
 const heroStatScale = Number(args[args.indexOf('--hero-stat-scale') + 1]) || 1
 const baseHpScale = Number(args[args.indexOf('--base-hp-scale') + 1]) || 1
+const assertBodies = args.includes('--assert-bodies')
 
 // 可选固定随机序列：用于比较同一波次与同一卡池下的数值差异。
 let random = Math.random
@@ -249,8 +250,30 @@ function frames_run(n) {
   for (let i = 0; i < n; i++) {
     clockMs += 1000 / 60
     A.GameLoop.frame()
+    if (assertBodies) assertNoBodyOverlap()
     simTime += step
     frames++
+  }
+}
+
+function assertNoBodyOverlap() {
+  const bodies = [
+    ...S.units.filter((actor) => !actor.dead),
+    ...S.enemies.filter((actor) => !actor.dead),
+  ]
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i]
+      const b = bodies[j]
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const distance = Math.hypot(dx, dy)
+      const minimum = a.def.radius + b.def.radius + A.Config.ACTOR_BODY_GAP
+      // 0.1 逻辑像素以内只可能来自浮点累计，不会形成可见穿模。
+      if (distance + 0.1 < minimum) {
+        throw new Error(`角色体积重叠：${a.uid}(${a.def.id}) 与 ${b.uid}(${b.def.id})，距离 ${distance.toFixed(2)} < ${minimum.toFixed(2)}`)
+      }
+    }
   }
 }
 
@@ -270,6 +293,7 @@ const totalFrames = Math.round(seconds / step)
 for (let i = 0; i < totalFrames; i++) {
   clockMs += 1000 / 60
   A.GameLoop.frame()
+  if (assertBodies) assertNoBodyOverlap()
   simTime += step
   if (S.phase !== 'playing' && S.phase !== 'paused') break
 

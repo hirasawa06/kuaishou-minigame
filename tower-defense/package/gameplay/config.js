@@ -21,6 +21,8 @@
     UNIT_CAP_MAX: 10,       // 上限
     UNIT_CAP_STEP: 1,       // 每次购买 +1
     UNIT_MIN_GAP: 32,
+    // 单位脚底圆形体积之间保留的最小空气缝；只用于移动中的避让，不改攻击距离。
+    ACTOR_BODY_GAP: 2,
 
     // 卡池刷新：每次刷新后价格上浮，形成节奏
     REFRESH_COST: 2,

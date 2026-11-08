@@ -126,6 +126,24 @@
       e.def.id === 'boss' ? D.color('#ff6b9d') : COL.hpRed);
   }
 
+  // 用角色真正落在地面的绘制点决定前后层级，而不是按“宠物 / 怪物”分组。
+  // 数值和各自阴影中心一致：北侧（较小 y）先画，南侧（较大 y）后画。
+  function actorDepthY(actor, isEnemy) {
+    var r = actor.def.radius;
+    if (isEnemy) {
+      var spawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.35 : 1;
+      var scale = 0.7 + 0.3 * spawn;
+      return actor.y + r * scale * 0.84;
+    }
+    var unitSpawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.3 : 1;
+    var rig = A.Rigs && A.Rigs[actor.rigId || actor.def.id];
+    var size = rig
+      ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * unitSpawn)
+      : r * 2.35 * (0.8 + 0.2 * unitSpawn);
+    var spriteY = rig ? actor.y - r * 0.15 : actor.y;
+    return spriteY + size * 0.42;
+  }
+
   // 图集帧绘制：优先用 frame 名字直接查 A.SpriteAtlas
   function frame(name, cx, cy, size, opts) {
     var sp = Assets.sprite(name);
@@ -210,13 +228,13 @@
     var size = rig
       ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
       : r * 2.35 * (0.8 + 0.2 * spawn);
-    // 阴影中心只比脚底略低：既露出羽化边缘，也不能像悬浮物一样脱离脚掌。
-    var spriteFootY = rig ? un.y - r * 0.15 + size * 0.50 : un.y + size * 0.50;
-    var shadowY = spriteFootY + r * 0.06;
+    // 阴影只跟随贴图尺寸：固定贴在贴图下部，不再用逻辑半径推算位置。
+    var spriteY = rig ? un.y - r * 0.15 : un.y;
+    var shadowY = spriteY + size * 0.42;
 
     drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     if (rig) {
-      A.Anim.draw(rig, un, un.x, un.y - r * 0.15, size, {
+      A.Anim.draw(rig, un, un.x, spriteY, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
       if (un.hitFlash > 0) {
@@ -420,6 +438,7 @@
     drawBase: drawBase,
     drawEnemy: drawEnemy,
     drawUnit: drawUnit,
+    actorDepthY: actorDepthY,
     drawProjectiles: drawProjectiles,
     drawEffects: drawEffects,
     drawFloats: drawFloats,
