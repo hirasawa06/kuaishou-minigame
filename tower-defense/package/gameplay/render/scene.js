@@ -210,9 +210,9 @@
     var size = rig
       ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
       : r * 2.35 * (0.8 + 0.2 * spawn);
-    // 阴影中心须落在脚底稍下方：此前放在贴图内部，几乎被身体完全盖住。
+    // 阴影中心只比脚底略低：既露出羽化边缘，也不能像悬浮物一样脱离脚掌。
     var spriteFootY = rig ? un.y - r * 0.15 + size * 0.50 : un.y + size * 0.50;
-    var shadowY = spriteFootY + r * 0.18;
+    var shadowY = spriteFootY + r * 0.06;
 
     drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     if (rig) {
