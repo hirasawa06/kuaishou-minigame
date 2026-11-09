@@ -8,7 +8,7 @@
  *   - 加速度计：DeviceMotionEvent（需 HTTPS）
  *   - 陀螺仪：DeviceOrientationEvent（需 HTTPS）
  *   - 设备方向（DeviceMotion）：DeviceOrientationEvent absolute
- *   - 键盘：无可靠等价，静默降级（浏览器自带输入框）
+ *   - 键盘：H5 预览静默降级，真机使用系统键盘
  *
  * 使用方式：
  *   KwaiDevice.vibrateShort('medium');
@@ -195,7 +195,45 @@
     _motionChangeCallback = null;
   }
 
-  // ─── 键盘（仅快手，Web 使用原生 input） ──────────────────────
+  // ─── 文本输入与剪贴板 ───────────────────────────────────────
+
+  var _textInputOptions = null;
+  var _textInputBound = false;
+
+  function inputText(value) {
+    if (_textInputOptions && typeof _textInputOptions.onInput === 'function') {
+      _textInputOptions.onInput(value || '');
+    }
+  }
+
+  function confirmText(value) {
+    if (_textInputOptions && typeof _textInputOptions.onConfirm === 'function') {
+      _textInputOptions.onConfirm(value || '');
+    }
+  }
+
+  function bindTextInput() {
+    if (_textInputBound) return;
+    _textInputBound = true;
+    onKeyboardInput(function (res) { inputText(res && res.value); });
+    onKeyboardConfirm(function (res) { confirmText(res && res.value); });
+  }
+
+  function openTextInput(options) {
+    _textInputOptions = options || {};
+    if (!_isKwai) return;
+    bindTextInput();
+    showKeyboard(_textInputOptions);
+  }
+
+  function copyText(text, onSuccess, onFail) {
+    var done = onSuccess || function () {};
+    var fail = onFail || function () {};
+    if (!_isKwai || !ks.setClipboardData) { fail(); return; }
+    ks.setClipboardData({ data: text, success: done, fail: fail });
+  }
+
+  // ─── 键盘 ───────────────────────────────────────────────────
 
   function showKeyboard(options) {
     options = options || {};
@@ -208,14 +246,12 @@
         confirmType:  options.confirmType  || 'done',
       });
     }
-    // Web 环境由游戏自行创建 <input> 或 <textarea>，此处静默
   }
 
   function hideKeyboard() {
     if (_isKwai) {
       ks.hideKeyboard({});
     }
-    // Web 环境由游戏自行管理 focus / blur
   }
 
   function onKeyboardInput(callback) {
@@ -246,6 +282,8 @@
     stopDeviceMotion:        stopDeviceMotion,
     onDeviceMotionChange:    onDeviceMotionChange,
     offDeviceMotionChange:   offDeviceMotionChange,
+    openTextInput:           openTextInput,
+    copyText:                copyText,
     showKeyboard:            showKeyboard,
     hideKeyboard:            hideKeyboard,
     onKeyboardInput:         onKeyboardInput,

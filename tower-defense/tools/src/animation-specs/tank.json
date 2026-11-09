@@ -2,11 +2,11 @@
   "id": "tank",
   "entity": "hero",
   "render": "split-and-effect",
-  "sourceDir": "characters/角色/盾狗",
+  "sourceDir": "characters/角色/柴不破",
   "frames": {
-    "idle": { "icon": "tank-back-idle", "file": "shield-dog-back-idle.png" },
-    "hurt": { "icon": "tank-hurt", "file": "shield-dog-back-hurt-v2.png" },
-    "defeat": { "icon": "tank-defeat", "file": "shield-dog-action-sheet.png", "index": 1, "columns": 2 }
+    "idle": { "icon": "tank-back-idle", "file": "柴不破背面动作-v1.png", "index": 0, "columns": 3 },
+    "hurt": { "icon": "tank-hurt", "file": "柴不破背面动作-v1.png", "index": 1, "columns": 3 },
+    "defeat": { "icon": "tank-defeat", "file": "柴不破背面动作-v1.png", "index": 2, "columns": 3 }
   },
   "states": {
     "idle": { "duration": 2.4 },

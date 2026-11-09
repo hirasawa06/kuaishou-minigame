@@ -83,23 +83,46 @@
     var u = L.ui;
     x = S.clamp(x, u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
     y = S.clamp(y, u.placeTop, u.placeBottom);
-    var minGap = C.UNIT_MIN_GAP;
-    for (var pi = 0; pi < S.units.length; pi++) {
-      var other = S.units[pi];
-      if (other.dead) continue;
-      var d = Math.sqrt(S.dist2(x, y, other.x, other.y));
-      if (d >= minGap) continue;
-      var nx = x - other.x, ny = y - other.y;
-      var len = Math.sqrt(nx * nx + ny * ny);
-      if (len < 0.001) {
-        var ang = Math.random() * Math.PI * 2;
-        nx = Math.cos(ang);
-        ny = Math.sin(ang);
-        len = 1;
+    // 新宠物被挤开后可能靠近前一只，因此重复扫几轮，直到所有脚底体积都分开。
+    for (var pass = 0; pass < 8; pass++) {
+      var adjusted = false;
+      for (var pi = 0; pi < S.units.length; pi++) {
+        var other = S.units[pi];
+        if (other.dead) continue;
+        var minGap = Math.max(C.UNIT_MIN_GAP,
+          card.radius + other.def.radius + C.ACTOR_BODY_GAP + 0.5);
+        var d = Math.sqrt(S.dist2(x, y, other.x, other.y));
+        if (d >= minGap) continue;
+        var nx = x - other.x, ny = y - other.y;
+        var len = Math.sqrt(nx * nx + ny * ny);
+        if (len < 0.001) {
+          // 固定方向使同一个落点每次得到同样的结果，不因随机数闪跳。
+          var ang = ((S.uid * 37 + other.uid * 53) % 360) * Math.PI / 180;
+          nx = Math.cos(ang);
+          ny = Math.sin(ang);
+          len = 1;
+        }
+        x = S.clamp(other.x + nx / len * minGap,
+          u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
+        y = S.clamp(other.y + ny / len * minGap, u.placeTop, u.placeBottom);
+        adjusted = true;
       }
-      x = S.clamp(other.x + nx / len * minGap,
-        u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
-      y = S.clamp(other.y + ny / len * minGap, u.placeTop, u.placeBottom);
+      if (!adjusted) break;
+    }
+    // 边界已经没有可挪动空间时，不扣费、不生成重叠的宠物。
+    for (var ci = 0; ci < S.units.length; ci++) {
+      var check = S.units[ci];
+      if (check.dead) continue;
+      var required = Math.max(C.UNIT_MIN_GAP,
+        card.radius + check.def.radius + C.ACTOR_BODY_GAP);
+      if (Math.sqrt(S.dist2(x, y, check.x, check.y)) + 0.02 < required) return null;
+    }
+    // 部署不允许直接压在行进中的怪物上；避免刚落地的一帧就出现穿模。
+    for (var ei = 0; ei < S.enemies.length; ei++) {
+      var enemy = S.enemies[ei];
+      if (enemy.dead) continue;
+      var enemyGap = card.radius + enemy.def.radius + C.ACTOR_BODY_GAP;
+      if (Math.sqrt(S.dist2(x, y, enemy.x, enemy.y)) + 0.02 < enemyGap) return null;
     }
     var unit = {
       uid: S.uid++,
@@ -108,6 +131,7 @@
       y: y,
       homeX: x,
       homeY: y,
+      rigId: card.id,
       facing: 1,
       hp: card.hp,
       maxHp: card.hp,
@@ -120,7 +144,6 @@
       animT: 0,
       pendingHit: -1,
       pendingTarget: 0,
-      tauntPulse: 0,
     };
     S.units.push(unit);
     return unit;
@@ -128,35 +151,31 @@
 
   function canAfford(def) { return S.gold >= def.cost; }
 
-  function deployBlockReason(card, x, y) {
+  function tryDeploy(card, x, y) {
     var u = L.ui;
     var interactive = u.interactiveRect;
     if (x < interactive.x || x > interactive.x + interactive.w ||
-        y < interactive.y || y > interactive.y + interactive.h) return 'outside';
-    if (x < u.field.x || x > u.field.x + u.field.w) return 'outside';
-    if (y < u.field.y - 24 || y > u.base.y + 10) return 'outside';
-    if (!canAfford(card)) return 'gold';
-    // 死亡动画中的英雄不算占位
-    if (S.liveUnits() >= S.heroCap) return 'cap';
-    return null;
-  }
-
-  function tryDeploy(card, x, y) {
-    var reason = deployBlockReason(card, x, y);
-    if (reason === 'outside') return false;
-    if (reason === 'gold') {
+        y < interactive.y || y > interactive.y + interactive.h) return false;
+    if (x < u.field.x || x > u.field.x + u.field.w) return false;
+    if (y < u.field.y - 24 || y > u.base.y + 10) return false;
+    if (!canAfford(card)) {
       S.toastMsg('金币不足', 0.9);
       return false;
     }
-    if (reason === 'cap') {
+    // 死亡动画中的英雄不算占位
+    if (S.liveUnits() >= S.heroCap) {
       S.toastMsg('上场席位已满（' + S.heroCap + '），可花金币扩建', 1.3);
+      return false;
+    }
+    var unit = placeHero(card, x, y);
+    if (!unit) {
+      S.toastMsg('这里没有可放下的位置', 1.0);
       return false;
     }
     S.gold -= card.cost;
     S.cardsPlaced++;
-    placeHero(card, x, y);
-    S.addEffect({ type: 'ring', x: x, y: y, r: card.radius + 4, r2: card.radius + 26, life: 0.36, max: 0.36, color: card.color });
-    S.addFloat(x, y - card.radius - 14, '-' + card.cost, '#ffd166');
+    S.addEffect({ type: 'ring', x: unit.x, y: unit.y, r: card.radius + 4, r2: card.radius + 26, life: 0.36, max: 0.36, color: card.color });
+    S.addFloat(unit.x, unit.y - card.radius - 14, '-' + card.cost, '#ffd166');
     return true;
   }
 
@@ -187,19 +206,21 @@
     if (e.dead) return;
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    if (e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
     if (!isSplash) {
       S.addFloat(e.x + (Math.random() - 0.5) * 10, e.y - e.def.radius - 8,
         String(Math.round(dmg)), '#ffe9a8');
     }
     if (e.hp <= 0) {
       e.dead = true;
+      enterAnimation(e, 'die');
+      e.dieT = deathDuration(e);
       S.kills++;
       var g = e.def.gold || 2;
       S.gold += g;
       S.goldEarned += g;
       S.addFloat(e.x, e.y - e.def.radius - 20, '+' + g, '#ffd166');
       S.addEffect({ type: 'pop', x: e.x, y: e.y, r: e.def.radius, life: 0.42, max: 0.42, color: e.def.color });
-      S.addEffect({ type: 'smoke', x: e.x, y: e.y, r: e.def.radius, life: 0.55, max: 0.55, color: '#fff0e3' });
       if (e.def.tier === 'boss') onBossDeath(e);
     }
   }
@@ -230,28 +251,118 @@
     }
     if (u.hp <= 0) {
       u.dead = true;
-      u.anim = 'die';
-      u.animT = 0;
-      u.dieT = 0.4;
-      S.addEffect({ type: 'pop', x: u.x, y: u.y, r: u.def.radius, life: 0.4, max: 0.4, color: '#8e97b8' });
+      enterAnimation(u, 'die');
+      u.dieT = deathDuration(u);
     }
   }
 
   // ── 投射物 ─────────────────────────────────────────────────
+  function entityRig(entity) {
+    return A.Rigs && A.Rigs[entity.rigId || entity.def.id];
+  }
+
+  function activeRig(unit) {
+    return entityRig(unit);
+  }
+
+  function stateDuration(entity, stateName, fallback) {
+    var rig = entityRig(entity);
+    var state = rig && rig.states && rig.states[stateName];
+    return state && state.dur ? state.dur : fallback;
+  }
+
+  function enterAnimation(entity, stateName) {
+    if (entity.anim === stateName) return;
+    if (stateName === 'idle' && entity.def.directionRig) {
+      entity.rigId = entity.def.directionRig.back;
+    }
+    entity.anim = stateName;
+    entity.animT = 0;
+  }
+
+  function finishTransientAnimation(entity, fallback) {
+    if (entity.anim === 'idle' || entity.anim === 'move' || entity.anim === 'die') return;
+    if (entity.animT >= stateDuration(entity, entity.anim, fallback)) {
+      enterAnimation(entity, 'idle');
+    }
+  }
+
+  function selectAttackRig(unit, target) {
+    var rigs = unit.def.attackRig;
+    if (rigs) {
+      unit.rigId = target.x < unit.x ? rigs.left : rigs.right;
+      return;
+    }
+    selectVerticalRig(unit, target.y);
+  }
+
+  function selectVerticalRig(unit, targetY) {
+    var rigs = unit.def.directionRig;
+    if (rigs) unit.rigId = targetY < unit.y ? rigs.back : rigs.front;
+  }
+
+  function attackHitTime(unit, fallback) {
+    var rig = entityRig(unit);
+    var state = rig && rig.states && rig.states.atk;
+    return state && state.hit !== undefined ? state.hit : fallback;
+  }
+
+  function deathDuration(unit) {
+    return stateDuration(unit, 'die', unit.def.deathDuration || 0.28);
+  }
+
+  function deathSmoke(unit) {
+    S.addEffect({
+      type: 'smoke', x: unit.x, y: unit.y, r: unit.def.radius,
+      life: 0.45, max: 0.45, color: '#ffffff',
+    });
+  }
+
+  function enemyImpactEffect(enemy, target) {
+    var color = enemy.def.impactColor || '#ff9a9a';
+    if (enemy.def.attackEffect === 'bump') {
+      S.addEffect({
+        type: 'pop', x: target.x, y: target.y - 2, r: 8,
+        life: 0.14, max: 0.14, color: color,
+      });
+      return;
+    }
+    S.addEffect({
+      type: 'slash', x: enemy.x, y: enemy.y + enemy.def.radius * 0.5,
+      tx: target.x, ty: target.y, life: 0.16, max: 0.16, color: color,
+    });
+    S.addEffect({
+      type: 'glow', x: target.x, y: target.y - 2, r: 7,
+      life: 0.14, max: 0.14, color: color,
+    });
+  }
+
+  function projectileOrigin(unit) {
+    var rig = activeRig(unit);
+    var muzzle = rig && rig.muzzle;
+    return {
+      x: unit.x + (muzzle ? muzzle[0] : 0),
+      y: unit.y + (muzzle ? muzzle[1] : -6),
+    };
+  }
+
   function fireProjectile(unit, target) {
     var def = unit.def;
-    S.projectiles.push({
-      x: unit.x, y: unit.y - 6,
+    var origin = projectileOrigin(unit);
+    var projectile = {
+      x: origin.x, y: origin.y,
       tx: target.x, ty: target.y,
       targetUid: target.uid,
       speed: def.cls === 'archer' ? 680 : 420,
-      kind: def.cls === 'archer' ? 'arrow' : 'fire',
+      kind: def.cls === 'archer' ? 'light' : def.cls === 'mage' ? 'magic' : 'fire',
       dmg: def.atk,
       splash: def.splash || 0,
       slow: def.slow || null,
       color: def.color,
       life: 1.6,
-    });
+    };
+    S.projectiles.push(projectile);
+    return projectile;
   }
 
   function applySplash(p, cx, cy) {
@@ -266,10 +377,13 @@
       }
       damageEnemy(e, p.dmg, true);
     }
-    S.addEffect({
-      type: 'ring', x: cx, y: cy, r: p.splash * 0.35, r2: p.splash,
-      life: 0.34, max: 0.34, color: p.color,
-    });
+    // 法师有自己的贴地饼干扩散，不再叠一层通用正面圆环。
+    if (p.kind !== 'magic') {
+      S.addEffect({
+        type: 'ring', x: cx, y: cy, r: p.splash * 0.35, r2: p.splash,
+        life: 0.34, max: 0.34, color: p.color,
+      });
+    }
   }
 
   // ── 卡池（固定 4 格，不再滚动）──────────────────────────────
@@ -304,6 +418,7 @@
     updateWaves(dt);
     updateUnits(battleDt);
     updateEnemies(battleDt);
+    resolveBodyCollisions();
     updateProjectiles(battleDt);
     updateEffects(dt);
 
@@ -313,6 +428,130 @@
       S.shake = 0.6;
       recordRun(false);
       A.GameAudio && A.GameAudio.play('lose');
+    }
+  }
+
+  // ── 角色体积 ──────────────────────────────────────────────
+  // 现有 radius 是“脚底占地”的逻辑半径。这里把它落实为圆形体积：
+  // 固定部署的宠物不被挤走；移动中的怪物、主动出击的战士负责退让。
+  // 这不会影响攻击距离、嘲讽距离或贴图尺寸。
+  function resolveBodyCollisions() {
+    var actors = [];
+    var i;
+    for (i = 0; i < S.units.length; i++) {
+      if (!S.units[i].dead) actors.push({ actor: S.units[i], kind: 'unit' });
+    }
+    for (i = 0; i < S.enemies.length; i++) {
+      if (!S.enemies[i].dead) actors.push({ actor: S.enemies[i], kind: 'enemy' });
+    }
+
+    // 多轮清开同一帧的连锁挤压；没有重叠时立即退出，密集阵位才会用满上限。
+    for (var pass = 0; pass < 24; pass++) {
+      var adjusted = false;
+      for (i = 0; i < actors.length; i++) {
+        for (var j = i + 1; j < actors.length; j++) {
+          if (separateBodies(actors[i], actors[j])) adjusted = true;
+        }
+      }
+      if (!adjusted) break;
+    }
+  }
+
+  function separateBodies(a, b) {
+    var aa = a.actor;
+    var bb = b.actor;
+    var minDistance = aa.def.radius + bb.def.radius + C.ACTOR_BODY_GAP;
+    // 求解后额外留出半个逻辑像素，避免多组连锁挤压在浮点误差下留下细缝重叠。
+    var targetDistance = minDistance + 0.5;
+    var dx = bb.x - aa.x;
+    var dy = bb.y - aa.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist >= targetDistance) return false;
+
+    // 完全重合时使用 uid 生成稳定方向，不能用随机数，否则画面会抖动。
+    if (dist < 0.001) {
+      var angle = ((aa.uid * 37 + bb.uid * 53) % 360) * Math.PI / 180;
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      dist = 1;
+    }
+    var nx = dx / dist;
+    var ny = dy / dist;
+    var overlap = targetDistance - dist;
+    var moveA = bodyMoveWeight(a, b);
+    var moveB = bodyMoveWeight(b, a);
+    var total = moveA + moveB;
+    if (total <= 0) return false;
+
+    // 只有一方可移动（怪物撞固定宠物、战士撞固定宠物）时，优先为移动方
+    // 寻找能完整落在场地内的接触点，避免被边界夹住后仍然重叠。
+    if ((moveA === 0) !== (moveB === 0)) {
+      var movable = moveA > 0 ? a : b;
+      var fixed = moveA > 0 ? b : a;
+      // 怪物推进方向是向南。撞上固定宠物时必须先退回北侧排队，不能被挤到
+      // 宠物和基地之间；战士则维持原来的接触方向。
+      var queueNorth = movable.kind === 'enemy' && fixed.kind === 'unit';
+      var direction = queueNorth ? -Math.PI / 2
+        : moveA > 0 ? Math.atan2(-ny, -nx) : Math.atan2(ny, nx);
+      return placeOutsideBody(movable, fixed, targetDistance, direction, queueNorth);
+    }
+
+    aa.x -= nx * overlap * moveA / total;
+    aa.y -= ny * overlap * moveA / total;
+    bb.x += nx * overlap * moveB / total;
+    bb.y += ny * overlap * moveB / total;
+    clampBody(a);
+    clampBody(b);
+    return true;
+  }
+
+  function placeOutsideBody(movable, fixed, targetDistance, startAngle, keepFirstFit) {
+    var mover = movable.actor;
+    var anchor = fixed.actor;
+    var oldX = mover.x;
+    var oldY = mover.y;
+    var best = null;
+    // 从原本的退让方向开始，左右逐步寻找；这样正常情况下不会横跳。
+    for (var i = 0; i < 16; i++) {
+      var step = i === 0 ? 0 : Math.ceil(i / 2) * (i % 2 ? 1 : -1);
+      var angle = startAngle + step * Math.PI / 12;
+      mover.x = anchor.x + Math.cos(angle) * targetDistance;
+      mover.y = anchor.y + Math.sin(angle) * targetDistance;
+      clampBody(movable);
+      if (Math.sqrt(S.dist2(mover.x, mover.y, anchor.x, anchor.y)) + 0.02 < targetDistance) continue;
+      var cost = S.dist2(oldX, oldY, mover.x, mover.y);
+      if (keepFirstFit) {
+        best = { x: mover.x, y: mover.y, cost: cost };
+        break;
+      }
+      if (!best || cost < best.cost) best = { x: mover.x, y: mover.y, cost: cost };
+    }
+    if (best) {
+      mover.x = best.x;
+      mover.y = best.y;
+      return true;
+    } else {
+      mover.x = oldX;
+      mover.y = oldY;
+      return false;
+    }
+  }
+
+  function bodyMoveWeight(body, other) {
+    // 固定宠物是玩家部署的阵位；主动出击的战士和怪物都属于可被挤开的移动角色。
+    if (body.kind === 'unit') return body.actor.def.cls === 'warrior' ? 1 : 0;
+    return 1;
+  }
+
+  function clampBody(body) {
+    var u = L.ui;
+    var actor = body.actor;
+    var r = actor.def.radius;
+    actor.x = S.clamp(actor.x, u.field.x + r, u.field.x + u.field.w - r);
+    if (body.kind === 'unit') {
+      actor.y = S.clamp(actor.y, u.placeTop, u.placeBottom);
+    } else if (actor.y > u.baseStopY) {
+      actor.y = u.baseStopY;
     }
   }
 
@@ -398,20 +637,14 @@
         un.animT += dt;
         un.dieT -= dt;
         if (un.dieT > 0) alive.push(un);
-        else S.addEffect({ type: 'smoke', x: un.x, y: un.y, r: un.def.radius,
-          life: 0.55, max: 0.55, color: '#fff0e3' });
+        else deathSmoke(un);
         continue;
       }
       if (un.spawnT > 0) un.spawnT -= dt;
       if (un.hitFlash > 0) un.hitFlash -= dt;
-      if (un.tauntPulse > 0) un.tauntPulse -= dt;
-
       var def = un.def;
       un.animT += dt;
-      if ((un.anim === 'hurt' || un.anim === 'atk') && un.animT > 0.6) {
-        un.anim = 'idle';
-        un.animT = 0;
-      }
+      finishTransientAnimation(un, 0.6);
 
       // 战士主动寻敌：有目标就走过去，没目标回原位
       if (def.cls === 'warrior' && def.moveSpeed > 0) {
@@ -426,11 +659,14 @@
         var dy = ty - un.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d > 4) {
+          selectVerticalRig(un, ty);
           var step = Math.min(d, def.moveSpeed * dt);
           un.x += dx / d * step;
           un.y += dy / d * step;
           un.facing = dx >= 0 ? 1 : -1;
-          if (un.anim === 'idle') un.animT += dt;
+          if (un.anim === 'idle' || un.anim === 'move') enterAnimation(un, 'move');
+        } else if (un.anim === 'move') {
+          enterAnimation(un, 'idle');
         }
         var uu = L.ui;
         un.x = S.clamp(un.x, uu.field.x + def.radius, uu.field.x + uu.field.w - def.radius);
@@ -458,10 +694,8 @@
         }
       }
 
-      // 盾位不攻击：只按嘲讽范围周期性脉动一次视觉
+      // 盾位不攻击；嘲讽逻辑由 updateTaunt 独立处理。
       if (def.cls === 'tank') {
-        if (un.tauntPulse <= -1.2 / Math.max(0.2, def.interval)) un.tauntPulse = 0.45;
-        un.tauntPulse -= dt;
         alive.push(un);
         continue;
       }
@@ -470,10 +704,10 @@
       if (un.atkTimer <= 0) {
         var best = findTarget(un);
         if (best) {
+          selectAttackRig(un, best);
           un.atkTimer = def.interval;
-          un.anim = 'atk';
-          un.animT = 0;
-          un.pendingHit = def.id === 'tank' ? 0.17 : 0.07;
+          enterAnimation(un, 'atk');
+          un.pendingHit = attackHitTime(un, 0.07);
           un.pendingTarget = best.uid;
           un.facing = best.x >= un.x ? 1 : -1;
         }
@@ -529,9 +763,9 @@
       });
       S.hitstop = Math.max(S.hitstop, 0.04);
     } else {
-      fireProjectile(un, best);
+      var projectile = fireProjectile(un, best);
       S.addEffect({
-        type: 'glow', x: un.x, y: un.y - 6, r: def.cls === 'archer' ? 5 : 8,
+        type: 'glow', x: projectile.x, y: projectile.y, r: def.cls === 'archer' ? 7 : 8,
         life: 0.12, max: 0.12, color: def.color,
       });
     }
@@ -543,11 +777,17 @@
     var alive = [];
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
-      if (e.dead) continue;
+      if (e.dead) {
+        e.animT += dt;
+        e.dieT -= dt;
+        if (e.dieT > 0) alive.push(e);
+        else deathSmoke(e);
+        continue;
+      }
       if (e.spawnT > 0) e.spawnT -= dt;
       if (e.hitFlash > 0) e.hitFlash -= dt;
       e.animT += dt;
-      if (e.anim === 'atk' && e.animT > 0.5) { e.anim = 'idle'; e.animT = 0; }
+      finishTransientAnimation(e, 0.5);
       if (e.slowT > 0) {
         e.slowT -= dt;
         if (e.slowT <= 0) e.slowFactor = 1;
@@ -566,14 +806,7 @@
           }
           if (hitUnit) {
             damageUnit(hitUnit, e.atk);
-            S.addEffect({
-              type: 'slash', x: e.x, y: e.y + e.def.radius * 0.5,
-              tx: hitUnit.x, ty: hitUnit.y, life: 0.16, max: 0.16, color: '#ff9a9a',
-            });
-            S.addEffect({
-              type: 'glow', x: hitUnit.x, y: hitUnit.y - 2, r: 7,
-              life: 0.14, max: 0.14, color: '#ffb0a8',
-            });
+            enemyImpactEffect(e, hitUnit);
             S.hitstop = Math.max(S.hitstop, 0.035);
           }
         }
@@ -593,6 +826,7 @@
 
       var atBase = e.y >= u.baseStopY;
       if (atBase && e.def.tier === 'boss') {
+        if (e.anim === 'move') enterAnimation(e, 'idle');
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
           S.baseHp -= e.def.baseDamage;
@@ -606,6 +840,7 @@
           A.GameAudio && A.GameAudio.play('base');
         }
       } else if (atBase) {
+        if (e.anim === 'move') enterAnimation(e, 'idle');
         e.y = u.baseStopY;
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
@@ -616,17 +851,19 @@
           A.GameAudio && A.GameAudio.play('base');
         }
       } else if (blocker) {
+        if (e.anim === 'move') enterAnimation(e, 'idle');
         if (e.atkTimer <= 0) {
+          selectAttackRig(e, blocker);
           e.atkTimer = e.def.interval;
-          e.anim = 'atk';
-          e.animT = 0;
-          e.pendingHit = 0.18;
+          enterAnimation(e, 'atk');
+          e.pendingHit = attackHitTime(e, 0.18);
           e.pendingTarget = blocker.uid;
         }
       } else {
         var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
         e.y += sp * dt;
         if (e.y > u.baseStopY) e.y = u.baseStopY;
+        if (e.anim === 'idle' || e.anim === 'move') enterAnimation(e, 'move');
       }
       e.x = S.clamp(e.x, u.field.x + e.def.radius, u.field.x + u.field.w - e.def.radius);
       alive.push(e);
@@ -656,12 +893,18 @@
         p.y = p.ty;
         if (target) damageEnemy(target, p.dmg, false);
         if (p.splash) applySplash(p, p.x, p.y);
+        if (p.kind === 'magic') {
+          S.addEffect({
+            type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
+            life: 0.2, max: 0.2, color: p.color,
+          });
+        }
         else if (p.slow && target) {
           target.slowT = Math.max(target.slowT, p.slow.duration);
           target.slowFactor = p.slow.factor;
           S.addEffect({ type: 'ring', x: p.x, y: p.y, r: 6, r2: 26, life: 0.24, max: 0.24, color: p.color });
         }
-        if (p.kind === 'arrow') {
+        if (p.kind === 'light') {
           S.addEffect({
             type: 'spark', x: p.x, y: p.y,
             vx: -dx / d * 70, vy: -dy / d * 70, life: 0.16, max: 0.16, color: '#d9ffcf',
@@ -688,8 +931,7 @@
         e.vx *= 0.93;
         e.vy *= 0.93;
       } else if (e.type === 'smoke') {
-        e.y -= 14 * dt;
-        e.r = (e.r || 10) * (1 + dt * 0.9);
+        e.y -= 10 * dt;
       }
       alive.push(e);
     }
@@ -713,7 +955,6 @@
     update: update,
     tryDeploy: tryDeploy,
     canAfford: canAfford,
-    deployBlockReason: deployBlockReason,
     buyCard: buyCard,
     buyCardAtCenter: buyCardAtCenter,
     remainingEnemies: remainingEnemies,

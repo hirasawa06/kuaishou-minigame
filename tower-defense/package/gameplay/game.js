@@ -151,8 +151,21 @@
 
     var i;
     Scene.drawSpawnHint();
-    for (i = 0; i < S.units.length; i++) Scene.drawUnit(S.units[i]);
-    for (i = 0; i < S.enemies.length; i++) Scene.drawEnemy(S.enemies[i]);
+    // 所有角色共用一个南北景深序列：北侧先画，南侧后画，因此南侧角色
+    // 会自然遮住北侧角色，不再由“宠物总在前 / 怪物总在前”决定层级。
+    var actors = [];
+    for (i = 0; i < S.units.length; i++) actors.push({ actor: S.units[i], isEnemy: false });
+    for (i = 0; i < S.enemies.length; i++) actors.push({ actor: S.enemies[i], isEnemy: true });
+    actors.sort(function (a, b) {
+      var depth = Scene.actorDepthY(a.actor, a.isEnemy) - Scene.actorDepthY(b.actor, b.isEnemy);
+      if (Math.abs(depth) > 0.001) return depth;
+      // 同一落点保持稳定、可复现的顺序，避免每帧交替闪烁。
+      return a.actor.uid - b.actor.uid;
+    });
+    for (i = 0; i < actors.length; i++) {
+      if (actors[i].isEnemy) Scene.drawEnemy(actors[i].actor);
+      else Scene.drawUnit(actors[i].actor);
+    }
     Scene.drawProjectiles();
     Scene.drawEffects();
     Scene.drawFloats();

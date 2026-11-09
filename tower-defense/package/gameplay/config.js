@@ -21,6 +21,8 @@
     UNIT_CAP_MAX: 10,       // 上限
     UNIT_CAP_STEP: 1,       // 每次购买 +1
     UNIT_MIN_GAP: 32,
+    // 单位脚底圆形体积之间保留的最小空气缝；只用于移动中的避让，不改攻击距离。
+    ACTOR_BODY_GAP: 2,
 
     // 卡池刷新：每次刷新后价格上浮，形成节奏
     REFRESH_COST: 2,
@@ -38,39 +40,49 @@
     // moveSpeed: 移动速度（0=驻守）  splash: 群体攻击范围  taunt: 嘲讽范围
     HEROES: [
       {
-        id: 'tank', name: '铁盾柴犬', cls: 'tank', clsName: '盾',
+        id: 'tank', name: '柴不破', cls: 'tank', clsName: '盾',
         icon: 'unit-tank-1', cost: 8,
-        hp: 900, atk: 0, interval: 1.0,
-        range: 0, radius: 17, moveSpeed: 0,
-        taunt: 96, splash: 0,
+        // 体型扩大后的承伤补偿：生命与整体尺寸同为上一版的 1.2 倍。
+        hp: 1080, atk: 0, interval: 1.0,
+        // 逻辑直径 45.6；仅决定脚底占地、部署和阻挡，不随盾牌外沿变化。
+        range: 0, radius: 22.8, moveSpeed: 0,
+        taunt: 115.2, splash: 0,
         color: '#5b8bd0',
         desc: '嘲讽周围敌人，只会格挡，不造成伤害',
       },
       {
-        id: 'war', name: '近战猫', cls: 'warrior', clsName: '战',
-        icon: 'unit-war-1', cost: 6,
-        hp: 420, atk: 42, interval: 0.8,
-        range: 46, radius: 15, moveSpeed: 52,
+        id: 'war', name: '锤锤喵', cls: 'warrior', clsName: '战',
+        icon: 'war-front-idle', cost: 6,
+        // 体型扩大后的承伤与输出补偿。
+        hp: 504, atk: 50.4, interval: 0.8,
+        // 逻辑直径 43.2；攻击与追击距离同步扩大 1.2 倍。
+        range: 55.2, radius: 21.6, moveSpeed: 52,
         taunt: 0, splash: 0,
-        aggro: 260,
+        aggro: 312,
+        directionRig: { front: 'war-front', back: 'war-back' },
         color: '#e07a3a',
         desc: '主动出击寻敌，中血量近战输出',
       },
       {
-        id: 'arch', name: '游侠猫', cls: 'archer', clsName: '射手',
+        id: 'arch', name: '镭射喵', cls: 'archer', clsName: '射手',
         icon: 'unit-arch-1', cost: 7,
-        hp: 180, atk: 96, interval: 1.15,
-        range: 260, radius: 14, moveSpeed: 0,
+        // 体型扩大后的承伤与输出补偿。
+        hp: 216, atk: 115.2, interval: 1.15,
+        // 逻辑直径 40.8；攻击距离同步扩大 1.2 倍。
+        range: 312, radius: 20.4, moveSpeed: 0,
         taunt: 0, splash: 0,
+        attackRig: { left: 'arch-left', right: 'arch-right' },
         color: '#3fbf78',
         desc: '射程最远，血量最少，单体高伤',
       },
       {
-        id: 'mage', name: '法师狗', cls: 'mage', clsName: '法师',
-        icon: 'unit-mage-1', cost: 9,
-        hp: 150, atk: 54, interval: 1.5,
-        range: 170, radius: 14, moveSpeed: 0,
-        taunt: 0, splash: 70,
+        id: 'mage', name: '哈利边牧', cls: 'mage', clsName: '法师',
+        icon: 'mage-back-idle', cost: 9,
+        // 体型扩大后的承伤与输出补偿。
+        hp: 180, atk: 64.8, interval: 1.5,
+        // 逻辑直径 40.8；攻击与范围伤害同步扩大 1.2 倍。
+        range: 204, radius: 20.4, moveSpeed: 0,
+        taunt: 0, splash: 84,
         color: '#a583f0',
         desc: '中距离范围伤害，全场血量最少',
       },
@@ -80,9 +92,10 @@
     // small 血少量多 / normal 标准 / elite 精英 / boss 首领
     ENEMIES: {
       small: {
-        id: 'small', name: '小怪', tier: 'small', icon: 'enemy-small',
+        id: 'small', name: '台灯小怪', tier: 'small', icon: 'enemy-small',
         hp: 70, atk: 8, interval: 0.9, speed: 62,
         radius: 11, color: '#8fd06a', baseDamage: 2, gold: 2,
+        attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
         id: 'normal', name: '普通怪', tier: 'normal', icon: 'enemy-normal',

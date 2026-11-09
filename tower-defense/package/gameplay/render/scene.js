@@ -132,6 +132,7 @@
     var spawn = e.spawnT > 0 ? 1 - e.spawnT / 0.35 : 1;
     var scale = 0.7 + 0.3 * spawn;
     var rr = r * scale;
+    var rig = A.Rigs && A.Rigs[e.rigId || e.def.id];
     // 抬手动画：0.18s 内微微上抬后压，给攻击一个可读的节奏
     var wind = 0;
     var tilt = 0;
@@ -146,33 +147,11 @@
         tilt = 6 * (1 - k) - 4 * k * (1 - k);
       }
     }
-    var atlas = Assets.entry('enemy-furniture-atlas');
-    var lamp = e.def.id === 'small' ? Assets.entry('lamp-small') : null;
-    var cell = null;
-    if (e.def.id === 'small') cell = [0, 0];
-    else if (e.def.id === 'normal') cell = [1, 0];
-    else if (e.def.id === 'elite') cell = [0, 1];
-    else if (e.def.id === 'boss') cell = [1, 1];
-    if (!atlas || !cell) D.circle(e.x, e.y + rr * 0.85, rr * 0.8, D.color('#000000', 0.28));
-    if (e.slowT > 0) {
-      D.circle(e.x, e.y, rr + 7, D.color('#5ab6e8', 0.18));
-      D.ring(e.x, e.y, rr + 5, 1.4, D.color('#8fe0ff', 0.55));
-    }
-    if (lamp) {
-      // 设定板提取的台灯单图保持原始纵横比；底部阴影单独绘制。
-      var lampH = rr * 5.0;
-      var lampW = lampH * lamp.w / lamp.h;
-      D.circle(e.x, e.y + lampH * 0.43, rr * 1.35, D.color('#57321f', 0.16 * spawn));
-      D.texture(lamp.tex, lamp.w, lamp.h, 0, 0, lamp.w, lamp.h,
-        e.x - lampW / 2, e.y + wind - lampH / 2, lampW, lampH,
-        { r: 1, g: 1, b: 1, a: spawn });
-    } else if (atlas && cell) {
-      var cw = atlas.w / 2, ch = atlas.h / 2;
-      // 图集每格保留透明边距；只放大美术，不改变单位半径与碰撞规则。
-      var size = rr * (e.def.id === 'small' ? 5.0 : e.def.id === 'normal' ? 4.6 : 4.2);
-      D.texture(atlas.tex, atlas.w, atlas.h, cell[0] * cw, cell[1] * ch, cw, ch,
-        e.x - size / 2, e.y + wind - size / 2, size, size,
-        { r: 1, g: 1, b: 1, a: spawn });
+    drawGroundShadow(e.x, e.y + rr * 0.84, rr * 0.70, 0.48 * spawn);
+    if (rig) {
+      A.Anim.draw(rig, e, e.x, e.y - r * 0.15, r * 3.05 * (rig.scale || 1) * scale, {
+        alpha: 0.3 + 0.7 * spawn,
+      });
     } else {
       icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
     }
@@ -181,11 +160,26 @@
     }
     var w = Math.max(24, rr * 2.1);
     var ratio = Math.max(0, e.hp / e.maxHp);
-    hpBar(e.x - w / 2, e.y - rr - 12, w, ratio,
+    if (!e.dead) hpBar(e.x - w / 2, e.y - rr - 12, w, ratio,
       e.def.id === 'boss' ? D.color('#ff6b9d') : COL.hpRed);
-    if (e.def.id === 'boss') {
-      D.ring(e.x, e.y, rr + 6 + Math.sin(S.time * 3) * 2, 1.6, D.color('#ffd166', 0.6));
+  }
+
+  // 用角色真正落在地面的绘制点决定前后层级，而不是按“宠物 / 怪物”分组。
+  // 数值和各自阴影中心一致：北侧（较小 y）先画，南侧（较大 y）后画。
+  function actorDepthY(actor, isEnemy) {
+    var r = actor.def.radius;
+    if (isEnemy) {
+      var spawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.35 : 1;
+      var scale = 0.7 + 0.3 * spawn;
+      return actor.y + r * scale * 0.84;
     }
+    var unitSpawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.3 : 1;
+    var rig = A.Rigs && A.Rigs[actor.rigId || actor.def.id];
+    var size = rig
+      ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * unitSpawn)
+      : r * 2.35 * (0.8 + 0.2 * unitSpawn);
+    var spriteY = rig ? actor.y - r * 0.15 : actor.y;
+    return spriteY + size * 0.42;
   }
 
   // 图集帧绘制：优先用 frame 名字直接查 A.SpriteAtlas
@@ -204,6 +198,28 @@
     return sp;
   }
 
+  // 地面阴影复用柔边光斑纹理，正常混合下染成近黑色并压成椭圆。
+  // 它不是角色光环，边缘会随贴图 alpha 自然羽化。
+  function drawGroundShadow(cx, cy, radius, alpha) {
+    var sp = glowTex();
+    if (!sp) return;
+    var width = radius * 2;
+    D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, cx, cy, width, {
+      w: width,
+      h: radius * 0.56,
+      tint: { r: 0.02, g: 0.02, b: 0.03, a: alpha },
+    });
+  }
+
+  function mageVfx(name, cx, cy, w, h, rot, alpha, tint) {
+    var fx = A.MageVfx && A.MageVfx.effects[name];
+    var tex = Assets.entry('mage-vfx');
+    if (!fx || !tex) return;
+    tint = tint || { r: 1, g: 1, b: 1 };
+    D.sprite(tex.tex, tex.w, tex.h, fx[0], fx[1], fx[2], fx[3], cx, cy, w,
+      { rot: rot || 0, w: w, h: h, tint: { r: tint.r, g: tint.g, b: tint.b, a: alpha } });
+  }
+
   // 加法混合光斑：rgb 预先乘 alpha，这样加法混合下淡出才不会“越淡越亮”
   function additiveGlow(cx, cy, size, hex, alpha, rot) {
     var sp = glowTex();
@@ -215,35 +231,48 @@
     });
   }
 
+  // 70°正北俯视：地面上的圆形能量在屏幕中应是横向椭圆。
+  function additiveGroundGlow(cx, cy, width, height, hex, alpha) {
+    var sp = glowTex();
+    if (!sp) return;
+    var c = D.color(hex, 1);
+    D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, cx, cy, width, {
+      w: width, h: height, tint: { r: c.r * alpha, g: c.g * alpha, b: c.b * alpha, a: 1 },
+    });
+  }
+
+  function drawMageImpactParticles(e, t) {
+    var fade = 1 - t;
+    var burst = Math.min(1, t * 2.4);
+    A.Render.setAdditive(true);
+    additiveGroundGlow(e.x, e.y + 4, 42 + burst * 108, 20 + burst * 52, '#7130ff', fade * 0.92);
+    additiveGroundGlow(e.x, e.y + 4, 20 + burst * 58, 9 + burst * 28, '#d8baff', fade * 0.56);
+    for (var i = 0; i < 18; i++) {
+      var angle = i * Math.PI * 2 / 18 + 0.38;
+      var distance = 8 + burst * (44 + (i % 4) * 9);
+      var px = e.x + Math.cos(angle) * distance;
+      var py = e.y + 4 + Math.sin(angle) * distance * 0.52;
+      var color = i % 4 === 0 ? '#f2dcff' : '#b368ff';
+      additiveGlow(px, py, 7 + (i % 3) * 2, color, fade * (0.72 - (i % 3) * 0.08), 0);
+    }
+    A.Render.setAdditive(false);
+  }
+
   function drawUnit(un) {
     var d = un.def;
     var r = d.radius;
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
-    var rig = A.Rigs && (d.id === 'arch' && un.facing < 0
-      ? A.Rigs['arch-left'] : A.Rigs[d.id]);
-    D.circle(un.x, un.y + r * 0.9, r * 0.85, D.color('#000000', 0.16));
+    var rig = A.Rigs && A.Rigs[un.rigId || d.id];
+    var size = rig
+      ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
+      : r * 2.35 * (0.8 + 0.2 * spawn);
+    // 阴影只跟随贴图尺寸：固定贴在贴图下部，不再用逻辑半径推算位置。
+    var spriteY = rig ? un.y - r * 0.15 : un.y;
+    var shadowY = spriteY + size * 0.42;
 
-    // 盾位：嘲讽范围常驻淡蓝光晕，脉动一下表示嘲讽在生效
-    if (d.cls === 'tank' && d.taunt) {
-      var pulse = un.tauntPulse > 0 ? un.tauntPulse / 0.45 : 0;
-      A.Render.setAdditive(true);
-      additiveGlow(un.x, un.y, d.taunt * 1.9, '#4f7fd0', 0.10 + pulse * 0.16, 0);
-      A.Render.setAdditive(false);
-      D.ring(un.x, un.y, d.taunt * (0.55 + 0.45 * (1 - pulse)), 2.2,
-        D.color('#8fc0ff', 0.22 + pulse * 0.5));
-    }
-
+    drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     if (rig) {
-      D.circle(un.x, un.y, r + 3, D.color(d.color, 0.20));
-      D.ring(un.x, un.y, r + 2, 1.3, D.color(d.color, 0.6));
-      if (d.id === 'tank') {
-        var a = un.anim === 'atk' ? 0.5 : 0.22;
-        A.Render.setAdditive(true);
-        additiveGlow(un.x, un.y + r * 0.2, r * 3.2, '#7fb2ff', a, 0);
-        A.Render.setAdditive(false);
-      }
-      var size = r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn);
-      A.Anim.draw(rig, un, un.x, un.y - r * 0.15, size, {
+      A.Anim.draw(rig, un, un.x, spriteY, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
       if (un.hitFlash > 0) {
@@ -252,20 +281,9 @@
         A.Render.setAdditive(false);
       }
     } else {
-      D.circle(un.x, un.y, r + 3, D.color(d.color, 0.18));
-      D.ring(un.x, un.y, r + 2, 1.2, D.color(d.color, 0.55));
       var alpha = 0.25 + 0.75 * spawn;
-      heroArt(d, un.x, un.y - r * 0.12, r * 3.4 * (0.8 + 0.2 * spawn), alpha, 'battle', un.facing);
+      icon(d.icon, un.x, un.y, size, alpha);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
-    }
-
-    // 战士出击时脚下留一条回到驻点的虚线，便于读出动线
-    if (d.cls === 'warrior' && d.moveSpeed > 0) {
-      var dx = un.x - un.homeX, dy = un.y - un.homeY;
-      if (dx * dx + dy * dy > 900) {
-        D.ring(un.homeX, un.homeY, 8, 1.2, D.color(d.color, 0.35));
-        D.rect(un.homeX - 1, un.homeY - 1, 2, 2, D.color(d.color, 0.45));
-      }
     }
 
     var w = Math.max(22, r * 2.1);
@@ -277,24 +295,36 @@
   function drawProjectiles() {
     for (var i = 0; i < S.projectiles.length; i++) {
       var p = S.projectiles[i];
-      if (p.kind === 'arrow') {
+      if (p.kind === 'light') {
         var dx = p.tx - p.x, dy = p.ty - p.y;
         var len = Math.sqrt(dx * dx + dy * dy) || 1;
         var nx = dx / len, ny = dy / len;
-        if (!fxArt(0, 0, p.x, p.y, 28, 20, 1, Math.atan2(ny, nx))) {
-          D.circle(p.x, p.y, 2.6, D.color('#eaffd8'));
-          D.rect(p.x - nx * 6 - 1, p.y - ny * 6 - 1, 3, 3, D.color('#c8ffb0', 0.7));
-        }
+        // 单发光弹：短尾迹跟随目标方向，亮核只画一次投射物本体。
+        A.Render.setAdditive(true);
+        additiveGlow(p.x - nx * 3.5, p.y - ny * 3.5, 15, '#ffd38a', 0.72,
+          Math.atan2(dy, dx));
+        additiveGlow(p.x, p.y, 9, '#fff5d1', 0.92, 0);
+        A.Render.setAdditive(false);
+        D.circle(p.x, p.y, 2.2, D.color('#fff7d8', 0.96));
       } else if (p.kind === 'fire') {
-        if (!fxArt(1, 0, p.x, p.y, 24, 24, 1, 0)) {
-          D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
-          D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
-        }
+        D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
+        D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
+      } else if (p.kind === 'magic') {
+        var mdx = p.tx - p.x, mdy = p.ty - p.y;
+        // 源图的北向是画面上方；从这个基准绕中心转向实际目标方向。
+        var magicRot = Math.atan2(mdy, mdx) + Math.PI / 2;
+        mageVfx('flight', p.x, p.y, 58, 88, magicRot, 1);
       } else {
         D.circle(p.x, p.y, 5.6, D.color(p.color, 0.6));
         D.circle(p.x, p.y, 3, D.color('#e6fbff'));
       }
     }
+  }
+
+  var smokeFrames = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
+
+  function smokeFrame(t) {
+    return smokeFrames[Math.min(smokeFrames.length - 1, Math.floor(t * smokeFrames.length))];
   }
 
   function drawEffects() {
@@ -323,14 +353,18 @@
         var g = 1 - t;
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
+      } else if (e.type === 'mage-biscuit-impact') {
+        // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。
+        var biscuitSize = (e.r || 34) * (1.85 + t * 0.28);
+        drawMageImpactParticles(e, t);
+        // 饼干是命中残留物：保持完整 0.2 秒，到时由效果生命周期直接移除。
+        mageVfx('impact', e.x, e.y + 3, biscuitSize, biscuitSize * 0.92, 0, 1);
       } else if (e.type === 'smoke') {
-        var sc = (e.r || 10) * (1 + t * 1.1);
-        var sp = Assets.sprite(SMOKE_FRAMES[Math.min(2, Math.floor(t * 3))]);
+        var sp = Assets.sprite(smokeFrame(t));
         if (sp) {
+          var sc = (e.r || 10) * 1.7;
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
-            e.x, e.y, sc * 2, { alpha: 0.9 * (1 - t * t * t), tint: D.color(e.color, 1) });
-        } else {
-          fxArt(1, 1, e.x, e.y, sc * 2, sc * 2, (1 - t) * 0.42, 0);
+            e.x, e.y, sc * 2, { alpha: 0.9, tint: D.color(e.color, 1) });
         }
       }
     }
@@ -479,6 +513,7 @@
     drawBase: drawBase,
     drawEnemy: drawEnemy,
     drawUnit: drawUnit,
+    actorDepthY: actorDepthY,
     drawProjectiles: drawProjectiles,
     drawEffects: drawEffects,
     drawFloats: drawFloats,

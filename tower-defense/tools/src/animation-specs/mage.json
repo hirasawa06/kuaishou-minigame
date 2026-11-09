@@ -1,0 +1,20 @@
+{
+  "id": "mage",
+  "entity": "hero",
+  "render": "whole",
+  "sourceDir": "characters/角色/法师狗",
+  "frames": {
+    "idle": { "icon": "mage-back-idle", "file": "mage-dog-back-actions-v1.png", "index": 0, "columns": 3, "rows": 2 },
+    "windup": { "icon": "mage-back-windup", "file": "mage-dog-back-actions-v1.png", "index": 1, "columns": 3, "rows": 2 },
+    "release": { "icon": "mage-back-release", "file": "mage-dog-back-actions-v1.png", "index": 2, "columns": 3, "rows": 2 },
+    "recover": { "icon": "mage-back-recover", "file": "mage-dog-back-actions-v1.png", "index": 3, "columns": 3, "rows": 2 },
+    "hurt": { "icon": "mage-back-hurt", "file": "mage-dog-back-actions-v1.png", "index": 4, "columns": 3, "rows": 2 },
+    "defeat": { "icon": "mage-back-defeat", "file": "mage-dog-back-actions-v1.png", "index": 5, "columns": 3, "rows": 2 }
+  },
+  "states": {
+    "idle": { "duration": 2.2 },
+    "attack": { "duration": 0.50, "hit": 0.28, "windup": "windup", "release": "release", "recover": "recover", "muzzle": [14, -22] },
+    "hurt": { "duration": 0.22, "frame": "hurt" },
+    "die": { "duration": 0.48, "frame": "defeat" }
+  }
+}

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen-shiba-atlas.py — 战斗精灵图集（128 单元格，2048x1024 内装得下）
+gen-shiba-atlas.py — 战斗精灵图集（128 单元格，1024x1024 内装得下）
 
 输入（tools/src/）：
   shiba-front.png   从角色设定图抠出的护盾柴犬正视图（RGBA）
 输出：
   package/res/Image/game.png        128 单元格图集（2x 绘制后缩放）
-  package/gameplay/data/rigs.js     分件坐标 + 几何特效元数据
+  package/gameplay/data/rigs.js     分件坐标 + 高分辨率特效元数据
 
 图集布局：8 列 × 8 行，单元格 128px（含 4px padding，有效区 120px）。
 帧按注册顺序自动排格；运行时只能通过稳定帧名查找，不能依赖行列位置。
@@ -65,12 +65,21 @@ ARCHER_SPEC = load_animation_spec("arch")
 ARCHER_CAT_DIR = os.path.join(SRC_DIR, ARCHER_SPEC["sourceDir"])
 TANK_SPEC = load_animation_spec("tank")
 TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
+LAMP_SPEC = load_animation_spec("lamp")
+LAMP_DIR = os.path.join(SRC_DIR, LAMP_SPEC["sourceDir"])
+WAR_SPEC = load_animation_spec("war")
+WAR_CAT_DIR = os.path.join(SRC_DIR, WAR_SPEC["sourceDir"])
+MAGE_SPEC = load_animation_spec("mage")
+MAGE_DOG_DIR = os.path.join(SRC_DIR, MAGE_SPEC["sourceDir"])
 DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
 DEFEAT_SMOKE = [
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-01.png"),
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-02.png"),
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-03.png"),
 ]
+MAGE_BISCUIT_VFX = os.path.join(SRC_DIR, "effects", "mage-biscuit", "mage-biscuit-vfx-v5.png")
+MAGE_BISCUIT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-vfx.png")
+MAGE_VFX_CELL = 256
 
 
 # ─────────────────────────────────────────── 柴犬分件
@@ -220,25 +229,56 @@ def archer_back_defeat():
 
 
 def spec_sheet_frame(spec, source_dir, name):
-    """按规格从横向等分精灵表取帧；角色动作与独立特效共用此规则。"""
+    """按规格从规则网格精灵表取帧；角色动作与独立特效共用此规则。"""
     frame = spec["frames"][name]
     columns = frame.get("columns")
     if not columns:
         raise ValueError("动作规格缺少 sheet columns: " + name)
+    rows = frame.get("rows", 1)
     sheet = Image.open(os.path.join(source_dir, frame["file"])).convert("RGBA")
     width, height = sheet.size
     index = frame["index"]
+    if index < 0 or index >= columns * rows:
+        raise ValueError("动作规格 sheet index 越界: " + name)
     col = index % columns
+    row = index // columns
     x0, x1 = col * width // columns, (col + 1) * width // columns
-    return fit_visible(sheet.crop((x0, 0, x1, height)))
+    y0, y1 = row * height // rows, (row + 1) * height // rows
+    return fit_visible(sheet.crop((x0, y0, x1, y1)))
 
 
 def tank_frame(name):
-    """盾狗受击、晕倒与三帧光盾。"""
+    """柴不破的背面待机、受击与仰面倒地帧。"""
     frame = TANK_SPEC["frames"][name]
     if "columns" in frame:
         return spec_sheet_frame(TANK_SPEC, TANK_DOG_DIR, name)
     return fit_visible(Image.open(os.path.join(TANK_DOG_DIR, frame["file"])).convert("RGBA"))
+
+
+def lamp_frame(name):
+    """台灯小怪动作表：统一从 3×2 透明精灵表取帧。"""
+    return spec_sheet_frame(LAMP_SPEC, LAMP_DIR, name)
+
+
+def war_frame(name):
+    """近战猫动作表：正背两套动作共用 4×3 透明精灵表。"""
+    return spec_sheet_frame(WAR_SPEC, WAR_CAT_DIR, name)
+
+
+def mage_frame(name):
+    """哈利边牧动作表：仅背面六帧，统一从 3×2 透明精灵表取帧。"""
+    frame = MAGE_SPEC["frames"][name]
+    sheet = Image.open(os.path.join(MAGE_DOG_DIR, frame["file"])).convert("RGBA")
+    width, height = sheet.size
+    index = frame["index"]
+    col = index % frame["columns"]
+    row = index // frame["columns"]
+    img = sheet.crop((col * width // frame["columns"], row * height // frame["rows"],
+                      (col + 1) * width // frame["columns"], (row + 1) * height // frame["rows"]))
+    # 生成图边缘的低透明白雾在缩图后会变成碎屑；清掉它而不影响主体与法术高光。
+    rgba = np.asarray(img).copy()
+    rgba[rgba[:, :, 3] < 80] = (0, 0, 0, 0)
+    return fit_visible(Image.fromarray(rgba, "RGBA"))
 
 
 def defeat_smoke(index):
@@ -255,6 +295,38 @@ def make_glow(size=96):
         alpha = int(255 * (1 - t) ** 2.2)
         d.ellipse((c - i, c - i, c + i, c + i), fill=(255, 255, 255, alpha))
     return img
+
+
+def mage_biscuit_texture():
+    """导出双格特效：飞弹保留，落地格只保留饼干本体与实体碎块。"""
+    sheet = Image.open(MAGE_BISCUIT_VFX).convert("RGBA")
+    split = int(round(sheet.width * 0.36))
+    out = Image.new("RGBA", (MAGE_VFX_CELL * 2, MAGE_VFX_CELL), (0, 0, 0, 0))
+
+    def pack(src, x):
+        rgba = np.asarray(src)
+        ys, xs = np.where(rgba[:, :, 3] >= 16)
+        if len(xs) == 0:
+            raise ValueError("法师饼干特效帧为空")
+        crop = src.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+        scale = min((MAGE_VFX_CELL - 32) / crop.width, (MAGE_VFX_CELL - 32) / crop.height)
+        size = (max(1, round(crop.width * scale)), max(1, round(crop.height * scale)))
+        crop = crop.resize(size, Image.LANCZOS)
+        out.alpha_composite(crop, (x + (MAGE_VFX_CELL - crop.width) // 2,
+                                  (MAGE_VFX_CELL - crop.height) // 2))
+
+    pack(sheet.crop((0, 0, split, sheet.height)), 0)
+    pack(sheet.crop((split, 0, sheet.width, sheet.height)), MAGE_VFX_CELL)
+    out.save(MAGE_BISCUIT_TEXTURE)
+    return {
+        "src": "res/Image/mage-biscuit-vfx.png?v=5",
+        "texW": MAGE_VFX_CELL * 2,
+        "texH": MAGE_VFX_CELL,
+        "effects": {
+            "flight": [0, 0, MAGE_VFX_CELL, MAGE_VFX_CELL],
+            "impact": [MAGE_VFX_CELL, 0, MAGE_VFX_CELL, MAGE_VFX_CELL],
+        },
+    }
 
 
 def make_slash(w=120, h=72):
@@ -486,10 +558,22 @@ def build():
     cell(ARCHER_SPEC["frames"]["defeat"]["icon"], archer_back_defeat())
     cell("fx-smoke-3", defeat_smoke(2))
 
-    # 盾狗：背面待机、受击与晕倒均为完整姿势帧。
+    # 柴不破：背面待机、受击与晕倒均为完整姿势帧。
     cell(TANK_SPEC["frames"]["idle"]["icon"], tank_frame("idle"))
     cell(TANK_SPEC["frames"]["hurt"]["icon"], tank_frame("hurt"))
     cell(TANK_SPEC["frames"]["defeat"]["icon"], tank_frame("defeat"))
+
+    # 台灯小怪：待机、跳步、灯罩蓄力 / 撞击、受击、侧翻倒地。
+    for frame_name, frame in LAMP_SPEC["frames"].items():
+        cell(frame["icon"], lamp_frame(frame_name))
+
+    # 近战猫：正背朝向分别提供待机、走步、挥锤、受击和倒地姿势。
+    for frame_name, frame in WAR_SPEC["frames"].items():
+        cell(frame["icon"], war_frame(frame_name))
+
+    # 哈利边牧：固定背面，蓄能、释放与收势由同一法术攻击时间线驱动。
+    for frame_name, frame in MAGE_SPEC["frames"].items():
+        cell(frame["icon"], mage_frame(frame_name))
 
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
@@ -532,13 +616,15 @@ def build():
     return data
 
 
-def write_rigs(atlas_data):
+def write_rigs(atlas_data, mage_vfx):
     src = os.path.join(DATA_DIR, "rigs.js")
     with open(src, "w", encoding="utf-8") as f:
         f.write("/* 由 tools/gen-shiba-atlas.py 生成，请勿手改 */\n")
         f.write("(function () {\n  var A = window.AIGCUtils = window.AIGCUtils || {};\n")
         f.write("  A.GameAtlas = " + json.dumps(atlas_data, ensure_ascii=False,
                                             separators=(",", ":")) + ";\n")
+        f.write("  A.MageVfx = " + json.dumps(mage_vfx, ensure_ascii=False,
+                                                 separators=(",", ":")) + ";\n")
         f.write("})();\n")
     return src
 
@@ -546,7 +632,7 @@ def write_rigs(atlas_data):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, WAR_SPEC, MAGE_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],
@@ -565,8 +651,9 @@ if __name__ == "__main__":
     os.makedirs(IMG_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
     data = build()
-    rigs_path = write_rigs(data)
+    mage_vfx = mage_biscuit_texture()
+    rigs_path = write_rigs(data, mage_vfx)
     spec_path = write_character_animations()
-    print(json.dumps({"atlas": data["src"], "cells": len(data["icons"]),
+    print(json.dumps({"atlas": data["src"], "cells": len(data["icons"]), "mageVfx": mage_vfx["src"],
                       "rigs": os.path.relpath(rigs_path, ROOT),
                       "animations": os.path.relpath(spec_path, ROOT)}, ensure_ascii=False))
