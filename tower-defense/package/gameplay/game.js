@@ -71,6 +71,15 @@
   }
 
   function start() {
+    var level = S.clamp(S.selectedLevel | 0, 1, C.LEVELS.length);
+    if (A.Profile && !A.Profile.isLevelUnlocked(level)) {
+      S.toastMsg('请先通过第 ' + (level - 1) + ' 关', 1.4);
+      return false;
+    }
+    S.currentLevel = level;
+    S.levelHpScale = C.LEVELS[level - 1].hpScale;
+    S.levelAtkScale = C.LEVELS[level - 1].atkScale;
+    A.Input.cancel();
     L.ui.ready = false;
     L.calc();
     S.reset();
@@ -79,7 +88,14 @@
     A.GameAudio && A.GameAudio.play('start');
   }
 
+  function selectLevel(delta) {
+    if (S.phase !== 'menu' || S.menuStartDelay > 0) return;
+    S.selectedLevel = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
+    S.menuFeedback = null;
+  }
+
   function togglePause() {
+    A.Input.cancel();
     if (S.phase === 'playing') {
       S.phase = 'paused';
       S.dragging = null;
@@ -90,11 +106,14 @@
 
   // 由「重新开始」调用：保留当前布局，重置对局数据
   function restart() {
+    S.selectedLevel = S.currentLevel;
     start();
   }
 
   // 返回主页：清空本局临时状态，回到首页；未结束的一局不计入存档
   function goMenu() {
+    A.Input.cancel();
+    S.menuStartDelay = 0;
     if (A.ProfileUI) A.ProfileUI.close();
     S.phase = 'menu';
     S.dragging = null;
@@ -115,6 +134,7 @@
 
   // 战斗内打开设置：先暂停，避免打开面板时敌人继续推进
   function openSettings() {
+    A.Input.cancel();
     if (S.phase === 'playing') {
       S.phase = 'paused';
       S.dragging = null;
@@ -256,6 +276,7 @@
 
   A.Game = {
     boot: boot,
+    selectLevel: selectLevel,
     start: start,
     restart: restart,
     goMenu: goMenu,

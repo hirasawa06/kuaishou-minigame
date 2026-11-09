@@ -238,6 +238,10 @@
       gap: pauseGap,
       btn: function (kind) { return pauseRects[kind]; },
     };
+    ui.sellZone = { x: metrics.safeLeft + pad, y: contentBottom - 44,
+      w: safeW - pad * 2, h: 44 };
+    ui.resultHome = { x: metrics.safeLeft + (safeW - 184) / 2,
+      y: Math.min(contentBottom - 44, ui.btnY.result + ui.btnH + 12), w: 184, h: 40 };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
@@ -256,6 +260,10 @@
     ui.menu.banner = figmaRect(8.24, 244.89, 373.06, 64.09);
     ui.menu.card = figmaRect(8.24, 308.98, 373.06, 286.09);
     ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
+    ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
+    ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
+    ui.menu.levelStatus = { x: ui.menu.card.x + 56, y: ui.menu.card.y + ui.menu.card.h - 44,
+      w: ui.menu.card.w - 112, h: 36 };
     var panelW = Math.min(300, safeW - pad * 2);
     var panelH = Math.min(210, contentH * 0.45);
     ui.menu.panel = { x: metrics.safeLeft + (safeW - panelW) / 2,

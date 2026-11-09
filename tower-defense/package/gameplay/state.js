@@ -48,6 +48,11 @@
     menuSoundEnabled: true,
     menuPressed: null,
     menuFeedback: null,
+    selectedLevel: 1,
+    currentLevel: 1,
+    levelHpScale: 1,
+    levelAtkScale: 1,
+    menuSwipe: null,
     menuStartDelay: 0,
   };
 

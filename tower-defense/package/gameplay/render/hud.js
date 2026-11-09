@@ -14,6 +14,7 @@
     warrior: '#e8873a',
     archer: '#4bd184',
     mage: '#a583f0',
+    healer: '#79dcb5',
   };
   // 透明按钮图的有效像素范围；源图保留透明边，采样时只取按钮本身。
   var MENU_BUTTONS = {
@@ -133,8 +134,19 @@
       drawHeroCell(def, rect, 1, i);
     }
 
-    D.text('点卡自动落地 · 拖到战场指定位置 · 击杀掉金币',
-      u.w / 2, u.contentBottom - 18, 18, D.color('#8a8172'), 1);
+    if (S.dragging && S.dragging.kind === 'unit' && S.dragging.active) {
+      var sell = u.sellZone;
+      var price = A.Battle.sellPrice(S.dragging.unit);
+      var inside = S.dragging.x >= sell.x && S.dragging.x <= sell.x + sell.w &&
+        S.dragging.y >= sell.y && S.dragging.y <= sell.y + sell.h;
+      D.roundRect(sell.x, sell.y, sell.w, sell.h, 12,
+        D.color(inside ? '#306f49' : '#4d3521', 0.96));
+      D.text(price ? '松手出售 +' + price + ' 金币' : '角色已退场，无法出售',
+        sell.x + sell.w / 2, sell.y + 12, 18, D.color('#ffe5ac'), 1);
+    } else {
+      D.text('点卡上阵 · 拖动固定角色到底部出售',
+        u.w / 2, u.contentBottom - 18, 18, D.color('#8a8172'), 1);
+    }
   }
 
   function drawEmptyCell(rect) {
@@ -174,7 +186,8 @@
     // 职业 + 关键数值压到一行，避免溢出
     var line1 = def.cls === 'tank'
       ? def.clsName + ' · 生命 ' + def.hp
-      : def.clsName + ' · 攻 ' + def.atk;
+      : def.cls === 'healer' ? def.clsName + ' · 回血 ' + def.heal
+        : def.clsName + ' · 攻 ' + def.atk;
     D.text(line1, tx, nameY + 21, 18, clsCol, 0);
 
     // 费用角标
@@ -209,7 +222,8 @@
     var stats = '生命 ' + def.hp + '  攻击 ' + def.atk +
       '  射程 ' + (def.range || 0) + '  攻速 ' + def.interval + 's';
     D.text(stats, x + 14, y + 92, 18, D.color('#7f92b6', a), 0);
-    var extra = def.cls === 'tank'
+    var extra = def.cls === 'healer' ? '治疗半径 ' + def.range + ' · 回血 ' + def.heal
+      : def.cls === 'tank'
       ? '嘲讽半径 ' + def.taunt
       : def.splash ? '群攻半径 ' + def.splash
         : def.cls === 'warrior' ? '移动速度 ' + def.moveSpeed : '移动速度 0（驻守）';
@@ -291,6 +305,33 @@
         spec.crop[0], spec.crop[1], spec.crop[2], spec.crop[3],
         target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
     }
+    // 首页原图上的章节文字是静态的，用同风格牌匾覆盖后绘制真实选关。
+    var banner = m.banner;
+    D.roundRect(banner.x + 22, banner.y + 6, banner.w - 44, banner.h - 12, 24, D.color('#8a4b22'));
+    D.strokeRect(banner.x + 22, banner.y + 6, banner.w - 44, banner.h - 12, 2, D.color('#ffdfac'));
+    var level = C.LEVELS[S.selectedLevel - 1];
+    D.text('第 ' + S.selectedLevel + ' 关 · ' + level.name,
+      banner.x + banner.w / 2, banner.y + (banner.h - 18) / 2, 18, D.color('#fff0d4'), 1);
+    var unlocked = A.Profile.isLevelUnlocked(S.selectedLevel);
+    var nav = [m.levelPrev, m.levelNext];
+    for (var ni = 0; ni < nav.length; ni++) {
+      var nr = nav[ni];
+      D.roundRect(nr.x, nr.y, nr.w, nr.h, 18, D.color('#fff0d4', 0.94));
+      D.text(ni === 0 ? '<' : '>', nr.x + nr.w / 2, nr.y + 8, 28, D.color('#784323'), 1);
+    }
+    var status = m.levelStatus;
+    D.roundRect(status.x, status.y, status.w, status.h, 16, D.color('#fff0d4', 0.94));
+    D.text(S.selectedLevel + '/10 · ' + (unlocked ?
+      (S.selectedLevel <= A.Profile.data.completedLevel ? '已通关' : '可挑战') : '未解锁'),
+      status.x + status.w / 2, status.y + 8, 18, D.color('#784323'), 1);
+    if (!unlocked) {
+      D.roundRect(m.start.x, m.start.y, m.start.w, m.start.h, 32, D.color('#fff0d4', 0.93));
+      D.text('先通过第 ' + (S.selectedLevel - 1) + ' 关',
+        m.start.x + m.start.w / 2, m.start.y + (m.start.h - 28) / 2, 28, D.color('#784323'), 1);
+    }
+    if (S.toast) {
+      D.text(S.toast.text, m.card.x + m.card.w / 2, m.card.y + 12, 18, D.color('#fff0d4'), 1);
+    }
     if (S.menuPanel) drawMenuPanel(m);
   }
 
@@ -365,6 +406,9 @@
       D.text(stats[i], u.w / 2, y + 112 + i * 32, 28, COL.textMain, 1);
     }
     drawButton('再玩一次', u.btnY.result, true);
+    drawButton('返回选关', u.resultHome, false, 18);
+    D.text('第 ' + S.currentLevel + ' 关' + (win && S.currentLevel < C.LEVELS.length ? ' · 下一关已解锁' : ''),
+      u.w / 2, y - 30, 18, COL.textDim, 1);
   }
 
   function drawLoading() {

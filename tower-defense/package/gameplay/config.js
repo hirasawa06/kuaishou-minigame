@@ -86,6 +86,15 @@
         color: '#a583f0',
         desc: '中距离范围伤害，全场血量最少',
       },
+      {
+        id: 'healer', name: '奶糖喵', cls: 'healer', clsName: '治疗',
+        icon: 'ui-heart', cost: 8,
+        hp: 288, atk: 0, interval: 2.0,
+        range: 168, radius: 20.4, moveSpeed: 0,
+        heal: 36, taunt: 0, splash: 0,
+        color: '#79dcb5',
+        desc: '每两秒为范围内受伤队友恢复生命，不攻击',
+      },
     ],
 
     // ── 敌人四档 ──
@@ -120,6 +129,20 @@
     spawnGap: 0.75,
     waveGap: 6.0,
     firstWaveDelay: 5.0,
+
+    // 十个独立关卡，各自包含下方十波；名称与倍率为首轮可调数值。
+    LEVELS: [
+      { name: '客厅初战', hpScale: 1.00, atkScale: 1.00 },
+      { name: '沙发防线', hpScale: 1.08, atkScale: 1.05 },
+      { name: '窗边警报', hpScale: 1.16, atkScale: 1.10 },
+      { name: '地毯守卫', hpScale: 1.24, atkScale: 1.15 },
+      { name: '书柜反击', hpScale: 1.32, atkScale: 1.20 },
+      { name: '餐厅危机', hpScale: 1.40, atkScale: 1.25 },
+      { name: '走廊突围', hpScale: 1.48, atkScale: 1.30 },
+      { name: '卧室保卫', hpScale: 1.56, atkScale: 1.35 },
+      { name: '家具围攻', hpScale: 1.64, atkScale: 1.40 },
+      { name: '家园决战', hpScale: 1.72, atkScale: 1.45 },
+    ],
 
     // ── 波次表 ──
     // groups: [敌人 id, 数量]
