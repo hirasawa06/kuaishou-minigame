@@ -8,7 +8,7 @@
     // ── 屏幕与区域（竖屏，布局在 layout.js 里按实际尺寸计算）──
     designW: 414,
     designH: 896,
-    hudH: 76,
+    hudH: 52,
     trayH: 200,
     cardGap: 10,
     cardCount: 4,
@@ -93,7 +93,7 @@
         range: 168, radius: 20.4, moveSpeed: 0,
         heal: 36, taunt: 0, splash: 0,
         color: '#79dcb5',
-        desc: '每两秒为范围内受伤队友恢复生命，不攻击',
+        desc: '每两秒单体治疗范围内剩余生命最低的受伤队友',
       },
     ],
 

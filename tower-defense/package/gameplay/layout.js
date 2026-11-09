@@ -52,7 +52,7 @@
     if (ui.ready && ui.metricKey === metricKey) return ui;
 
     var pad = Math.round(Math.max(10, Math.min(22, w * 0.033)));
-    var hudH = adaptationError ? Math.max(1, Math.floor(contentH * 0.22)) : 76;
+    var hudH = adaptationError ? Math.max(1, Math.floor(contentH * 0.16)) : 52;
     var trayH = adaptationError
       ? Math.max(1, contentH - hudH - Math.max(1, Math.floor(contentH * 0.43)))
       : Math.round(Math.max(176, Math.min(232, contentH * 0.27)));
@@ -200,6 +200,8 @@
       w: 44,
       h: 44,
     };
+    ui.speedBtn = { x: metrics.safeLeft + pad, y: fieldTop + 6, w: 44, h: 44 };
+    ui.hudCenterX = metrics.safeLeft + safeW * 0.47;
     // 主按钮几何：按钮实际绘制在 h*btnY 处，点击判定复用同一份数据
     ui.btnW = 184;
     ui.btnH = 54;
@@ -240,8 +242,13 @@
     };
     ui.sellZone = { x: metrics.safeLeft + pad, y: contentBottom - 44,
       w: safeW - pad * 2, h: 44 };
-    ui.resultHome = { x: metrics.safeLeft + (safeW - 184) / 2,
-      y: Math.min(contentBottom - 44, ui.btnY.result + ui.btnH + 12), w: 184, h: 40 };
+    var resultGap = 8;
+    var resultW = Math.min(240, safeW - pad * 2);
+    var resultTop = contentBottom - 12 - 3 * 44 - 2 * resultGap;
+    ui.resultNext = { x: metrics.safeLeft + (safeW - resultW) / 2, y: resultTop, w: resultW, h: 44 };
+    ui.btnY.result = resultTop + 44 + resultGap;
+    ui.resultHome = { x: ui.resultNext.x, y: resultTop + 2 * (44 + resultGap), w: resultW, h: 44 };
+    ui.resultReplay = { x: ui.resultNext.x, y: ui.btnY.result, w: resultW, h: 44 };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
@@ -502,6 +509,7 @@
     };
 
     ui.btnRect = function (kind) {
+      if (kind === 'result') return ui.resultReplay;
       if (kind === 'menu') return ui.menu.start;
       if (kind === 'shopRefresh') return ui.refreshBtn;
       if (kind === 'shopCap') return ui.capBtn;

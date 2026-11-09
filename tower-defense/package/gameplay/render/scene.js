@@ -324,15 +324,32 @@
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
       } else if (e.type === 'heal') {
+        var source = null, target = null;
+        for (var hi = 0; hi < S.units.length; hi++) {
+          var hu = S.units[hi];
+          if (hu.dead || hu.hp <= 0) continue;
+          if (hu.uid === e.sourceUid) source = hu;
+          if (hu.uid === e.targetUid) target = hu;
+        }
+        if (!source || !target) continue;
+        var tx = target.x, ty = target.y - target.def.radius * 0.3;
+        var sx = source.x, sy = source.y - source.def.radius * 0.3;
+        var dx = tx - sx, dy = ty - sy;
+        var length = Math.sqrt(dx * dx + dy * dy);
+        if (length > 0) {
+          A.Render.push((sx + tx) / 2 - length / 2, (sy + ty) / 2 - 2,
+            length, 4, D.color('#6ff0a8', (1 - t) * 0.9),
+            { mode: 0, hw: length / 2, hh: 2, r: 2, rot: Math.atan2(dy, dx), cx: (sx + tx) / 2, cy: (sy + ty) / 2 });
+        }
         var healAlpha = 1 - t;
         var healSize = 10 + t * 5;
-        var healY = e.y - t * 18;
+        var healY = ty - t * 18;
         A.Render.setAdditive(true);
-        additiveGlow(e.x, e.y, (e.r || 20) * (1.2 + t), e.color, healAlpha * 0.4, 0);
+        additiveGlow(tx, ty, (e.r || 20) * (1.2 + t), e.color, healAlpha * 0.4, 0);
         A.Render.setAdditive(false);
-        D.rect(e.x - healSize * 0.12, healY - healSize * 0.5,
+        D.rect(tx - healSize * 0.12, healY - healSize * 0.5,
           healSize * 0.24, healSize, D.color(e.color, healAlpha));
-        D.rect(e.x - healSize * 0.5, healY - healSize * 0.12,
+        D.rect(tx - healSize * 0.5, healY - healSize * 0.12,
           healSize, healSize * 0.24, D.color(e.color, healAlpha));
       } else if (e.type === 'mage-biscuit-impact') {
         // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。

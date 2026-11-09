@@ -775,18 +775,23 @@
     var range2 = def.range * def.range;
     var amount = def.heal || 0;
     if (amount <= 0) return;
+    var target = null;
     for (var i = 0; i < S.units.length; i++) {
       var ally = S.units[i];
       if (ally === healer || ally.dead || ally.hp <= 0 || ally.hp >= ally.maxHp) continue;
       if (S.dist2(healer.x, healer.y, ally.x, ally.y) > range2) continue;
-      var healed = Math.min(amount, ally.maxHp - ally.hp);
-      ally.hp = Math.min(ally.maxHp, ally.hp + healed);
-      S.addFloat(ally.x, ally.y - ally.def.radius - 14, '+' + Math.round(healed), '#6ff0a8');
-      S.addEffect({
-        type: 'heal', x: ally.x, y: ally.y - ally.def.radius * 0.3,
-        r: ally.def.radius, life: 0.42, max: 0.42, color: '#6ff0a8',
-      });
+      // 按当前剩余生命值选择单个目标；同血量按 uid 稳定选择。
+      if (!target || ally.hp < target.hp || (ally.hp === target.hp && ally.uid < target.uid)) target = ally;
     }
+    if (!target) return;
+    var healed = Math.min(amount, target.maxHp - target.hp);
+    target.hp += healed;
+    S.addFloat(target.x, target.y - target.def.radius - 14, '+' + Math.round(healed), '#6ff0a8');
+    S.addEffect({
+      type: 'heal', sourceUid: healer.uid, targetUid: target.uid,
+      x: target.x, y: target.y - target.def.radius * 0.3,
+      r: target.def.radius, life: 0.6, max: 0.6, color: '#6ff0a8',
+    });
   }
 
   function nearestEnemy(un, maxRange) {

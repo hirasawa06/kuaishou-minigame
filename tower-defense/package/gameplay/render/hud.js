@@ -29,47 +29,29 @@
     return String(Math.floor(n));
   }
 
-  // ── 顶部 HUD：波次 / 基地 / 金币 / 席位 / 暂停 ───────────────
+  // ── 紧凑 HUD：波次 / 中间剩余与席位 / 金币 / 暂停 ───────────
   function drawHud() {
     var u = L.ui;
     var h = u.hud;
-    D.vGradient(0, 0, u.w, h.y + h.h + 8, D.color('#1b2233', 0.95), D.color('#121826', 0.62), 10);
+    D.vGradient(h.x, h.y, h.w, h.h, D.color('#1b2233', 0.95), D.color('#121826', 0.62), 10);
     var pad = u.safeLeft + u.pad;
-    var top = h.y + 8;
-
-    D.text('波次', pad, top + 2, 18, COL.textDim, 0);
     var waveNo = Math.min(S.waveIndex + 1, C.WAVES.length);
-    D.text(waveNo + '/' + C.WAVES.length, pad, top + 24, 28, COL.textMain, 0);
-    var remain = A.Battle.remainingEnemies();
-    D.text('剩余 ' + remain, pad, top + 56, 18, COL.textDim, 0);
-
-    // 基地血量：固定在屏幕中线略左，给右侧金币区留出空间
-    var hpRatio = Math.max(0, S.baseHp) / C.BASE_HP;
-    var cx = u.w * 0.36;
-    icon('ui-heart', cx - 26, top + 16, 26);
-    D.text(String(Math.ceil(Math.max(0, S.baseHp))), cx - 8, top + 2, 28,
-      hpRatio > 0.4 ? COL.textMain : COL.hpRed, 0);
-    D.roundRect(cx - 30, top + 38, 76, 7, 4, COL.hpBack);
-    D.roundRect(cx - 29, top + 39, Math.max(0, 74 * hpRatio), 5, 3,
-      hpRatio > 0.5 ? COL.hpGreen : hpRatio > 0.25 ? COL.hpOrange : COL.hpRed);
-    D.text('基地', cx - 30, top + 50, 18, COL.textDim, 0);
-
-    // 金币与上场席位：整体靠右对齐到暂停按钮左侧。
-    // 席位文字贴右边界，金币数字和图标依次往左排，互不覆盖。
-    var rightEdge = u.pauseBtn.x - 10;
-    var slotLabel = '席位 ' + S.liveUnits() + '/' + S.heroCap;
-    D.text(slotLabel, rightEdge, top + 38, 18, COL.textDim, 2);
-    // 金币和席位都右对齐到同一条竖线：金币在上、席位在下，避免互相挤占
+    D.text('波次', pad, h.y + 3, 18, COL.textDim, 0);
+    D.text(waveNo + '/' + C.WAVES.length, pad, h.y + 23, 28, COL.textMain, 0);
+    D.text('剩余 ' + A.Battle.remainingEnemies(), u.hudCenterX, h.y + 5, 18, COL.textMain, 1);
+    D.text('席位 ' + S.liveUnits() + '/' + S.heroCap, u.hudCenterX, h.y + 28, 18, COL.textDim, 1);
+    var rightEdge = u.pauseBtn.x - 8;
     var goldText = fmt(S.gold);
-    var goldW = D.textWidth(goldText, A.FontAtlas['28']);
-    D.text(goldText, rightEdge, top + 2, 28, COL.gold, 2);
-    icon('ui-coin', rightEdge - goldW - 16, top + 16, 26);
-
-    // 暂停
+    var goldW = D.textWidth(goldText, A.FontAtlas['18']);
+    D.text(goldText, rightEdge, h.y + 17, 18, COL.gold, 2);
+    icon('ui-coin', rightEdge - goldW - 14, h.y + 26, 22);
     var pb = u.pauseBtn;
     D.roundRect(pb.x, pb.y, pb.w, pb.h, 12, D.color('#1e2d52', 0.95));
-    D.strokeRect(pb.x, pb.y, pb.w, pb.h, 1, D.color('#3a5085'));
     icon(S.phase === 'paused' ? 'ui-play' : 'ui-pause', pb.x + pb.w / 2, pb.y + pb.h / 2, 19);
+    var speed = u.speedBtn;
+    D.roundRect(speed.x, speed.y, speed.w, speed.h, 12,
+      D.color(S.battleSpeed === 2 ? '#b57925' : '#283b53', 0.95));
+    D.text(S.battleSpeed + 'x', speed.x + speed.w / 2, speed.y + 13, 18, D.color('#ffe5ac'), 1);
   }
 
   // ── 金币条 ────────────────────────────────────────────────
@@ -405,7 +387,9 @@
     for (var i = 0; i < stats.length; i++) {
       D.text(stats[i], u.w / 2, y + 112 + i * 32, 28, COL.textMain, 1);
     }
-    drawButton('再玩一次', u.btnY.result, true);
+    if (win && S.currentLevel < C.LEVELS.length) drawButton('下一关', u.resultNext, true, 28);
+    else if (win) D.text('全部关卡已通关', u.w / 2, u.resultNext.y + 12, 18, COL.gold, 1);
+    drawButton('再玩一次', u.resultReplay, !win, 18);
     drawButton('返回选关', u.resultHome, false, 18);
     D.text('第 ' + S.currentLevel + ' 关' + (win && S.currentLevel < C.LEVELS.length ? ' · 下一关已解锁' : ''),
       u.w / 2, y - 30, 18, COL.textDim, 1);

@@ -75,6 +75,7 @@
       }
     }
     if (S.phase !== 'playing') return;
+    if (hitControl(L.ui.speedBtn, px, py, 0) || hitControl(L.ui.pauseBtn, px, py, 0)) return;
     var hit = shopAt(px, py);
     if (!hit) {
       for (var i = S.units.length - 1; i >= 0; i--) {
@@ -220,6 +221,10 @@
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {
+      if (S.phase === 'win' && S.currentLevel < C.LEVELS.length && hitControl(u.resultNext, px, py, 0)) {
+        A.Game.nextLevel();
+        return;
+      }
       if (hitControl(u.resultHome, px, py, 0)) { A.Game.goMenu(); return; }
       if (hitControl(u.btnRect('result'), px, py, 8)) A.Game.restart();
       return;
@@ -234,6 +239,7 @@
       return;
     }
     if (S.phase === 'playing') {
+      if (hitControl(u.speedBtn, px, py, 0)) { A.Game.toggleSpeed(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) { A.Game.togglePause(); return; }
       if (hitControl(u.refreshBtn, px, py, 4)) {
         S.refreshShop();

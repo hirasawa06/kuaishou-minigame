@@ -88,6 +88,19 @@
     A.GameAudio && A.GameAudio.play('start');
   }
 
+  function nextLevel() {
+    if (S.phase !== 'win' || S.currentLevel >= C.LEVELS.length) return false;
+    var next = S.currentLevel + 1;
+    if (!A.Profile.isLevelUnlocked(next)) return false;
+    S.selectedLevel = next;
+    start();
+    return true;
+  }
+
+  function toggleSpeed() {
+    if (S.phase === 'playing') S.battleSpeed = S.battleSpeed === 2 ? 1 : 2;
+  }
+
   function selectLevel(delta) {
     if (S.phase !== 'menu' || S.menuStartDelay > 0) return;
     S.selectedLevel = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
@@ -149,7 +162,12 @@
       S.menuStartDelay -= dt;
       if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
     }
-    A.Battle.update(dt);
+    // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
+    var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
+    for (var si = 0; si < steps; si++) {
+      A.Battle.update(dt);
+      if (S.phase !== 'playing') break;
+    }
   }
 
   function drawBackdrop() {
@@ -276,6 +294,8 @@
 
   A.Game = {
     boot: boot,
+    nextLevel: nextLevel,
+    toggleSpeed: toggleSpeed,
     selectLevel: selectLevel,
     start: start,
     restart: restart,
