@@ -294,10 +294,13 @@
     }
   }
 
-  var smokeFrames = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
+  // ═══ 倒地烟雾 ═══
+  // 只保留中烟团与残烟两帧，删除用户否决的大烟团起始帧。
+  var smokeFrames = ['fx-smoke', 'fx-smoke-2'];
+  var smokeScales = [0.55, 0.9];
 
   function smokeFrame(t) {
-    return smokeFrames[Math.min(smokeFrames.length - 1, Math.floor(t * smokeFrames.length))];
+    return Math.min(smokeFrames.length - 1, Math.floor(t * smokeFrames.length));
   }
 
   function drawEffects() {
@@ -358,11 +361,12 @@
         // 饼干是命中残留物：保持完整 0.2 秒，到时由效果生命周期直接移除。
         mageVfx('impact', e.x, e.y + 3, biscuitSize, biscuitSize * 0.92, 0, 1);
       } else if (e.type === 'smoke') {
-        var sp = Assets.sprite(smokeFrame(t));
+        var smokeIndex = smokeFrame(t);
+        var sp = Assets.sprite(smokeFrames[smokeIndex]);
         if (sp) {
-          var sc = (e.r || 10) * 1.7;
+          var size = (e.r || 10) * 6 * smokeScales[smokeIndex];
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
-            e.x, e.y, sc * 2, { alpha: 0.9, tint: D.color(e.color, 1) });
+            e.x, e.y - size / 2, size, { alpha: 0.9, tint: D.color(e.color, 1) });
         }
       }
     }

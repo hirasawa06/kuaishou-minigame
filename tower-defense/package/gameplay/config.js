@@ -112,9 +112,10 @@
         radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
       },
       elite: {
-        id: 'elite', name: '精英怪', tier: 'elite', icon: 'enemy-elite',
+        id: 'elite', name: '沙发精英', tier: 'elite', species: 'sofa', icon: 'enemy-elite',
         hp: 900, atk: 34, interval: 1.2, speed: 30,
-        radius: 19, color: '#a86fe0', baseDamage: 8, gold: 16,
+        radius: 19, color: '#c58ad9', baseDamage: 8, gold: 16,
+        attackEffect: 'bump', impactColor: '#e4a878',
       },
       boss: {
         id: 'boss', name: '首领', tier: 'boss', icon: 'enemy-boss',

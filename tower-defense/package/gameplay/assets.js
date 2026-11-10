@@ -96,7 +96,7 @@
     manifest.push(['avatars', 'res/Menu/avatars.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
     if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
-    manifest.push(['figma-home', 'res/Image/figma-home.png']);
+    manifest.push(['figma-home', 'res/Image/figma-home.jpg']);
     manifest.push(['home-start-button', 'res/Image/home-start-button.png']);
     manifest.push(['home-avatar-button', 'res/Image/home-avatar-button.png']);
     manifest.push(['home-settings-button', 'res/Image/home-settings-button.png']);

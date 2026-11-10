@@ -29,6 +29,7 @@ const sandbox = {
     State: state,
     Layout: { w: 414, h: 896, ui },
     Game: { start() { starts++ } },
+    Profile: { isLevelUnlocked() { return true } },
     ProfileUI: {
       isOpen() { return openPanel !== null },
       open(name) { openPanel = name },

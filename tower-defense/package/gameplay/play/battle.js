@@ -354,7 +354,7 @@
   function deathSmoke(unit) {
     S.addEffect({
       type: 'smoke', x: unit.x, y: unit.y, r: unit.def.radius,
-      life: 0.45, max: 0.45, color: '#ffffff',
+      life: 0.25, max: 0.25, color: '#ffffff',
     });
   }
 
@@ -859,7 +859,7 @@
         e.animT += dt;
         e.dieT -= dt;
         if (e.dieT > 0) alive.push(e);
-        else deathSmoke(e);
+        // 敌方怪物倒地后直接退场；只有玩家英雄保留死亡烟雾。
         continue;
       }
       if (e.spawnT > 0) e.spawnT -= dt;
