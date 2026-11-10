@@ -107,9 +107,10 @@
         attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
-        id: 'normal', name: '普通怪', tier: 'normal', icon: 'enemy-normal',
+        id: 'normal', name: '床头柜怪', tier: 'normal', species: 'bedside-table', icon: 'enemy-normal',
         hp: 240, atk: 16, interval: 1.0, speed: 38,
         radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
+        attackEffect: 'bump', impactColor: '#ffd27a', hitReaction: 'none',
       },
       elite: {
         id: 'elite', name: '沙发精英', tier: 'elite', species: 'sofa', icon: 'enemy-elite',

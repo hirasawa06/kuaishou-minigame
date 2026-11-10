@@ -32,6 +32,7 @@ COLS = 8
 ROWS = 10
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
+ATLAS_VERSION = 12
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICONS = [
@@ -67,6 +68,8 @@ TANK_SPEC = load_animation_spec("tank")
 TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
 LAMP_SPEC = load_animation_spec("lamp")
 LAMP_DIR = os.path.join(SRC_DIR, LAMP_SPEC["sourceDir"])
+NORMAL_SPEC = load_animation_spec("normal")
+NORMAL_BEDSIDE_DIR = os.path.join(SRC_DIR, NORMAL_SPEC["sourceDir"])
 WAR_SPEC = load_animation_spec("war")
 WAR_CAT_DIR = os.path.join(SRC_DIR, WAR_SPEC["sourceDir"])
 MAGE_SPEC = load_animation_spec("mage")
@@ -260,6 +263,15 @@ def tank_frame(name):
 def lamp_frame(name):
     """台灯小怪动作表：统一从 3×2 透明精灵表取帧。"""
     return spec_sheet_frame(LAMP_SPEC, LAMP_DIR, name)
+
+
+def normal_bedside_frame(name):
+    """床头柜普通怪：读取已归一化的独立透明动作帧。"""
+    frame = NORMAL_SPEC["frames"][name]
+    img = Image.open(os.path.join(NORMAL_BEDSIDE_DIR, frame["file"])).convert("RGBA")
+    rgba = np.asarray(img).copy()
+    rgba[rgba[:, :, 3] < 128] = (0, 0, 0, 0)
+    return fit_visible(Image.fromarray(rgba, "RGBA"))
 
 
 def war_frame(name):
@@ -582,6 +594,10 @@ def build():
     for frame_name, frame in LAMP_SPEC["frames"].items():
         cell(frame["icon"], lamp_frame(frame_name))
 
+    # 床头柜普通怪：待机、缩小跳步、双拳蓄力 / 撞击与仰倒。
+    for frame_name, frame in NORMAL_SPEC["frames"].items():
+        cell(frame["icon"], normal_bedside_frame(frame_name))
+
     # 近战猫：正背朝向分别提供待机、走步、挥锤、受击和倒地姿势。
     for frame_name, frame in WAR_SPEC["frames"].items():
         cell(frame["icon"], war_frame(frame_name))
@@ -613,8 +629,10 @@ def build():
             im = im.resize((CELL - 2 * PAD, CELL - 2 * PAD), Image.LANCZOS)
             cell(name, im)
 
-    # 主包接近上限；保持 RGBA 与像素不变，仅启用无损 PNG 压缩。
-    atlas.save(os.path.join(IMG_DIR, "game.png"), optimize=True, compress_level=9)
+    # WebGL 上传时还原 RGBA；索引图集为主包留出新增角色余量。
+    atlas.quantize(colors=256, method=Image.Quantize.FASTOCTREE).save(
+        os.path.join(IMG_DIR, "game.png"), optimize=True, compress_level=9
+    )
 
     anchor_json = {}
     for name, ox, oy, w_, h_ in (
@@ -625,7 +643,7 @@ def build():
 
     data = {
         # 图集替换后必须使 H5 和真机重新取纹理，避免沿用同名旧缓存。
-        "src": "res/Image/game.png?v=11",
+        "src": f"res/Image/game.png?v={ATLAS_VERSION}",
         "texW": ATLAS_W,
         "texH": ATLAS_H,
         "cell": CELL,
@@ -653,7 +671,7 @@ def write_rigs(atlas_data, mage_vfx):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, WAR_SPEC, MAGE_SPEC, ELITE_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC, ELITE_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],

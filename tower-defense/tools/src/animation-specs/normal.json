@@ -1,0 +1,19 @@
+{
+  "id": "normal",
+  "entity": "enemy",
+  "render": "whole",
+  "sourceDir": "characters/角色/床头柜怪",
+  "frames": {
+    "idle": { "icon": "bedside-idle", "file": "动作帧-v1/01.png" },
+    "hop": { "icon": "bedside-hop", "file": "动作帧-v1/02.png" },
+    "windup": { "icon": "bedside-windup", "file": "动作帧-v1/03.png" },
+    "impact": { "icon": "bedside-impact", "file": "动作帧-v1/04.png" },
+    "defeat": { "icon": "bedside-defeat", "file": "动作帧-v1/06.png" }
+  },
+  "states": {
+    "idle": { "duration": 1.4 },
+    "move": { "duration": 0.58, "frame": "hop" },
+    "attack": { "duration": 0.52, "hit": 0.30, "windup": "windup", "impact": "impact" },
+    "die": { "duration": 0.52, "frame": "defeat" }
+  }
+}

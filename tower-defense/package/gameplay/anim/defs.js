@@ -8,6 +8,7 @@
   var archSpec = A.CharacterAnimations.arch;
   var tankSpec = A.CharacterAnimations.tank;
   var lampSpec = A.CharacterAnimations.lamp;
+  var normalSpec = A.CharacterAnimations.normal;
   var warSpec = A.CharacterAnimations.war;
   var mageSpec = A.CharacterAnimations.mage;
   var eliteSpec = A.CharacterAnimations.elite;
@@ -160,6 +161,48 @@
           { t: 0.00, mods: [{ icon: lampSpec.frames.idle, alpha: 1, dy: 0 }] },
           { t: 0.18, mods: [{ icon: lampSpec.frames.defeat, alpha: 1, dy: 3.0 }] },
           { t: lampSpec.states.die.duration, mods: [{ icon: lampSpec.frames.defeat, alpha: 1, dy: 3.0 }] },
+        ],
+      },
+    },
+  };
+
+  // 床头柜普通怪：移动帧按待机的 86% 绘制，受击保持待机，不额外播放动效。
+  var bedsideNormal = {
+    scale: 1.30,
+    parts: [{ icon: normalSpec.frames.idle, pivot: [0.50, 0.88] }],
+    states: {
+      idle: {
+        dur: normalSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 0.70, mods: [{ icon: normalSpec.frames.idle, dy: -0.8, sy: 1.016, sx: 0.994 }] },
+          { t: normalSpec.states.idle.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      move: {
+        dur: normalSpec.states.move.duration, loop: true, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 0.20, mods: [{ icon: normalSpec.frames.hop, dy: -2.2, sy: 0.86, sx: 0.86 }] },
+          { t: normalSpec.states.move.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      atk: {
+        dur: normalSpec.states.attack.duration, ease: 'inOutSine', hit: normalSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.16, mods: [{ icon: normalSpec.frames.windup, dy: 1.8, rot: -2.0, sx: 1.025, sy: 0.96 }] },
+          { t: normalSpec.states.attack.hit, mods: [{ icon: normalSpec.frames.impact, dy: -2.2, rot: 1.2, sx: 1.03, sy: 0.99 }] },
+          { t: 0.42, mods: [{ icon: normalSpec.frames.impact, dy: 0.4, rot: 0.2, sx: 1.005 }] },
+          { t: normalSpec.states.attack.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0, sx: 1, sy: 1 }] },
+        ],
+      },
+      die: {
+        dur: normalSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, alpha: 1, dy: 0 }] },
+          { t: 0.22, mods: [{ icon: normalSpec.frames.defeat, alpha: 1, dy: 2.4 }] },
+          { t: normalSpec.states.die.duration, mods: [{ icon: normalSpec.frames.defeat, alpha: 1, dy: 2.4 }] },
         ],
       },
     },
@@ -329,6 +372,7 @@
     'war-back': meleeCatBack,
     mage: mageDog,
     small: lampMinion,
+    normal: bedsideNormal,
     elite: sofaElite,
   };
 })();

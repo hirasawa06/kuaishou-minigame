@@ -245,8 +245,9 @@
   function damageEnemy(e, dmg, isSplash) {
     if (e.dead) return;
     e.hp -= dmg;
-    e.hitFlash = 0.12;
-    if (e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
+    var reactsToHit = e.def.hitReaction !== 'none';
+    e.hitFlash = reactsToHit ? 0.12 : 0;
+    if (reactsToHit && e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
     if (!isSplash) {
       S.addFloat(e.x + (Math.random() - 0.5) * 10, e.y - e.def.radius - 8,
         String(Math.round(dmg)), '#ffe9a8');
