@@ -35,6 +35,7 @@
       { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
   }
 
+
   function heroArt(def, cx, cy, size, alpha, view, facing) {
     var artKey = null;
     if (def.id === 'war') artKey = view === 'battle' ? 'melee-cat-back' : 'melee-cat-front';
@@ -62,6 +63,16 @@
     D.texture(atlas.tex, atlas.w, atlas.h, cell[0] * cw, cell[1] * ch, cw, ch,
       cx - size / 2, cy - size / 2, size, size,
       { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
+  }
+
+  // 治疗角色暂无参考图与专属 Rig：复用心形占位，叠绿色医疗十字便于识别。
+  function drawHealerPlaceholder(cx, cy, size, alpha) {
+    icon('ui-heart', cx, cy, size, alpha);
+    var mark = size * 0.30;
+    var mx = cx + size * 0.24, my = cy + size * 0.20;
+    D.roundRect(mx - mark / 2, my - mark / 2, mark, mark, 3, D.color('#153c2c', alpha));
+    D.rect(mx - mark * 0.12, my - mark * 0.34, mark * 0.24, mark * 0.68, D.color('#6ff0a8', alpha));
+    D.rect(mx - mark * 0.34, my - mark * 0.12, mark * 0.68, mark * 0.24, D.color('#6ff0a8', alpha));
   }
 
   function drawBackground() {
@@ -282,7 +293,8 @@
       }
     } else {
       var alpha = 0.25 + 0.75 * spawn;
-      icon(d.icon, un.x, un.y, size, alpha);
+      if (d.cls === 'healer') drawHealerPlaceholder(un.x, un.y, size, alpha);
+      else icon(d.icon, un.x, un.y, size, alpha);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
@@ -321,10 +333,13 @@
     }
   }
 
-  var smokeFrames = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
+  // ═══ 倒地烟雾 ═══
+  // 只保留中烟团与残烟两帧，删除用户否决的大烟团起始帧。
+  var smokeFrames = ['fx-smoke', 'fx-smoke-2'];
+  var smokeScales = [0.55, 0.9];
 
   function smokeFrame(t) {
-    return smokeFrames[Math.min(smokeFrames.length - 1, Math.floor(t * smokeFrames.length))];
+    return Math.min(smokeFrames.length - 1, Math.floor(t * smokeFrames.length));
   }
 
   function drawEffects() {
@@ -353,6 +368,34 @@
         var g = 1 - t;
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
+      } else if (e.type === 'heal') {
+        var source = null, target = null;
+        for (var hi = 0; hi < S.units.length; hi++) {
+          var hu = S.units[hi];
+          if (hu.dead || hu.hp <= 0) continue;
+          if (hu.uid === e.sourceUid) source = hu;
+          if (hu.uid === e.targetUid) target = hu;
+        }
+        if (!source || !target) continue;
+        var tx = target.x, ty = target.y - target.def.radius * 0.3;
+        var sx = source.x, sy = source.y - source.def.radius * 0.3;
+        var dx = tx - sx, dy = ty - sy;
+        var length = Math.sqrt(dx * dx + dy * dy);
+        if (length > 0) {
+          A.Render.push((sx + tx) / 2 - length / 2, (sy + ty) / 2 - 2,
+            length, 4, D.color('#6ff0a8', (1 - t) * 0.9),
+            { mode: 0, hw: length / 2, hh: 2, r: 2, rot: Math.atan2(dy, dx), cx: (sx + tx) / 2, cy: (sy + ty) / 2 });
+        }
+        var healAlpha = 1 - t;
+        var healSize = 10 + t * 5;
+        var healY = ty - t * 18;
+        A.Render.setAdditive(true);
+        additiveGlow(tx, ty, (e.r || 20) * (1.2 + t), e.color, healAlpha * 0.4, 0);
+        A.Render.setAdditive(false);
+        D.rect(tx - healSize * 0.12, healY - healSize * 0.5,
+          healSize * 0.24, healSize, D.color(e.color, healAlpha));
+        D.rect(tx - healSize * 0.5, healY - healSize * 0.12,
+          healSize, healSize * 0.24, D.color(e.color, healAlpha));
       } else if (e.type === 'mage-biscuit-impact') {
         // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。
         var biscuitSize = (e.r || 34) * (1.85 + t * 0.28);
@@ -360,11 +403,12 @@
         // 饼干是命中残留物：保持完整 0.2 秒，到时由效果生命周期直接移除。
         mageVfx('impact', e.x, e.y + 3, biscuitSize, biscuitSize * 0.92, 0, 1);
       } else if (e.type === 'smoke') {
-        var sp = Assets.sprite(smokeFrame(t));
+        var smokeIndex = smokeFrame(t);
+        var sp = Assets.sprite(smokeFrames[smokeIndex]);
         if (sp) {
-          var sc = (e.r || 10) * 1.7;
+          var size = (e.r || 10) * 6 * smokeScales[smokeIndex];
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
-            e.x, e.y, sc * 2, { alpha: 0.9, tint: D.color(e.color, 1) });
+            e.x, e.y - size / 2, size, { alpha: 0.9, tint: D.color(e.color, 1) });
         }
       }
     }
@@ -460,8 +504,26 @@
     var drag = S.dragging || (A.Input && A.Input.getDrag && A.Input.getDrag());
     if (!drag || !drag.active) return;
     var u = L.ui;
-    var def = drag.def;
+    var def = drag.kind === 'unit' && drag.unit ? drag.unit.def : drag.def;
     if (!def) return;
+    if (drag.kind === 'unit') {
+      var unit = drag.unit;
+      if (!unit || unit.dead || unit.hp <= 0 || def.moveSpeed !== 0 || S.units.indexOf(unit) < 0) return;
+      // 只绘制一个角色副本与售价，不移动原单位，不进入买卡/部署预览分支。
+      var ghostRig = A.Rigs && A.Rigs[unit.rigId || def.id];
+      var ghostSize = ghostRig ? def.radius * 3.05 * (ghostRig.scale || 1) : def.radius * 2.35;
+      var ghostY = ghostRig ? drag.y - def.radius * 0.15 : drag.y;
+      if (ghostRig) {
+        A.Anim.draw(ghostRig, unit, drag.x, ghostY, ghostSize, { alpha: 0.7 });
+      } else if (def.cls === 'healer') {
+        drawHealerPlaceholder(drag.x, ghostY, ghostSize, 0.7);
+      } else {
+        icon(def.icon, drag.x, ghostY, ghostSize, 0.7);
+      }
+      D.text('+' + A.Battle.sellPrice(unit) + ' 金币', drag.x, drag.y + def.radius + 12,
+        18, COL.gold, 1);
+      return;
+    }
     var overField = drag.y < u.tray.y;
     var x = drag.x, y = drag.y;
     if (!overField) {
@@ -493,7 +555,10 @@
     }
     D.circle(x, y, def.radius + 4, D.color(col, 0.22));
     D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
-    heroArt(def, x, y, def.radius * 3.4, 0.94);
+
+    if (def.cls === 'healer') drawHealerPlaceholder(x, y, def.radius * 2.2, 0.94);
+    else icon(def.icon, x, y, def.radius * 2.2, 0.94);
+
     if (!ok) {
       D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' : '请拖到战场', x, y + def.radius + 12, 18,
         D.color('#ff9aa8', 0.95), 1);

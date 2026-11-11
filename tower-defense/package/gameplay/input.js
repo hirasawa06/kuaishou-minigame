@@ -41,6 +41,8 @@
   function menuHitKey(x, y) {
     var m = L.ui.menu;
     if (!m || !inInteractiveArea(x, y)) return null;
+    if (hitControl(m.levelPrev, x, y, 0)) return 'levelPrev';
+    if (hitControl(m.levelNext, x, y, 0)) return 'levelNext';
     if (hitControl(m.start, x, y, 12)) return 'start';
     if (hitControl(m.settings, x, y, 6)) return 'settings';
     if (hitControl(m.rank, x, y, 6)) return 'rank';
@@ -68,8 +70,16 @@
     if (!down) return;
     // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
     if (A.ProfileUI && A.ProfileUI.isOpen()) return;
-    if (S.phase === 'menu' && !S.menuPanel) S.menuPressed = menuHitKey(px, py);
+    if (S.phase === 'menu' && !S.menuPanel) {
+      S.menuPressed = menuHitKey(px, py);
+      if (pointIn(L.ui.menu.card, px, py, 0) || pointIn(L.ui.menu.banner, px, py, 0)) {
+        S.menuSwipe = { startX: px, startY: py, x: px, y: py };
+      }
+    }
     if (S.phase !== 'playing') return;
+
+    if (hitControl(L.ui.speedBtn, px, py, 0) || hitControl(L.ui.pauseBtn, px, py, 0)) return;
+
     var u = L.ui;
     if (S.gold >= S.refreshCost && hitControl(u.refreshBtn, px, py, 0)) {
       S.shopPressed = 'refresh';
@@ -82,8 +92,21 @@
       shopPressStarted = true;
       return;
     }
+
     var hit = shopAt(px, py);
-    if (!hit) return;
+    if (!hit) {
+      for (var i = S.units.length - 1; i >= 0; i--) {
+        var unit = S.units[i];
+        if (unit.dead || unit.hp <= 0 || unit.def.moveSpeed !== 0) continue;
+        var hitRadius = Math.max(unit.def.radius, 26);
+        if (S.dist2(px, py, unit.x, unit.y) > hitRadius * hitRadius) continue;
+        drag = { kind: 'unit', unit: unit, def: unit.def, x: px, y: py,
+          startX: px, startY: py, active: false, holdT: 0 };
+        S.dragging = drag;
+        return;
+      }
+      return;
+    }
     var def = S.heroById(hit.slot.cardId);
     if (!def) return;
     drag = {
@@ -100,6 +123,7 @@
   }
 
   function onMove(px, py) {
+    if (down && S.menuSwipe) { S.menuSwipe.x = px; S.menuSwipe.y = py; }
     if (S.phase === 'menu' && S.menuPressed && menuHitKey(px, py) !== S.menuPressed) {
       S.menuPressed = null;
     }
@@ -117,7 +141,22 @@
   }
 
   function onUp(px, py) {
+    var wasDown = down;
+    var swipe = S.menuSwipe;
+    S.menuSwipe = null;
     if (S.phase === 'menu') S.menuPressed = null;
+
+    if (!wasDown && !drag) return;
+    if (swipe && S.phase === 'menu') {
+      var dx = px - swipe.startX;
+      var dy = py - swipe.startY;
+      if (Math.abs(dx) >= 36 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        down = false;
+        A.Game.selectLevel(dx < 0 ? 1 : -1);
+        return;
+      }
+    }
+
     var validShopRelease = false;
     if (S.shopPressed) {
       var pressedRect = S.shopPressed === 'refresh' ? L.ui.refreshBtn : L.ui.capBtn;
@@ -133,7 +172,7 @@
       if (validShopRelease) tap(px, py);
       return;
     }
-    if (!down && !drag) { tap(px, py); return; }
+
     down = false;
     if (S.phase !== 'playing') {
       drag = null;
@@ -154,6 +193,17 @@
     var u = L.ui;
     var d = drag;
     if (!d.def) return;
+    if (d.kind === 'unit') {
+      if (d.active && hitControl(u.sellZone, px, py, 0)) {
+        A.Battle.sellUnit(d.unit);
+      } else if (!d.active && !d.unit.dead) {
+        S.inspect = d.def;
+        S.inspectT = 2.4;
+        S.inspectX = d.unit.x;
+        S.inspectY = d.unit.y - 140;
+      }
+      return;
+    }
 
     // 拖到战场：直接部署
     if (d.active && py < u.tray.y - 4 && inInteractiveArea(px, py)) {
@@ -193,7 +243,16 @@
       }
       var key = menuHitKey(px, py);
       if (key) S.menuFeedback = { key: key, life: 0.18 };
-      if (key === 'start') { S.menuStartDelay = 0.18; return; }
+      if (key === 'levelPrev') { A.Game.selectLevel(-1); return; }
+      if (key === 'levelNext') { A.Game.selectLevel(1); return; }
+      if (key === 'start') {
+        if (!A.Profile.isLevelUnlocked(S.selectedLevel)) {
+          S.toastMsg('请先通过第 ' + (S.selectedLevel - 1) + ' 关', 1.4);
+          return;
+        }
+        S.menuStartDelay = 0.18;
+        return;
+      }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
       if (key === 'rank') { A.ProfileUI.open('rank'); return; }
       if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
@@ -201,7 +260,12 @@
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {
-      if (hitControl(u.btnRect('result'), px, py, 12)) A.Game.start();
+      if (S.phase === 'win' && S.currentLevel < C.LEVELS.length && hitControl(u.resultNext, px, py, 0)) {
+        A.Game.nextLevel();
+        return;
+      }
+      if (hitControl(u.resultHome, px, py, 0)) { A.Game.goMenu(); return; }
+      if (hitControl(u.btnRect('result'), px, py, 8)) A.Game.restart();
       return;
     }
     if (S.phase === 'paused') {
@@ -214,6 +278,7 @@
       return;
     }
     if (S.phase === 'playing') {
+      if (hitControl(u.speedBtn, px, py, 0)) { A.Game.toggleSpeed(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) { A.Game.togglePause(); return; }
       if (hitControl(u.refreshBtn, px, py, 4)) {
         S.refreshShop();
@@ -235,8 +300,13 @@
     down = false;
     drag = null;
     S.dragging = null;
+
     S.shopPressed = null;
     shopPressStarted = false;
+
+    S.menuSwipe = null;
+    S.menuPressed = null;
+
   }
 
   function bind(cv) {
@@ -285,6 +355,7 @@
   }
 
   A.Input = {
+    cancel: cancel,
     bind: bind,
     getDrag: function () { return drag; },
   };

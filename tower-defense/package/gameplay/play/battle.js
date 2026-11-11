@@ -59,9 +59,9 @@
       x: S.clamp(laneX, u.field.x + 26, u.field.x + u.field.w - 26),
       y: u.spawnY - S.rand(24),
       lane: lane,
-      hp: Math.round(def.hp * spec.hp),
-      maxHp: Math.round(def.hp * spec.hp),
-      atk: def.atk * spec.atk,
+      hp: Math.round(def.hp * spec.hp * (S.levelHpScale === undefined ? 1 : S.levelHpScale)),
+      maxHp: Math.round(def.hp * spec.hp * (S.levelHpScale === undefined ? 1 : S.levelHpScale)),
+      atk: def.atk * spec.atk * (S.levelAtkScale === undefined ? 1 : S.levelAtkScale),
       speed: def.speed,
       slowT: 0,
       slowFactor: 1,
@@ -135,7 +135,8 @@
       facing: 1,
       hp: card.hp,
       maxHp: card.hp,
-      atkTimer: 0.3,
+      purchaseCost: card.cost,
+      atkTimer: card.cls === 'healer' ? card.interval : 0.3,
       hitFlash: 0,
       slowT: 0,
       spawnT: 0.3,
@@ -150,6 +151,45 @@
   }
 
   function canAfford(def) { return S.gold >= def.cost; }
+
+  // 只接受仍在场上的存活驻守单位；不读取会随平衡调整改变的 def.cost。
+  function canSellUnit(unit) {
+    return !!(unit && !unit.dead && unit.hp > 0 && unit.def &&
+      unit.def.moveSpeed === 0 && S.units.indexOf(unit) >= 0 && unit.maxHp > 0 &&
+      typeof unit.purchaseCost === 'number' && isFinite(unit.purchaseCost) && unit.purchaseCost >= 0);
+  }
+
+  function sellPrice(unit) {
+    if (!canSellUnit(unit)) return 0;
+    var cost = unit.purchaseCost;
+    var ratio = unit.hp / unit.maxHp;
+    if (ratio >= 0.6) return Math.floor(cost * 0.5);
+    if (ratio >= 0.3) return Math.floor(cost * 0.3);
+    return 1;
+  }
+
+  function sellUnit(unit) {
+    if (S.phase !== 'playing' || !canSellUnit(unit)) return false;
+    var price = sellPrice(unit);
+    unit.pendingHit = -1;
+    unit.pendingTarget = 0;
+    // 不走死亡流程，不产生击杀、死亡烟雾或奖励；立即释放部署席位。
+    S.units.splice(S.units.indexOf(unit), 1);
+    for (var i = 0; i < S.enemies.length; i++) {
+      var enemy = S.enemies[i];
+      if (enemy.pendingTarget !== unit.uid) continue;
+      enemy.pendingHit = -1;
+      enemy.pendingTarget = 0;
+      if (!enemy.dead && enemy.anim === 'atk') enterAnimation(enemy, 'idle');
+    }
+    // 当前飞弹只追踪敌人，但仍清掉任何指向出售单位的飞弹，避免悬空目标。
+    for (var pi = S.projectiles.length - 1; pi >= 0; pi--) {
+      if (S.projectiles[pi].targetUid === unit.uid) S.projectiles.splice(pi, 1);
+    }
+    S.gold += price;
+    S.addFloat(unit.x, unit.y - unit.def.radius - 14, '+' + price, '#ffd166');
+    return true;
+  }
 
   function tryDeploy(card, x, y) {
     var u = L.ui;
@@ -205,8 +245,9 @@
   function damageEnemy(e, dmg, isSplash) {
     if (e.dead) return;
     e.hp -= dmg;
-    e.hitFlash = 0.12;
-    if (e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
+    var reactsToHit = e.def.hitReaction !== 'none';
+    e.hitFlash = reactsToHit ? 0.12 : 0;
+    if (reactsToHit && e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
     if (!isSplash) {
       S.addFloat(e.x + (Math.random() - 0.5) * 10, e.y - e.def.radius - 8,
         String(Math.round(dmg)), '#ffe9a8');
@@ -314,7 +355,7 @@
   function deathSmoke(unit) {
     S.addEffect({
       type: 'smoke', x: unit.x, y: unit.y, r: unit.def.radius,
-      life: 0.45, max: 0.45, color: '#ffffff',
+      life: 0.25, max: 0.25, color: '#ffffff',
     });
   }
 
@@ -673,6 +714,19 @@
         un.y = S.clamp(un.y, uu.placeTop, uu.placeBottom);
       }
 
+      // 治疗位驻守且永不进入敌人攻击/飞弹流程，按固定间隔治疗范围内队友。
+      if (def.cls === 'healer') {
+        un.pendingHit = -1;
+        un.pendingTarget = 0;
+        un.atkTimer -= dt;
+        if (un.atkTimer <= 0) {
+          un.atkTimer = def.interval;
+          healAllies(un);
+        }
+        alive.push(un);
+        continue;
+      }
+
       // 攻击动作到达出手帧才结算
       if (un.pendingHit >= 0) {
         un.pendingHit -= dt;
@@ -717,6 +771,30 @@
     if (alive.length !== S.units.length) S.units = alive;
   }
 
+  function healAllies(healer) {
+    var def = healer.def;
+    var range2 = def.range * def.range;
+    var amount = def.heal || 0;
+    if (amount <= 0) return;
+    var target = null;
+    for (var i = 0; i < S.units.length; i++) {
+      var ally = S.units[i];
+      if (ally === healer || ally.dead || ally.hp <= 0 || ally.hp >= ally.maxHp) continue;
+      if (S.dist2(healer.x, healer.y, ally.x, ally.y) > range2) continue;
+      // 按当前剩余生命值选择单个目标；同血量按 uid 稳定选择。
+      if (!target || ally.hp < target.hp || (ally.hp === target.hp && ally.uid < target.uid)) target = ally;
+    }
+    if (!target) return;
+    var healed = Math.min(amount, target.maxHp - target.hp);
+    target.hp += healed;
+    S.addFloat(target.x, target.y - target.def.radius - 14, '+' + Math.round(healed), '#6ff0a8');
+    S.addEffect({
+      type: 'heal', sourceUid: healer.uid, targetUid: target.uid,
+      x: target.x, y: target.y - target.def.radius * 0.3,
+      r: target.def.radius, life: 0.6, max: 0.6, color: '#6ff0a8',
+    });
+  }
+
   function nearestEnemy(un, maxRange) {
     var best = null;
     var bestD = maxRange * maxRange;
@@ -751,6 +829,7 @@
 
   function resolveAttack(un, best) {
     var def = un.def;
+    if (def.cls === 'healer' || def.cls === 'tank') return;
     if (def.cls === 'warrior') {
       damageEnemy(best, def.atk, false);
       var mx = (un.x + best.x) / 2, my = (un.y + best.y) / 2;
@@ -781,7 +860,7 @@
         e.animT += dt;
         e.dieT -= dt;
         if (e.dieT > 0) alive.push(e);
-        else deathSmoke(e);
+        // 敌方怪物倒地后直接退场；只有玩家英雄保留死亡烟雾。
         continue;
       }
       if (e.spawnT > 0) e.spawnT -= dt;
@@ -955,6 +1034,8 @@
     update: update,
     tryDeploy: tryDeploy,
     canAfford: canAfford,
+    sellPrice: sellPrice,
+    sellUnit: sellUnit,
     buyCard: buyCard,
     buyCardAtCenter: buyCardAtCenter,
     remainingEnemies: remainingEnemies,

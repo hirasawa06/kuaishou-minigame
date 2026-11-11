@@ -48,8 +48,17 @@
     menuSoundEnabled: true,
     menuPressed: null,
     menuFeedback: null,
+
     shopPressed: null,
     shopFeedback: null,
+
+    battleSpeed: 1,
+    selectedLevel: 1,
+    currentLevel: 1,
+    levelHpScale: 1,
+    levelAtkScale: 1,
+    menuSwipe: null,
+
     menuStartDelay: 0,
   };
 
@@ -144,6 +153,7 @@
 
   S.reset = function () {
     S.phase = 'playing';
+    S.battleSpeed = 1;
     S.time = 0;
     S.gold = C.GOLD_START;
     S.baseHp = C.BASE_HP;

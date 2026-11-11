@@ -123,6 +123,7 @@
       music: true,
       sfx: true,
       bestWave: 0,      // 历史最高通关关卡（0 = 尚未通关）
+      completedLevel: 0, // 独立关卡进度；旧 bestWave 是波次，不能用于解锁
       clears: 0,
       games: 0,
       bestAt: 0,        // 首次达到 bestWave 的本地时间戳
@@ -149,6 +150,9 @@
       if (typeof stored.music === 'boolean') base.music = stored.music;
       if (typeof stored.sfx === 'boolean') base.sfx = stored.sfx;
       if (typeof stored.bestWave === 'number') base.bestWave = stored.bestWave;
+      if (typeof stored.completedLevel === 'number' && isFinite(stored.completedLevel)) {
+        base.completedLevel = clamp(Math.floor(stored.completedLevel), 0, C.LEVELS.length);
+      }
       if (typeof stored.clears === 'number') base.clears = stored.clears;
       if (typeof stored.games === 'number') base.games = stored.games;
       if (typeof stored.bestAt === 'number') base.bestAt = stored.bestAt;
@@ -247,9 +251,17 @@
     S.save();
   };
 
-  // 一局结束：记录最高关卡、通关次数与对局数
+  S.isLevelUnlocked = function (level) {
+    return level >= 1 && level <= C.LEVELS.length && level <= S.data.completedLevel + 1;
+  };
+
+  // 一局结束：最高波次独立保留，只有胜利才解锁下一关。
   S.recordRun = function (cleared, won) {
     var d = S.data;
+    var level = A.State ? A.State.currentLevel : 1;
+    if (won && S.isLevelUnlocked(level)) {
+      d.completedLevel = Math.max(d.completedLevel, level);
+    }
     d.games += 1;
     if (won) d.clears += 1;
     if (cleared > d.bestWave) {

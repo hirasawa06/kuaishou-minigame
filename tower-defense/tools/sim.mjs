@@ -171,6 +171,7 @@ const FILES = [
   'gameplay/config.js',
   'gameplay/layout.js',
   'gameplay/state.js',
+  'gameplay/profile.js',
   'gameplay/render/gl.js',
   'gameplay/render/draw.js',
   'gameplay/assets.js',

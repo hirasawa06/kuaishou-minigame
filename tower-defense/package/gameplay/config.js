@@ -8,7 +8,7 @@
     // ── 屏幕与区域（竖屏，布局在 layout.js 里按实际尺寸计算）──
     designW: 414,
     designH: 896,
-    hudH: 76,
+    hudH: 52,
     trayH: 200,
     cardGap: 10,
     cardCount: 4,
@@ -86,6 +86,15 @@
         color: '#a583f0',
         desc: '中距离范围伤害，全场血量最少',
       },
+      {
+        id: 'healer', name: '奶糖喵', cls: 'healer', clsName: '治疗',
+        icon: 'ui-heart', cost: 8,
+        hp: 288, atk: 0, interval: 2.0,
+        range: 168, radius: 20.4, moveSpeed: 0,
+        heal: 36, taunt: 0, splash: 0,
+        color: '#79dcb5',
+        desc: '每两秒单体治疗范围内剩余生命最低的受伤队友',
+      },
     ],
 
     // ── 敌人四档 ──
@@ -98,14 +107,16 @@
         attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
-        id: 'normal', name: '普通怪', tier: 'normal', icon: 'enemy-normal',
+        id: 'normal', name: '床头柜怪', tier: 'normal', species: 'bedside-table', icon: 'enemy-normal',
         hp: 240, atk: 16, interval: 1.0, speed: 38,
         radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
+        attackEffect: 'bump', impactColor: '#ffd27a', hitReaction: 'none',
       },
       elite: {
-        id: 'elite', name: '精英怪', tier: 'elite', icon: 'enemy-elite',
+        id: 'elite', name: '沙发精英', tier: 'elite', species: 'sofa', icon: 'enemy-elite',
         hp: 900, atk: 34, interval: 1.2, speed: 30,
-        radius: 19, color: '#a86fe0', baseDamage: 8, gold: 16,
+        radius: 19, color: '#c58ad9', baseDamage: 8, gold: 16,
+        attackEffect: 'bump', impactColor: '#e4a878',
       },
       boss: {
         id: 'boss', name: '首领', tier: 'boss', icon: 'enemy-boss',
@@ -120,6 +131,20 @@
     spawnGap: 0.75,
     waveGap: 6.0,
     firstWaveDelay: 5.0,
+
+    // 十个独立关卡，各自包含下方十波；名称与倍率为首轮可调数值。
+    LEVELS: [
+      { name: '客厅初战', hpScale: 1.00, atkScale: 1.00 },
+      { name: '沙发防线', hpScale: 1.08, atkScale: 1.05 },
+      { name: '窗边警报', hpScale: 1.16, atkScale: 1.10 },
+      { name: '地毯守卫', hpScale: 1.24, atkScale: 1.15 },
+      { name: '书柜反击', hpScale: 1.32, atkScale: 1.20 },
+      { name: '餐厅危机', hpScale: 1.40, atkScale: 1.25 },
+      { name: '走廊突围', hpScale: 1.48, atkScale: 1.30 },
+      { name: '卧室保卫', hpScale: 1.56, atkScale: 1.35 },
+      { name: '家具围攻', hpScale: 1.64, atkScale: 1.40 },
+      { name: '家园决战', hpScale: 1.72, atkScale: 1.45 },
+    ],
 
     // ── 波次表 ──
     // groups: [敌人 id, 数量]

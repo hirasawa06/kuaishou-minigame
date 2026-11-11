@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen-shiba-atlas.py — 战斗精灵图集（128 单元格，1024x1024 内装得下）
+gen-shiba-atlas.py — 战斗精灵图集（128px 单元格，1024px 宽、最高 2048px）
 
 输入（tools/src/）：
   shiba-front.png   从角色设定图抠出的护盾柴犬正视图（RGBA）
@@ -9,7 +9,7 @@ gen-shiba-atlas.py — 战斗精灵图集（128 单元格，1024x1024 内装得�
   package/res/Image/game.png        128 单元格图集（2x 绘制后缩放）
   package/gameplay/data/rigs.js     分件坐标 + 高分辨率特效元数据
 
-图集布局：8 列 × 8 行，单元格 128px（含 4px padding，有效区 120px）。
+图集布局：8 列 × 10 行，单元格 128px（含 4px padding，有效区 120px）。
 帧按注册顺序自动排格；运行时只能通过稳定帧名查找，不能依赖行列位置。
 """
 
@@ -29,9 +29,10 @@ SRC_DIR = os.path.join(ROOT, "tools", "src")
 CELL = 128
 PAD = 4
 COLS = 8
-ROWS = 8
+ROWS = 10
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
+ATLAS_VERSION = 12
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICONS = [
@@ -67,16 +68,20 @@ TANK_SPEC = load_animation_spec("tank")
 TANK_DOG_DIR = os.path.join(SRC_DIR, TANK_SPEC["sourceDir"])
 LAMP_SPEC = load_animation_spec("lamp")
 LAMP_DIR = os.path.join(SRC_DIR, LAMP_SPEC["sourceDir"])
+NORMAL_SPEC = load_animation_spec("normal")
+NORMAL_BEDSIDE_DIR = os.path.join(SRC_DIR, NORMAL_SPEC["sourceDir"])
 WAR_SPEC = load_animation_spec("war")
 WAR_CAT_DIR = os.path.join(SRC_DIR, WAR_SPEC["sourceDir"])
 MAGE_SPEC = load_animation_spec("mage")
 MAGE_DOG_DIR = os.path.join(SRC_DIR, MAGE_SPEC["sourceDir"])
+ELITE_SPEC = load_animation_spec("elite")
+ELITE_SOFA_DIR = os.path.join(SRC_DIR, ELITE_SPEC["sourceDir"])
 DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
 DEFEAT_SMOKE = [
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-01.png"),
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-02.png"),
-    os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-03.png"),
 ]
+DEFEAT_SMOKE_SIZES = [CELL - 2 * PAD, CELL - 2 * PAD]
 MAGE_BISCUIT_VFX = os.path.join(SRC_DIR, "effects", "mage-biscuit", "mage-biscuit-vfx-v5.png")
 MAGE_BISCUIT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-vfx.png")
 MAGE_VFX_CELL = 256
@@ -192,7 +197,7 @@ def fit_cell(img, size, anchor_bottom=True):
     return im, ox, oy
 
 
-def fit_visible(img):
+def fit_visible(img, size=CELL - 2 * PAD):
     """剔除透明画布噪点后等比收进一个图集单元格。"""
     # AI 图常在整张透明画布边缘遗留极淡像素；按可见阈值裁掉，
     # 否则 fit_cell 会把角色缩得过小。
@@ -201,7 +206,7 @@ def fit_visible(img):
     if len(xs) == 0:
         raise ValueError("射手猫背面动作源图为空")
     bbox = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
-    return fit_cell(img.crop(bbox), CELL - 2 * PAD)[0]
+    return fit_cell(img.crop(bbox), size)[0]
 
 
 def archer_back_frame(name):
@@ -260,6 +265,15 @@ def lamp_frame(name):
     return spec_sheet_frame(LAMP_SPEC, LAMP_DIR, name)
 
 
+def normal_bedside_frame(name):
+    """床头柜普通怪：读取已归一化的独立透明动作帧。"""
+    frame = NORMAL_SPEC["frames"][name]
+    img = Image.open(os.path.join(NORMAL_BEDSIDE_DIR, frame["file"])).convert("RGBA")
+    rgba = np.asarray(img).copy()
+    rgba[rgba[:, :, 3] < 128] = (0, 0, 0, 0)
+    return fit_visible(Image.fromarray(rgba, "RGBA"))
+
+
 def war_frame(name):
     """近战猫动作表：正背两套动作共用 4×3 透明精灵表。"""
     return spec_sheet_frame(WAR_SPEC, WAR_CAT_DIR, name)
@@ -281,9 +295,23 @@ def mage_frame(name):
     return fit_visible(Image.fromarray(rgba, "RGBA"))
 
 
+def elite_sofa_frame(name):
+    """沙发精英的整体姿势：动作条或独立透明倒地源统一落入图集。"""
+    frame = ELITE_SPEC["frames"][name]
+    sheet = Image.open(os.path.join(ELITE_SOFA_DIR, frame["file"])).convert("RGBA")
+    if "columns" not in frame:
+        return fit_visible(sheet, 96)
+    width, height = sheet.size
+    col = frame["index"] % frame["columns"]
+    x0, x1 = col * width // frame["columns"], (col + 1) * width // frame["columns"]
+    # 精英帧收紧为 96px 有效边长以满足主包限制；Rig 用同倍数补回战场体量。
+    return fit_visible(sheet.crop((x0, 0, x1, height)), 96)
+
+
 def defeat_smoke(index):
-    """通用三帧死亡烟雾：爆开、扩散、残雾。"""
-    return fit_visible(Image.open(DEFEAT_SMOKE[index]).convert("RGBA"))
+    """通用两帧死亡烟雾：统一画布已含体积时序，装格时不得裁切放大。"""
+    source = Image.open(DEFEAT_SMOKE[index]).convert("RGBA")
+    return fit_cell(source, DEFEAT_SMOKE_SIZES[index])[0]
 
 
 def make_glow(size=96):
@@ -556,7 +584,6 @@ def build():
     cell(ARCHER_SPEC["frames"]["fireLeft"]["icon"], archer_frame("fireLeft"))
     cell(ARCHER_SPEC["frames"]["fireRight"]["icon"], archer_frame("fireRight"))
     cell(ARCHER_SPEC["frames"]["defeat"]["icon"], archer_back_defeat())
-    cell("fx-smoke-3", defeat_smoke(2))
 
     # 柴不破：背面待机、受击与晕倒均为完整姿势帧。
     cell(TANK_SPEC["frames"]["idle"]["icon"], tank_frame("idle"))
@@ -567,6 +594,10 @@ def build():
     for frame_name, frame in LAMP_SPEC["frames"].items():
         cell(frame["icon"], lamp_frame(frame_name))
 
+    # 床头柜普通怪：待机、缩小跳步、双拳蓄力 / 撞击与仰倒。
+    for frame_name, frame in NORMAL_SPEC["frames"].items():
+        cell(frame["icon"], normal_bedside_frame(frame_name))
+
     # 近战猫：正背朝向分别提供待机、走步、挥锤、受击和倒地姿势。
     for frame_name, frame in WAR_SPEC["frames"].items():
         cell(frame["icon"], war_frame(frame_name))
@@ -574,6 +605,10 @@ def build():
     # 哈利边牧：固定背面，蓄能、释放与收势由同一法术攻击时间线驱动。
     for frame_name, frame in MAGE_SPEC["frames"].items():
         cell(frame["icon"], mage_frame(frame_name))
+
+    # 沙发精英：以整体姿势帧表达蓄力、震击与回弹，不混用旧红色沙发素材。
+    for frame_name, frame in ELITE_SPEC["frames"].items():
+        cell(frame["icon"], elite_sofa_frame(frame_name))
 
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
@@ -594,7 +629,10 @@ def build():
             im = im.resize((CELL - 2 * PAD, CELL - 2 * PAD), Image.LANCZOS)
             cell(name, im)
 
-    atlas.save(os.path.join(IMG_DIR, "game.png"))
+    # WebGL 上传时还原 RGBA；索引图集为主包留出新增角色余量。
+    atlas.quantize(colors=256, method=Image.Quantize.FASTOCTREE).save(
+        os.path.join(IMG_DIR, "game.png"), optimize=True, compress_level=9
+    )
 
     anchor_json = {}
     for name, ox, oy, w_, h_ in (
@@ -604,7 +642,8 @@ def build():
         anchor_json[name] = [round(ox, 1), round(oy, 1)]
 
     data = {
-        "src": "res/Image/game.png",
+        # 图集替换后必须使 H5 和真机重新取纹理，避免沿用同名旧缓存。
+        "src": f"res/Image/game.png?v={ATLAS_VERSION}",
         "texW": ATLAS_W,
         "texH": ATLAS_H,
         "cell": CELL,
@@ -632,7 +671,7 @@ def write_rigs(atlas_data, mage_vfx):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, WAR_SPEC, MAGE_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC, ELITE_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],

@@ -8,8 +8,10 @@
   var archSpec = A.CharacterAnimations.arch;
   var tankSpec = A.CharacterAnimations.tank;
   var lampSpec = A.CharacterAnimations.lamp;
+  var normalSpec = A.CharacterAnimations.normal;
   var warSpec = A.CharacterAnimations.war;
   var mageSpec = A.CharacterAnimations.mage;
+  var eliteSpec = A.CharacterAnimations.elite;
 
   // 柴不破：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
   var shiba = {
@@ -164,6 +166,48 @@
     },
   };
 
+  // 床头柜普通怪：移动帧按待机的 86% 绘制，受击保持待机，不额外播放动效。
+  var bedsideNormal = {
+    scale: 1.30,
+    parts: [{ icon: normalSpec.frames.idle, pivot: [0.50, 0.88] }],
+    states: {
+      idle: {
+        dur: normalSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 0.70, mods: [{ icon: normalSpec.frames.idle, dy: -0.8, sy: 1.016, sx: 0.994 }] },
+          { t: normalSpec.states.idle.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      move: {
+        dur: normalSpec.states.move.duration, loop: true, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 0.20, mods: [{ icon: normalSpec.frames.hop, dy: -2.2, sy: 0.86, sx: 0.86 }] },
+          { t: normalSpec.states.move.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      atk: {
+        dur: normalSpec.states.attack.duration, ease: 'inOutSine', hit: normalSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.16, mods: [{ icon: normalSpec.frames.windup, dy: 1.8, rot: -2.0, sx: 1.025, sy: 0.96 }] },
+          { t: normalSpec.states.attack.hit, mods: [{ icon: normalSpec.frames.impact, dy: -2.2, rot: 1.2, sx: 1.03, sy: 0.99 }] },
+          { t: 0.42, mods: [{ icon: normalSpec.frames.impact, dy: 0.4, rot: 0.2, sx: 1.005 }] },
+          { t: normalSpec.states.attack.duration, mods: [{ icon: normalSpec.frames.idle, dy: 0, rot: 0, sx: 1, sy: 1 }] },
+        ],
+      },
+      die: {
+        dur: normalSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: normalSpec.frames.idle, alpha: 1, dy: 0 }] },
+          { t: 0.22, mods: [{ icon: normalSpec.frames.defeat, alpha: 1, dy: 2.4 }] },
+          { t: normalSpec.states.die.duration, mods: [{ icon: normalSpec.frames.defeat, alpha: 1, dy: 2.4 }] },
+        ],
+      },
+    },
+  };
+
   // 近战猫：根据目标与移动方向切换正面 / 背面整姿势帧。
   function meleeCat(side) {
     var frames = warSpec.frames;
@@ -267,6 +311,56 @@
     },
   };
 
+  // 沙发精英：整体家具以姿势帧表达蓄力、震击与侧翻倒地，不增加肢体或专属战斗分支。
+  var sofaElite = {
+    scale: 1.35,
+    parts: [{ icon: eliteSpec.frames.idle, pivot: [0.50, 0.88] }],
+    states: {
+      idle: {
+        dur: eliteSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: eliteSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 1.15, mods: [{ icon: eliteSpec.frames.idle, dy: -0.9, sy: 1.018, sx: 0.993 }] },
+          { t: eliteSpec.states.idle.duration, mods: [{ icon: eliteSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      move: {
+        dur: eliteSpec.states.move.duration, loop: true, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: eliteSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 0.20, mods: [{ icon: eliteSpec.frames.move, dy: -3.0, sy: 0.98, sx: 1.025 }] },
+          { t: eliteSpec.states.move.duration, mods: [{ icon: eliteSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      atk: {
+        dur: eliteSpec.states.attack.duration, ease: 'inOutSine', hit: eliteSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: eliteSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.18, mods: [{ icon: eliteSpec.frames.windup, dy: 1.4, rot: -2.8, sx: 1.035, sy: 0.955 }] },
+          { t: eliteSpec.states.attack.hit, mods: [{ icon: eliteSpec.frames.impact, dy: -1.8, rot: 1.5, sx: 1.02, sy: 0.985 }] },
+          { t: 0.43, mods: [{ icon: eliteSpec.frames.impact, dy: 0.8, rot: 0.4, sx: 1.005 }] },
+          { t: eliteSpec.states.attack.duration, mods: [{ icon: eliteSpec.frames.idle, dy: 0, rot: 0, sx: 1, sy: 1 }] },
+        ],
+      },
+      hurt: {
+        dur: eliteSpec.states.hurt.duration, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: eliteSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.10, mods: [{ icon: eliteSpec.frames.idle, dy: 2.4, rot: -3.2, sx: 1.01, sy: 0.97 }] },
+          { t: eliteSpec.states.hurt.duration, mods: [{ icon: eliteSpec.frames.idle, dy: 0, rot: 0, sx: 1, sy: 1 }] },
+        ],
+      },
+      die: {
+        dur: eliteSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: eliteSpec.frames.idle, alpha: 1, dy: 0, rot: 0 }] },
+          { t: 0.24, mods: [{ icon: eliteSpec.frames.defeat, alpha: 1, dy: 2.0, rot: 0, sx: 1, sy: 1 }] },
+          { t: eliteSpec.states.die.duration, mods: [{ icon: eliteSpec.frames.defeat, alpha: 1, dy: 2.0, rot: 0, sx: 1, sy: 1 }] },
+        ],
+      },
+    },
+  };
+
   // 盾位：柴犬分件动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
     tank: shiba,
@@ -278,5 +372,7 @@
     'war-back': meleeCatBack,
     mage: mageDog,
     small: lampMinion,
+    normal: bedsideNormal,
+    elite: sofaElite,
   };
 })();

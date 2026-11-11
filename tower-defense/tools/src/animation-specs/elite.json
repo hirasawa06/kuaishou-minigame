@@ -1,0 +1,20 @@
+{
+  "id": "elite",
+  "entity": "enemy",
+  "render": "whole",
+  "sourceDir": "characters/角色/沙发精英",
+  "frames": {
+    "idle": { "icon": "sofa-idle", "file": "sofa-elite-attack-v2.png", "index": 0, "columns": 4, "rows": 1 },
+    "windup": { "icon": "sofa-windup", "file": "sofa-elite-attack-v2.png", "index": 1, "columns": 4, "rows": 1 },
+    "impact": { "icon": "sofa-impact", "file": "sofa-elite-attack-v2.png", "index": 2, "columns": 4, "rows": 1 },
+    "defeat": { "icon": "sofa-defeat", "file": "sofa-elite-defeat-v1.png" },
+    "move": { "icon": "sofa-move", "file": "sofa-elite-attack-v2.png", "index": 0, "columns": 4, "rows": 1 }
+  },
+  "states": {
+    "idle": { "duration": 2.3 },
+    "move": { "duration": 0.64, "frame": "move" },
+    "attack": { "duration": 0.54, "hit": 0.32, "windup": "windup", "impact": "impact" },
+    "hurt": { "duration": 0.28, "frame": "idle" },
+    "die": { "duration": 0.52, "frame": "defeat" }
+  }
+}

@@ -96,7 +96,8 @@
     manifest.push(['avatars', 'res/Menu/avatars.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
     if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
-    manifest.push(['figma-home', 'res/Image/figma-home.png']);
+
+    manifest.push(['figma-home', 'res/Image/figma-home.jpg']);
     manifest.push(['in-game-background', 'res/Image/in-game-background.png']);
     manifest.push(['guardian-sofa', 'res/Image/guardian-sofa.png']);
     manifest.push(['enemy-furniture-atlas', 'res/Image/enemy-furniture-atlas.png']);
@@ -112,6 +113,7 @@
     manifest.push(['shop-card', 'res/Image/shop-card.png']);
     manifest.push(['shop-button', 'res/Image/shop-button.png']);
     manifest.push(['modal-panel', 'res/Image/modal-panel.png']);
+
     manifest.push(['home-start-button', 'res/Image/home-start-button.png']);
     manifest.push(['home-avatar-button', 'res/Image/home-avatar-button.png']);
     manifest.push(['home-settings-button', 'res/Image/home-settings-button.png']);
