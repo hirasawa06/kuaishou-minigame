@@ -123,7 +123,10 @@
       music: true,
       sfx: true,
       bestWave: 0,      // 历史最高通关关卡（0 = 尚未通关）
+      progressVersion: 2, // 本轮清除旧测试进度；只迁移一次，不反复清空新进度。
       completedLevel: 0, // 独立关卡进度；旧 bestWave 是波次，不能用于解锁
+      tutorialComplete: false,
+      tutorialStarComplete: false,
       clears: 0,
       games: 0,
       bestAt: 0,        // 首次达到 bestWave 的本地时间戳
@@ -153,15 +156,27 @@
       if (typeof stored.completedLevel === 'number' && isFinite(stored.completedLevel)) {
         base.completedLevel = clamp(Math.floor(stored.completedLevel), 0, C.LEVELS.length);
       }
+      if (typeof stored.tutorialComplete === 'boolean') base.tutorialComplete = stored.tutorialComplete;
+      if (typeof stored.tutorialStarComplete === 'boolean') base.tutorialStarComplete = stored.tutorialStarComplete;
       if (typeof stored.clears === 'number') base.clears = stored.clears;
       if (typeof stored.games === 'number') base.games = stored.games;
       if (typeof stored.bestAt === 'number') base.bestAt = stored.bestAt;
+      if (stored.progressVersion !== 2) {
+        base.completedLevel = 0;
+        base.bestWave = 0;
+        base.bestAt = 0;
+        base.clears = 0;
+        base.games = 0;
+        base.tutorialComplete = false;
+        base.tutorialStarComplete = false;
+      }
     }
     base.avatarIndex = clamp(base.avatarIndex | 0, 0, AVATARS.length - 1);
     base.region = clamp(base.region | 0, 0, REGIONS.length - 1);
     base.town = clamp(base.town | 0, 0, REGIONS[base.region].towns.length - 1);
     if (!base.id) base.id = nowId();
     S.data = base;
+    if (stored && stored.progressVersion !== 2) writeStore(base);
     return base;
   }
 
@@ -255,12 +270,31 @@
     return level >= 1 && level <= C.LEVELS.length && level <= S.data.completedLevel + 1;
   };
 
+  // 英雄解锁完全复用持久关卡进度，不另存可与进度失同步的名单。
+  S.isHeroUnlocked = function (id) {
+    var required = C.heroUnlockLevel(id);
+    return required > 0 && required <= S.data.completedLevel + 1;
+  };
+
   // 一局结束：最高波次独立保留，只有胜利才解锁下一关。
   S.recordRun = function (cleared, won) {
     var d = S.data;
     var level = A.State ? A.State.currentLevel : 1;
+    var previousCompleted = d.completedLevel;
     if (won && S.isLevelUnlocked(level)) {
       d.completedLevel = Math.max(d.completedLevel, level);
+    }
+    // 只在首次突破完成进度时生成本局提示；重玩、失败与旧存档加载不重放。
+    if (A.State && d.completedLevel > previousCompleted) {
+      var newlyUnlocked = [];
+      for (var hi = 0; hi < C.HEROES.length; hi++) {
+        var hero = C.HEROES[hi];
+        var required = C.heroUnlockLevel(hero.id);
+        if (required > previousCompleted + 1 && required <= d.completedLevel + 1) {
+          newlyUnlocked.push(hero.id);
+        }
+      }
+      A.State.unlockNotice = newlyUnlocked;
     }
     d.games += 1;
     if (won) d.clears += 1;

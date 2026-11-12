@@ -55,7 +55,7 @@
     var hudH = adaptationError ? Math.max(1, Math.floor(contentH * 0.16)) : 52;
     var trayH = adaptationError
       ? Math.max(1, contentH - hudH - Math.max(1, Math.floor(contentH * 0.43)))
-      : Math.round(Math.max(176, Math.min(232, contentH * 0.27)));
+      : Math.round(Math.max(272, Math.min(304, contentH * 0.38)));
     if (!adaptationError) {
       var maxTrayH = Math.max(138, contentH - hudH - 180);
       trayH = Math.min(trayH, maxTrayH);
@@ -184,6 +184,10 @@
         h: s.cellH,
       };
     };
+    L.shopLockRect = function (i) {
+      var r = L.shopRect(i);
+      return { x: r.x + r.w - 46, y: r.y + 2, w: 44, h: 44 };
+    };
     ui.lanes = [
       field.x + field.w * 0.2,
       field.x + field.w * 0.5,
@@ -249,6 +253,17 @@
     ui.btnY.result = resultTop + 44 + resultGap;
     ui.resultHome = { x: ui.resultNext.x, y: resultTop + 2 * (44 + resultGap), w: resultW, h: 44 };
     ui.resultReplay = { x: ui.resultNext.x, y: ui.btnY.result, w: resultW, h: 44 };
+    var resultInfoH = Math.max(1, resultTop - contentTop - 12);
+    var resultTitleY = contentTop + Math.min(38, resultInfoH * 0.05);
+    var noticeH = Math.min(84, resultInfoH * 0.24);
+    ui.result = {
+      titleY: resultTitleY,
+      subY: resultTitleY + 52,
+      notice: { x: metrics.safeLeft + pad, y: resultTitleY + 86,
+        w: safeW - pad * 2, h: noticeH },
+      statsY: resultTitleY + 94 + noticeH,
+      statsGap: Math.max(18, Math.min(30, (resultTop - resultTitleY - 102 - noticeH) / 5))
+    };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
@@ -263,6 +278,8 @@
     ui.menu.avatar = figmaRect(11.44, 45.77, 80.56, 82.4);
     ui.menu.stamina = figmaRect(93.84, 63.17, 141.9, 45.78);
     ui.menu.settings = figmaRect(308.98, 45.77, 73.24, 82.4);
+    ui.menu.collection = { x: Math.min(metrics.safeRight - pad - 64, ui.menu.settings.x),
+      y: ui.menu.settings.y + ui.menu.settings.h + 8, w: 64, h: 48 };
     ui.menu.rank = figmaRect(10.99, 137.32, 82.4, 84.68);
     ui.menu.banner = figmaRect(8.24, 244.89, 373.06, 64.09);
     ui.menu.card = figmaRect(8.24, 308.98, 373.06, 286.09);
@@ -506,6 +523,31 @@
       subY: invSubY,
       copy: { x: sheetX + 22, y: invCopyY, w: sheetW - 44, h: invCopyH },
       noteY: invCopyY + invCopyH + 12,
+    };
+
+    // 英雄收藏：同一立绘，仅星章与数值不同。
+    var collectionX = metrics.safeLeft + pad;
+    var collectionW = safeW - pad * 2;
+    var collectionTop = contentTop + 98;
+    var collectionGap = 10;
+    var collectionCellW = (collectionW - collectionGap) / 2;
+    var collectionCellH = Math.min(150, (contentBottom - 14 - collectionTop - collectionGap * 2) / 3);
+    ui.collection = {
+      back: { x: collectionX, y: contentTop + 8, w: 44, h: 44 },
+      titleY: contentTop + 60,
+      rect: function (i) { return { x: collectionX + (i % 2) * (collectionCellW + collectionGap),
+        y: collectionTop + Math.floor(i / 2) * (collectionCellH + collectionGap),
+        w: collectionCellW, h: collectionCellH }; },
+      detailNameY: contentTop + 66,
+      forms: function (i) { var fw = collectionW / 3; return {
+        x: collectionX + fw * i + 3, y: contentTop + 112,
+        w: fw - 6, h: Math.min(340, contentH - 138) }; }
+    };
+    var tutorialW = safeW - pad * 2;
+    ui.tutorial = {
+      caption: { x: metrics.safeLeft + pad, y: contentTop + 4, w: tutorialW, h: 96 },
+      start: { x: metrics.safeLeft + (safeW - 200) / 2,
+        y: Math.min(contentBottom - 48, Math.max(field.y + 104, base.y - 54)), w: 200, h: 48 }
     };
 
     ui.btnRect = function (kind) {

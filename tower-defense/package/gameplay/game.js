@@ -82,10 +82,12 @@
     A.Input.cancel();
     L.ui.ready = false;
     L.calc();
+    if (A.ProfileUI) A.ProfileUI.close();
     S.reset();
+    if (A.Tutorial) A.Tutorial.begin();
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
     syncViewport();
     S.toastMsg('布阵准备', 1.2);
-    A.GameAudio && A.GameAudio.play('start');
   }
 
   function nextLevel() {
@@ -98,22 +100,29 @@
   }
 
   function toggleSpeed() {
-    if (S.phase === 'playing') S.battleSpeed = S.battleSpeed === 2 ? 1 : 2;
+    if (S.phase !== 'playing') return;
+    S.battleSpeed = S.battleSpeed === 2 ? 1 : 2;
+    A.GameAudio && A.GameAudio.play('speed');
   }
 
   function selectLevel(delta) {
     if (S.phase !== 'menu' || S.menuStartDelay > 0) return;
+    var previousLevel = S.selectedLevel;
     S.selectedLevel = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
     S.menuFeedback = null;
+    if (S.selectedLevel !== previousLevel) A.GameAudio && A.GameAudio.play('select');
   }
 
   function togglePause() {
+    if (A.Tutorial && !A.Tutorial.allow('pause')) return;
     A.Input.cancel();
     if (S.phase === 'playing') {
       S.phase = 'paused';
       S.dragging = null;
+      A.GameAudio && A.GameAudio.play('click');
     } else if (S.phase === 'paused') {
       S.phase = 'playing';
+      A.GameAudio && A.GameAudio.play('click');
     }
   }
 
@@ -125,10 +134,14 @@
 
   // 返回主页：清空本局临时状态，回到首页；未结束的一局不计入存档
   function goMenu() {
+    if (A.Tutorial) A.Tutorial.stop();
     A.Input.cancel();
     S.menuStartDelay = 0;
-    if (A.ProfileUI) A.ProfileUI.close();
+    // 先离开战斗，再关闭设置等局内页面。
     S.phase = 'menu';
+    if (A.ProfileUI) A.ProfileUI.close();
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
+    A.GameAudio && A.GameAudio.play('click');
     S.dragging = null;
     S.drag = null;
     S.inspect = null;
@@ -162,12 +175,17 @@
       S.menuStartDelay -= dt;
       if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
     }
-    // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
-    var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
-    for (var si = 0; si < steps; si++) {
-      A.Battle.update(dt);
-      if (S.phase !== 'playing') break;
+    // 首次引导只更新提示/UI/音乐，不调用 Battle，波次与攻击保持冻结。
+    if (A.Tutorial && A.Tutorial.isActive()) A.Tutorial.update(dt);
+    else {
+      // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
+      var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
+      for (var si = 0; si < steps; si++) {
+        A.Battle.update(dt);
+        if (S.phase !== 'playing') break;
+      }
     }
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
   }
 
   function drawBackdrop() {
@@ -260,6 +278,7 @@
 
     // 战斗内设置面板叠在暂停层之上
     if (A.ProfileUI) A.ProfileUI.draw();
+    if (A.Tutorial) A.Tutorial.draw();
 
     if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
     A.Render.endFrame();

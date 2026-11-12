@@ -1,0 +1,14 @@
+{
+  "source": "healer-three-levels-20261111-221014.png",
+  "model": "GPT-Image-2.5-Sunburst",
+  "status": "new original healer design; pending user art acceptance",
+  "identity_reference": null,
+  "style_only_references": [
+    "tools/src/characters/情绪版/宠物情绪版.png",
+    "tools/src/characters/角色/法师狗/法师狗.png",
+    "tools/src/characters/角色/射手猫/射手猫.png"
+  ],
+  "layout": "3 columns Lv1/Lv2/Lv3; 2 rows front/back 70 degrees",
+  "alpha_source": "healer-three-levels-20261111-221014-alpha.png",
+  "postprocessing": "standard magenta chroma key; partial edge despill only; no recoloring"
+}
