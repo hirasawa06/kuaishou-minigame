@@ -34,16 +34,6 @@
       { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
   }
 
-  // 治疗角色暂无参考图与专属 Rig：复用心形占位，叠绿色医疗十字便于识别。
-  function drawHealerPlaceholder(cx, cy, size, alpha) {
-    icon('ui-heart', cx, cy, size, alpha);
-    var mark = size * 0.30;
-    var mx = cx + size * 0.24, my = cy + size * 0.20;
-    D.roundRect(mx - mark / 2, my - mark / 2, mark, mark, 3, D.color('#153c2c', alpha));
-    D.rect(mx - mark * 0.12, my - mark * 0.34, mark * 0.24, mark * 0.68, D.color('#6ff0a8', alpha));
-    D.rect(mx - mark * 0.34, my - mark * 0.12, mark * 0.68, mark * 0.24, D.color('#6ff0a8', alpha));
-  }
-
   function drawBackground() {
     var u = L.ui;
     // 客厅背景铺满全屏（与首页同一张），避免换场景时跳色
@@ -213,6 +203,52 @@
     });
   }
 
+  function clamp01(value) { return Math.max(0, Math.min(1, value)); }
+
+  function healCastOrigin(unit) {
+    var rig = A.Rigs && A.Rigs[unit.rigId || unit.def.id];
+    var origin = rig && rig.castOrigin || [0, -unit.def.radius * 0.7];
+    return { x: unit.x + origin[0], y: unit.y + origin[1] };
+  }
+
+  function drawHealMote(x, y, size, color, alpha) {
+    D.roundRect(x - size * 0.12, y - size * 0.42, size * 0.24, size * 0.84, size * 0.12,
+      D.color(color, alpha));
+    D.roundRect(x - size * 0.42, y - size * 0.12, size * 0.84, size * 0.24, size * 0.12,
+      D.color(color, alpha));
+  }
+
+  function drawHealEffect(e, t, source, target) {
+    var from = healCastOrigin(source);
+    var tx = target.x, ty = target.y + target.def.radius * 0.22;
+    var travel = clamp01(t / 0.28);
+    var arrive = clamp01((t - 0.14) / 0.28);
+    var fade = 1 - t;
+    A.Render.setAdditive(true);
+    additiveGlow(from.x, from.y, 15 + t * 8, '#d9ff8a', (1 - travel) * 0.46, 0);
+    for (var i = 0; i < 4; i++) {
+      var p = clamp01(travel * 1.35 - i * 0.16);
+      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7);
+      var x = from.x + (tx - from.x) * p + arc;
+      var y = from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9;
+      additiveGlow(x, y, 7 + (i % 2) * 2, i === 0 ? '#ffe4f1' : '#a8ef8f', fade * 0.32, 0);
+    }
+    additiveGroundGlow(tx, ty + 4, 18 + arrive * 24, 6 + arrive * 8, '#a8ef8f', arrive * fade * 0.45);
+    A.Render.setAdditive(false);
+    for (var k = 0; k < 4; k++) {
+      var kp = clamp01(travel * 1.35 - k * 0.16);
+      var kArc = Math.sin(kp * Math.PI) * (k % 2 ? 7 : -7);
+      drawHealMote(from.x + (tx - from.x) * kp + kArc,
+        from.y + (ty - from.y) * kp - Math.sin(kp * Math.PI) * 9,
+        3.2 + (k % 2), k === 0 ? '#ffe4f1' : '#a8ef8f', fade * 0.88);
+    }
+    for (var j = 0; j < 3; j++) {
+      var rise = clamp01((t - 0.18 - j * 0.06) / 0.24);
+      if (rise <= 0) continue;
+      drawHealMote(tx + (j - 1) * 7, ty - 4 - rise * 15, 3, '#d9ffb5', (1 - rise) * fade);
+    }
+  }
+
   function drawMageImpactParticles(e, t) {
     var fade = 1 - t;
     var burst = Math.min(1, t * 2.4);
@@ -254,8 +290,7 @@
       }
     } else {
       var alpha = 0.25 + 0.75 * spawn;
-      if (d.cls === 'healer') drawHealerPlaceholder(un.x, un.y, size, alpha);
-      else icon(d.icon, un.x, un.y, size, alpha);
+      icon(d.icon, un.x, un.y, size, alpha);
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
@@ -335,25 +370,7 @@
           if (hu.uid === e.targetUid) target = hu;
         }
         if (!source || !target) continue;
-        var tx = target.x, ty = target.y - target.def.radius * 0.3;
-        var sx = source.x, sy = source.y - source.def.radius * 0.3;
-        var dx = tx - sx, dy = ty - sy;
-        var length = Math.sqrt(dx * dx + dy * dy);
-        if (length > 0) {
-          A.Render.push((sx + tx) / 2 - length / 2, (sy + ty) / 2 - 2,
-            length, 4, D.color('#6ff0a8', (1 - t) * 0.9),
-            { mode: 0, hw: length / 2, hh: 2, r: 2, rot: Math.atan2(dy, dx), cx: (sx + tx) / 2, cy: (sy + ty) / 2 });
-        }
-        var healAlpha = 1 - t;
-        var healSize = 10 + t * 5;
-        var healY = ty - t * 18;
-        A.Render.setAdditive(true);
-        additiveGlow(tx, ty, (e.r || 20) * (1.2 + t), e.color, healAlpha * 0.4, 0);
-        A.Render.setAdditive(false);
-        D.rect(tx - healSize * 0.12, healY - healSize * 0.5,
-          healSize * 0.24, healSize, D.color(e.color, healAlpha));
-        D.rect(tx - healSize * 0.5, healY - healSize * 0.12,
-          healSize, healSize * 0.24, D.color(e.color, healAlpha));
+        drawHealEffect(e, t, source, target);
       } else if (e.type === 'mage-biscuit-impact') {
         // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。
         var biscuitSize = (e.r || 34) * (1.85 + t * 0.28);
@@ -440,8 +457,6 @@
       var ghostY = ghostRig ? drag.y - def.radius * 0.15 : drag.y;
       if (ghostRig) {
         A.Anim.draw(ghostRig, unit, drag.x, ghostY, ghostSize, { alpha: 0.7 });
-      } else if (def.cls === 'healer') {
-        drawHealerPlaceholder(drag.x, ghostY, ghostSize, 0.7);
       } else {
         icon(def.icon, drag.x, ghostY, ghostSize, 0.7);
       }
@@ -480,8 +495,14 @@
     }
     D.circle(x, y, def.radius + 4, D.color(col, 0.22));
     D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
-    if (def.cls === 'healer') drawHealerPlaceholder(x, y, def.radius * 2.2, 0.94);
-    else icon(def.icon, x, y, def.radius * 2.2, 0.94);
+    var previewRig = A.Rigs && A.Rigs[def.id];
+    if (previewRig) {
+      var previewSize = def.radius * 3.05 * (previewRig.scale || 1);
+      A.Anim.draw(previewRig, { anim: 'idle', animT: 0, hitFlash: 0 },
+        x, y - def.radius * 0.15, previewSize, { alpha: 0.94 });
+    } else {
+      icon(def.icon, x, y, def.radius * 2.2, 0.94);
+    }
     if (!ok) {
       D.text(live >= S.heroCap ? '席位已满' : '金币不足', x, y + def.radius + 12, 18,
         D.color('#ff9aa8', 0.95), 1);

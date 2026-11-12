@@ -11,6 +11,7 @@
   var normalSpec = A.CharacterAnimations.normal;
   var warSpec = A.CharacterAnimations.war;
   var mageSpec = A.CharacterAnimations.mage;
+  var healerSpec = A.CharacterAnimations.healer;
   var eliteSpec = A.CharacterAnimations.elite;
 
   // 柴不破：战场与卡牌统一使用背视完整姿势帧。
@@ -311,6 +312,49 @@
     },
   };
 
+  // 奶糖喵：固定背面驻守；绿色治疗连线与数值反馈继续由战斗层绘制。
+  var healerCat = {
+    // 20.4 * 3.05 * 0.887 ≈ 55.2。
+    scale: 0.887,
+    // 法杖绿球：相对角色脚底锚点的施法源，不能从身体中心发光。
+    castOrigin: [-19, -25],
+    parts: [{ icon: healerSpec.frames.idle, pivot: [0.50, 0.88] }],
+    states: {
+      idle: {
+        dur: healerSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: healerSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 1.00, mods: [{ icon: healerSpec.frames.idle, dy: -0.8, sy: 1.016, sx: 0.994 }] },
+          { t: healerSpec.states.idle.duration, mods: [{ icon: healerSpec.frames.idle, dy: 0, sy: 1 }] },
+        ],
+      },
+      atk: {
+        dur: healerSpec.states.attack.duration, ease: 'inOutSine', hit: healerSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: healerSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: healerSpec.states.attack.hit, mods: [{ icon: healerSpec.frames.heal, dy: -1.8, rot: 1.1, sx: 1.015 }] },
+          { t: healerSpec.states.attack.duration, mods: [{ icon: healerSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+        ],
+      },
+      hurt: {
+        dur: healerSpec.states.hurt.duration, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: healerSpec.frames.idle, dy: 0, rot: 0 }] },
+          { t: 0.10, mods: [{ icon: healerSpec.frames.hurt, dy: 2.0, rot: -2.0, sx: 1.01 }] },
+          { t: healerSpec.states.hurt.duration, mods: [{ icon: healerSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
+        ],
+      },
+      die: {
+        dur: healerSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: healerSpec.frames.idle, alpha: 1, dy: 0, rot: 0 }] },
+          { t: 0.18, mods: [{ icon: healerSpec.frames.idle, alpha: 1, dy: 3.0, rot: -3.0, sy: 0.95 }] },
+          { t: healerSpec.states.die.duration, mods: [{ icon: healerSpec.frames.idle, alpha: 1, dy: 3.0, rot: -3.0, sy: 0.95 }] },
+        ],
+      },
+    },
+  };
+
   // 沙发精英：整体家具以姿势帧表达蓄力、震击与侧翻倒地，不增加肢体或专属战斗分支。
   var sofaElite = {
     scale: 1.35,
@@ -371,6 +415,7 @@
     'war-front': meleeCatFront,
     'war-back': meleeCatBack,
     mage: mageDog,
+    healer: healerCat,
     small: lampMinion,
     normal: bedsideNormal,
     elite: sofaElite,

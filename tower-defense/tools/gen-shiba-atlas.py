@@ -29,7 +29,7 @@ COLS = 8
 ROWS = 8
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
-ATLAS_VERSION = 13
+ATLAS_VERSION = 15
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICON_BOXES = {
@@ -70,6 +70,8 @@ WAR_SPEC = load_animation_spec("war")
 WAR_CAT_DIR = os.path.join(SRC_DIR, WAR_SPEC["sourceDir"])
 MAGE_SPEC = load_animation_spec("mage")
 MAGE_DOG_DIR = os.path.join(SRC_DIR, MAGE_SPEC["sourceDir"])
+HEALER_SPEC = load_animation_spec("healer")
+HEALER_CAT_DIR = os.path.join(SRC_DIR, HEALER_SPEC["sourceDir"])
 ELITE_SPEC = load_animation_spec("elite")
 ELITE_SOFA_DIR = os.path.join(SRC_DIR, ELITE_SPEC["sourceDir"])
 DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
@@ -188,6 +190,19 @@ def mage_frame(name):
                       (col + 1) * width // frame["columns"], (row + 1) * height // frame["rows"]))
     # 生成图边缘的低透明白雾在缩图后会变成碎屑；清掉它而不影响主体与法术高光。
     rgba = np.asarray(img).copy()
+    rgba[rgba[:, :, 3] < 80] = (0, 0, 0, 0)
+    return fit_visible(Image.fromarray(rgba, "RGBA"))
+
+
+def healer_frame(name):
+    """奶糖喵背面三格动作表：移除透明边缘残点，统一以脚底为锚。"""
+    frame = HEALER_SPEC["frames"][name]
+    sheet = Image.open(os.path.join(HEALER_CAT_DIR, frame["file"])).convert("RGBA")
+    width, height = sheet.size
+    col = frame["index"] % frame["columns"]
+    x0, x1 = col * width // frame["columns"], (col + 1) * width // frame["columns"]
+    rgba = np.asarray(sheet.crop((x0, 0, x1, height))).copy()
+    # 原图透明背景边缘有不足 80 alpha 的残点；不参与裁切，避免角色被缩小。
     rgba[rgba[:, :, 3] < 80] = (0, 0, 0, 0)
     return fit_visible(Image.fromarray(rgba, "RGBA"))
 
@@ -429,6 +444,10 @@ def build():
     for frame_name, frame in MAGE_SPEC["frames"].items():
         cell(frame["icon"], mage_frame(frame_name))
 
+    # 奶糖喵：固定背面，动作表依次为待机、治疗与受击。
+    for frame_name, frame in HEALER_SPEC["frames"].items():
+        cell(frame["icon"], healer_frame(frame_name))
+
     # 沙发精英：以整体姿势帧表达蓄力、震击与回弹，不混用旧红色沙发素材。
     for frame_name, frame in ELITE_SPEC["frames"].items():
         cell(frame["icon"], elite_sofa_frame(frame_name))
@@ -477,7 +496,7 @@ def write_rigs(atlas_data, mage_vfx):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC, ELITE_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC, HEALER_SPEC, ELITE_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],

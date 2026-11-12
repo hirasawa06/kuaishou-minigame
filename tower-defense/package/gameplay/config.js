@@ -88,7 +88,7 @@
       },
       {
         id: 'healer', name: '奶糖喵', cls: 'healer', clsName: '治疗',
-        icon: 'ui-heart', cost: 8,
+        icon: 'healer-back-idle', cost: 8,
         hp: 288, atk: 0, interval: 2.0,
         range: 168, radius: 20.4, moveSpeed: 0,
         heal: 36, taunt: 0, splash: 0,

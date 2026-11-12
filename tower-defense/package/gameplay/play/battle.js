@@ -714,14 +714,26 @@
         un.y = S.clamp(un.y, uu.placeTop, uu.placeBottom);
       }
 
-      // 治疗位驻守且永不进入敌人攻击/飞弹流程，按固定间隔治疗范围内队友。
+      // 治疗位驻守且永不进入敌人攻击/飞弹流程。
+      // ── 治疗命中点 ─────────────────────────────────────────
+      // 中间治疗帧（0.30s）才选择目标、结算生命和生成特效，
+      // 保证法杖动作、数值和视觉反馈是同一个事件。
       if (def.cls === 'healer') {
-        un.pendingHit = -1;
-        un.pendingTarget = 0;
+        if (un.pendingHit >= 0) {
+          un.pendingHit -= dt;
+          if (un.pendingHit < 0) {
+            un.pendingHit = -1;
+            healAllies(un);
+          }
+        }
         un.atkTimer -= dt;
-        if (un.atkTimer <= 0) {
+        if (un.atkTimer <= 0 && un.pendingHit < 0) {
           un.atkTimer = def.interval;
-          healAllies(un);
+          // 全员满血时不空放治疗动作；下一轮冷却仍按既有两秒节奏推进。
+          if (findHealTarget(un)) {
+            enterAnimation(un, 'atk');
+            un.pendingHit = attackHitTime(un, 0.30);
+          }
         }
         alive.push(un);
         continue;
@@ -773,9 +785,22 @@
 
   function healAllies(healer) {
     var def = healer.def;
-    var range2 = def.range * def.range;
     var amount = def.heal || 0;
     if (amount <= 0) return;
+    var target = findHealTarget(healer);
+    if (!target) return;
+    var healed = Math.min(amount, target.maxHp - target.hp);
+    target.hp += healed;
+    S.addFloat(target.x, target.y - target.def.radius - 14, '+' + Math.round(healed), '#6ff0a8');
+    S.addEffect({
+      type: 'heal', sourceUid: healer.uid, targetUid: target.uid,
+      x: target.x, y: target.y - target.def.radius * 0.3,
+      r: target.def.radius, life: 0.55, max: 0.55, color: '#6ff0a8',
+    });
+  }
+
+  function findHealTarget(healer) {
+    var range2 = healer.def.range * healer.def.range;
     var target = null;
     for (var i = 0; i < S.units.length; i++) {
       var ally = S.units[i];
@@ -784,15 +809,7 @@
       // 按当前剩余生命值选择单个目标；同血量按 uid 稳定选择。
       if (!target || ally.hp < target.hp || (ally.hp === target.hp && ally.uid < target.uid)) target = ally;
     }
-    if (!target) return;
-    var healed = Math.min(amount, target.maxHp - target.hp);
-    target.hp += healed;
-    S.addFloat(target.x, target.y - target.def.radius - 14, '+' + Math.round(healed), '#6ff0a8');
-    S.addEffect({
-      type: 'heal', sourceUid: healer.uid, targetUid: target.uid,
-      x: target.x, y: target.y - target.def.radius * 0.3,
-      r: target.def.radius, life: 0.6, max: 0.6, color: '#6ff0a8',
-    });
+    return target;
   }
 
   function nearestEnemy(un, maxRange) {

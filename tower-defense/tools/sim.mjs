@@ -256,6 +256,40 @@ function frames_run(n) {
   }
 }
 
+function testUnit(def, uid, x) {
+  return {
+    uid, def, x, y: L.ui.base.y - 100, homeX: x, homeY: L.ui.base.y - 100,
+    hp: def.hp, maxHp: def.hp, purchaseCost: def.cost, atkTimer: 0,
+    hitFlash: 0, slowT: 0, spawnT: 0, dead: false, anim: 'idle', animT: 0,
+    pendingHit: -1, pendingTarget: 0, facing: 1,
+  }
+}
+
+function assertHealerAnimationGate() {
+  const healerDef = S.heroById('healer')
+  const allyDef = S.heroById('tank')
+  const healer = testUnit(healerDef, 9001, L.ui.field.x + 90)
+  const ally = testUnit(allyDef, 9002, healer.x + 52)
+  S.units = [healer, ally]
+  S.enemies = []
+  S.effects = []
+  S.floats = []
+  S.waveState = 'prep'
+  S.waveTimer = 9999
+  A.Battle.update(step)
+  if (healer.anim !== 'idle' || healer.pendingHit >= 0) {
+    throw new Error('治疗位在全员满血时错误播放了治疗动作')
+  }
+  ally.hp -= 1
+  healer.atkTimer = 0
+  A.Battle.update(step)
+  if (healer.anim !== 'atk' || healer.pendingHit < 0) {
+    throw new Error('治疗位发现受伤队友后没有进入治疗动作')
+  }
+  A.Game.start()
+  console.log('healer animation gate: ok')
+}
+
 function assertNoBodyOverlap() {
   const bodies = [
     ...S.units.filter((actor) => !actor.dead),
@@ -282,6 +316,8 @@ console.log('menu frame ok, sprites loaded:', !!A.Assets.sprite('enemy-small'))
 
 // 开始游戏（按钮点击链路由 tools/shot.mjs 覆盖，这里直接进玩法）
 A.Game.start()
+frames_run(1)
+assertHealerAnimationGate()
 frames_run(1)
 console.log('shop:', S.shop.map((x) => x.cardId).join(','), 'gold', S.gold, 'cap', S.heroCap)
 
