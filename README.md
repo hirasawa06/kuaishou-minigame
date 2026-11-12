@@ -54,16 +54,15 @@ node ../ks-yoola-devkit/scripts/build-zip.mjs --dir .
 ```bash
 cd tower-defense
 python3 tools/gen-assets.py        # 字形图集 + 旧图标 + Yoola 平台素材
-python3 tools/gen-shiba-atlas.py   # 战斗图集 game.png（柴犬分件 + 特效 + 继承图标）
+python3 tools/gen-shiba-atlas.py   # 战斗图集 game.png（动作帧 + 特效 + 必要旧图标）
 python3 tools/gen-audio.py         # 11 个短音效
-python3 tools/gen-home-asset.py    # 首页渲染图
 ```
 
 新增中文文案后必须重跑 `gen-assets.py`，否则界面会缺字；改动分件或特效后必须重跑 `gen-shiba-atlas.py`。
 
 ## 内容来源
 
-- `tower-defense/`：项目自研代码。角色美术（护盾柴犬）来自项目内的角色设定图，原始文件见 `tower-defense/tools/src/shiba-front.png`
+- `tower-defense/`：项目自研代码。角色动作源、三视图与风格参考位于 `tower-defense/tools/src/characters/`
 - `ks-yoola-devkit/`：快手小游戏官方开发 Skill 的工具与规范包，随项目一并提供，方便协作者在没有本地安装的情况下直接校验与打包；其权利归原发布方，不在本仓库开源范围
 - `tower-defense/package/kwaiStandard/`、`kwaiOpenApi/`：快手小游戏运行时脚手架
 

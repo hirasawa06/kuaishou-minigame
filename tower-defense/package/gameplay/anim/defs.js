@@ -1,4 +1,4 @@
-/* gameplay/anim/defs.js — 单位分件动画表
+/* gameplay/anim/defs.js — 单位关键帧动画表
  *
  * pivot：分件锚点在单元格内的归一化坐标（0~1），旋转围绕它进行。
  * 时间单位：秒；rot 单位：度；dx/dy 单位：逻辑像素（随 size 缩放会更稳，这里按 40px 视觉尺寸调）。
@@ -13,7 +13,7 @@
   var mageSpec = A.CharacterAnimations.mage;
   var eliteSpec = A.CharacterAnimations.elite;
 
-  // 柴不破：战场始终使用背视完整姿势；卡牌仍可复用正面分件图。
+  // 柴不破：战场与卡牌统一使用背视完整姿势帧。
   var shiba = {
     // 22.8 * 3.05 * 0.863 ≈ 60：按整体 1.2 倍放大后的贴图上限。
     scale: 0.863,
@@ -361,7 +361,7 @@
     },
   };
 
-  // 盾位：柴犬分件动画。config 里的英雄 id 为 'tank'
+  // 盾位：柴犬关键帧动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
     tank: shiba,
     arch: archerRight,

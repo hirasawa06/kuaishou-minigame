@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen-shiba-atlas.py — 战斗精灵图集（128px 单元格，1024px 宽、最高 2048px）
-
-输入（tools/src/）：
-  shiba-front.png   从角色设定图抠出的护盾柴犬正视图（RGBA）
+gen-shiba-atlas.py — 战斗精灵图集（128px 单元格，1024px 宽）
 输出：
-  package/res/Image/game.png        128 单元格图集（2x 绘制后缩放）
-  package/gameplay/data/rigs.js     分件坐标 + 高分辨率特效元数据
+  package/res/Image/game.png        128px 单元格图集（2x 绘制后缩放）
+  package/gameplay/data/rigs.js     图集坐标 + 高分辨率特效元数据
 
-图集布局：8 列 × 10 行，单元格 128px（含 4px padding，有效区 120px）。
+图集布局：8 列 × 8 行，单元格 128px（含 4px padding，有效区 120px）。
 帧按注册顺序自动排格；运行时只能通过稳定帧名查找，不能依赖行列位置。
 """
 
@@ -29,23 +26,22 @@ SRC_DIR = os.path.join(ROOT, "tools", "src")
 CELL = 128
 PAD = 4
 COLS = 8
-ROWS = 10
+ROWS = 8
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
-ATLAS_VERSION = 12
+ATLAS_VERSION = 13
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
-LEGACY_ICONS = [
-    "unit-tank-2", "unit-war-1", "unit-war-2", "unit-arch-1",
-    "unit-arch-2", "unit-mage-1", "unit-mage-2",
-    "enemy-grunt", "enemy-runner", "enemy-brute", "enemy-boss",
-    "ui-heart", "ui-bolt", "ui-pause", "ui-play",
-]
+LEGACY_ICON_BOXES = {
+    "enemy-boss": [796, 532, 256, 256],
+    "ui-heart": [4, 796, 256, 256],
+    "ui-pause": [532, 796, 256, 256],
+    "ui-play": [796, 796, 256, 256],
+}
 
 # 本脚本自绘的新图标（按四档敌人与金币重做，不依赖旧图集）
 NEW_ICONS = [
     "enemy-small", "enemy-normal", "enemy-elite", "ui-coin",
-    "ui-setting", "ui-rank", "ui-lock",
 ]
 
 SPEC_DIR = os.path.join(SRC_DIR, "animation-specs")
@@ -87,106 +83,7 @@ MAGE_BISCUIT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-vfx.png")
 MAGE_VFX_CELL = 256
 
 
-# ─────────────────────────────────────────── 柴犬分件
-def split_shiba():
-    """把正视图拆成「身体」和「盾牌」两件。
-
-    盾牌是右半区的大块蓝色 + 外圈银色包边，从最大蓝色连通域向外膨胀得到；
-    身体上被盾牌遮住的区域用邻域颜色向内扩散填充，避免分件旋转时露出空洞。
-    """
-    from collections import deque
-
-    src = Image.open(os.path.join(SRC_DIR, "shiba-front.png")).convert("RGBA")
-    a = np.asarray(src).astype(np.int16)
-    h, w, _ = a.shape
-    r, g, b, al = a[:, :, 0], a[:, :, 1], a[:, :, 2], a[:, :, 3]
-
-    blue = (al > 40) & (b > 110) & (b - r > 40) & (b - g > 15)
-    xs_grid = np.arange(w)[None, :]
-    seed = blue & (xs_grid > w * 0.5)
-
-    # 最大蓝色连通域
-    seen = np.zeros((h, w), bool)
-    best = []
-    for y in range(h):
-        for x in range(w):
-            if not seed[y, x] or seen[y, x]:
-                continue
-            q = deque([(x, y)])
-            seen[y, x] = True
-            comp = []
-            while q:
-                cx, cy = q.popleft()
-                comp.append((cx, cy))
-                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nx, ny = cx + dx, cy + dy
-                    if 0 <= nx < w and 0 <= ny < h and seed[ny, nx] and not seen[ny, nx]:
-                        seen[ny, nx] = True
-                        q.append((nx, ny))
-            if len(comp) > len(best):
-                best = comp
-
-    mask = np.zeros((h, w), bool)
-    for x, y in best:
-        mask[y, x] = True
-
-    # 膨胀吃进银色包边（灰度金属色，且与蓝色块邻接）
-    metal = (al > 40) & (np.abs(r - g) < 26) & (np.abs(g - b) < 30) & (r > 70)
-    for _ in range(18):
-        grown = mask.copy()
-        grown[1:, :] |= mask[:-1, :]
-        grown[:-1, :] |= mask[1:, :]
-        grown[:, 1:] |= mask[:, :-1]
-        grown[:, :-1] |= mask[:, 1:]
-        mask = mask | (grown & metal)
-
-    rgba = np.asarray(src).copy()
-    shield_arr = np.zeros_like(rgba)
-    shield_arr[mask] = rgba[mask]
-    shield_full = Image.fromarray(shield_arr, "RGBA")
-    sh_bbox = shield_full.getbbox()
-    shield = shield_full.crop(sh_bbox)
-
-    # 身体：把盾牌区域挖掉，再从洞的边界向内做扩散填充。
-    # 逐行插值在宽洞上会留横条，这里每次用四邻域均值松弛，迭代到填满。
-    body_arr = rgba.astype(np.float32)
-    hole = mask.copy()
-    body_arr[hole, 3] = 0
-    known = ~hole
-    for _ in range(400):
-        if not hole.any():
-            break
-        acc = np.zeros_like(body_arr)
-        cnt = np.zeros((h, w), np.float32)
-        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            shifted = np.roll(np.roll(body_arr, dy, axis=0), dx, axis=1)
-            valid = np.roll(np.roll(known, dy, axis=0), dx, axis=1)
-            acc += shifted * valid[:, :, None]
-            cnt += valid
-        ready = hole & (cnt > 0)
-        if not ready.any():
-            break
-        body_arr[ready] = acc[ready] / cnt[ready][:, None]
-        body_arr[ready, 3] = 255
-        known = known | ready
-        hole = hole & ~ready
-    # 洞内保持透明，不填色：盾牌原位时完全覆盖，外摆时缺口只有盾牌大小；
-    # 填腹部色会在盾牌外扩处溢出一块奶油色斑（盾牌轮廓比身体宽）。
-    body = Image.fromarray(body_arr.astype(np.uint8), "RGBA")
-    # 去掉原图烘焙的奶油色地板投影：底部 10 行里接近背景色的像素置透明
-    ba = np.asarray(body).copy()
-    tail_y = max(0, h - 10)
-    tail = ba[tail_y:]
-    near_bg = (tail[:, :, 0] > 232) & (tail[:, :, 1] > 205) & (tail[:, :, 2] > 190)
-    near_bg &= (tail[:, :, 2] > tail[:, :, 0] - 26)
-    tail[near_bg] = (0, 0, 0, 0)
-    body = Image.fromarray(ba, "RGBA")
-    body_bbox = body.getbbox()
-    body = body.crop(body_bbox)
-
-    return body, shield, (sh_bbox, body_bbox, src.size)
-
-
+# ─────────────────────────────────────────── 图像归一化
 def fit_cell(img, size, anchor_bottom=True):
     """等比缩放到 size 内，返回 (图像, 左上偏移)"""
     r = min(size / img.width, size / img.height)
@@ -462,80 +359,15 @@ def icon_coin():
     return img
 
 
-def icon_setting():
-    img, d = _new()
-    cx, cy = 60, 60
-    for i in range(8):
-        a = i * math.pi / 4
-        x1 = cx + math.cos(a) * 34
-        y1 = cy + math.sin(a) * 34
-        x2 = cx + math.cos(a) * 50
-        y2 = cy + math.sin(a) * 50
-        d.line([(x1, y1), (x2, y2)], fill=(122, 86, 56, 255), width=16)
-    d.ellipse((cx - 38, cy - 38, cx + 38, cy + 38), fill=(122, 86, 56, 255))
-    d.ellipse((cx - 26, cy - 26, cx + 26, cy + 26), fill=(247, 236, 220, 255))
-    return img
-
-
-def icon_rank():
-    img, d = _new()
-    # 奖杯
-    d.polygon([(30, 26), (90, 26), (84, 66), (36, 66)], fill=(240, 180, 64, 255))
-    d.ellipse((18, 26, 46, 52), outline=(240, 180, 64, 255), width=7)
-    d.ellipse((74, 26, 102, 52), outline=(240, 180, 64, 255), width=7)
-    d.rectangle((54, 64, 66, 84), fill=(214, 150, 48, 255))
-    d.rounded_rectangle((38, 84, 82, 96), 6, fill=(214, 150, 48, 255))
-    # 爪印
-    d.ellipse((52, 38, 68, 54), fill=(255, 245, 214, 255))
-    return img
-
-
-def icon_lock():
-    img, d = _new()
-    d.arc((34, 18, 86, 74), 180, 360, fill=(190, 196, 210, 255), width=10)
-    d.rounded_rectangle((26, 52, 94, 104), 12, fill=(214, 220, 232, 255))
-    d.ellipse((54, 68, 66, 80), fill=(120, 130, 150, 255))
-    d.rectangle((57, 76, 63, 92), fill=(120, 130, 150, 255))
-    return img
-
-
 NEW_BUILDERS = {
     "enemy-small": lambda: icon_enemy("small"),
     "enemy-normal": lambda: icon_enemy("normal"),
     "enemy-elite": lambda: icon_enemy("elite"),
     "ui-coin": icon_coin,
-    "ui-setting": icon_setting,
-    "ui-rank": icon_rank,
-    "ui-lock": icon_lock,
 }
 
 
 def build():
-    body, shield, meta = split_shiba()
-    sh_bbox, body_bbox, src_size = meta
-
-    # 统一缩放到同一比例，保证分件拼回去能对齐
-    full = Image.open(os.path.join(SRC_DIR, "shiba-front.png")).convert("RGBA")
-    scale = 120 / max(full.width, full.height)
-
-    def place(img, bbox):
-        nw = max(1, int(round(img.width * scale)))
-        nh = max(1, int(round(img.height * scale)))
-        return img.resize((nw, nh), Image.LANCZOS), bbox
-
-    body_s, _ = place(body, body_bbox)
-    shield_s, _ = place(shield, sh_bbox)
-    full_s, _ = place(full, None)
-
-    # 分件在单元格内的落点：以整张正视图为共同参照，
-    # 各自按原 bbox 偏移摆放，拼回去才能严丝合缝（各自居中会整体错位）
-    base_x = (CELL - 2 * PAD - full_s.width) // 2 + PAD
-    base_y = (CELL - 2 * PAD - full_s.height) // 2 + PAD
-    body_ox = base_x + body_bbox[0] * scale
-    body_oy = base_y + body_bbox[1] * scale
-    shield_ox = base_x + sh_bbox[0] * scale
-    shield_oy = base_y + sh_bbox[1] * scale
-
     atlas = Image.new("RGBA", (ATLAS_W, ATLAS_H), (0, 0, 0, 0))
     table = {}
     rigs = {}
@@ -551,28 +383,19 @@ def build():
                     return col, row
         raise ValueError("战斗图集没有可用格位")
 
-    def cell(name, img, ox=None, oy=None):
-        """落格。ox/oy 是相对整个正视图的绝对坐标（含 PAD 与居中偏移），
-        这里换算成图集内的绝对位置；格位自动分配并检测容量。"""
+    def cell(name, img):
+        """自动分配格位，统一居中放置。"""
         if name in table:
             raise ValueError("图集帧重复: " + name)
         col, row = next_cell()
         dx = (CELL - 2 * PAD - img.width) // 2 + PAD
         dy = (CELL - 2 * PAD - img.height) // 2 + PAD
-        if ox is not None:
-            dx = int(round(ox))
-            dy = int(round(oy))
         atlas.alpha_composite(img, (col * CELL + dx, row * CELL + dy))
         table[name] = [col * CELL + PAD, row * CELL + PAD, CELL - 2 * PAD, CELL - 2 * PAD]
 
-    # 整只（卡牌 / 拖拽残影 / 兼容）
-    cell("unit-tank-1", full_s)
-    cell("unit-tank-1-body", body_s, body_ox, body_oy)
-    cell("unit-tank-1-shield", shield_s, shield_ox, shield_oy)
     cell("fx-glow", make_glow())
     cell("fx-slash", make_slash())
     cell("fx-smoke", defeat_smoke(0))
-    cell("fx-ring", make_glow())
     cell("fx-smoke-2", defeat_smoke(1))
     for name in NEW_ICONS:
         cell(name, NEW_BUILDERS[name]())
@@ -612,19 +435,9 @@ def build():
 
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
-    legacy_meta = {}
-    meta_path = os.path.join(DATA_DIR, "sprites.js")
-    if os.path.exists(legacy_src) and os.path.exists(meta_path):
-        txt = open(meta_path, encoding="utf-8").read()
-        key = "A.SpriteAtlas = "
-        if key in txt:
-            legacy_meta = json.loads(txt.split(key, 1)[1].split(";\n", 1)[0])
     old = Image.open(legacy_src).convert("RGBA") if os.path.exists(legacy_src) else None
-    if old is not None and legacy_meta.get("icons"):
-        for name in LEGACY_ICONS:
-            box = legacy_meta["icons"].get(name)
-            if not box:
-                continue
+    if old is not None:
+        for name, box in LEGACY_ICON_BOXES.items():
             im = old.crop((box[0], box[1], box[0] + box[2], box[1] + box[3]))
             im = im.resize((CELL - 2 * PAD, CELL - 2 * PAD), Image.LANCZOS)
             cell(name, im)
@@ -634,13 +447,6 @@ def build():
         os.path.join(IMG_DIR, "game.png"), optimize=True, compress_level=9
     )
 
-    anchor_json = {}
-    for name, ox, oy, w_, h_ in (
-        ("unit-tank-1-body", body_ox, body_oy, body_s.width, body_s.height),
-        ("unit-tank-1-shield", shield_ox, shield_oy, shield_s.width, shield_s.height),
-    ):
-        anchor_json[name] = [round(ox, 1), round(oy, 1)]
-
     data = {
         # 图集替换后必须使 H5 和真机重新取纹理，避免沿用同名旧缓存。
         "src": f"res/Image/game.png?v={ATLAS_VERSION}",
@@ -649,7 +455,7 @@ def build():
         "cell": CELL,
         "pad": PAD,
         "icons": table,
-        "anchors": anchor_json,
+        "anchors": {},
         "cellFull": [CELL - 2 * PAD, CELL - 2 * PAD],
     }
     return data

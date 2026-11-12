@@ -47,7 +47,7 @@
   function drawBackground() {
     var u = L.ui;
     // 客厅背景铺满全屏（与首页同一张），避免换场景时跳色
-    var bg = Assets.entry('menu-bg') || Assets.entry('home-bg');
+    var bg = Assets.entry('menu-bg');
     if (bg) {
       D.texture(bg.tex, bg.w, bg.h, 0, 0, bg.w, bg.h, 0, 0, u.w, u.h);
     } else {
@@ -203,7 +203,7 @@
     });
   }
 
-  // 70°正北俯视：地面上的圆形能量在屏幕中应是横向椭圆。
+  // 60°正北俯视：地面上的圆形能量在屏幕中应是横向椭圆。
   function additiveGroundGlow(cx, cy, width, height, hex, alpha) {
     var sp = glowTex();
     if (!sp) return;

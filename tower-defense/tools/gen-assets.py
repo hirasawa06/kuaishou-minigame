@@ -438,6 +438,10 @@ ICON_BUILDERS = {
 
 ICON_CACHE = {}
 
+SPRITE_ICON_NAMES = [
+    "ui-close", "ui-back", "ui-chevron", "ui-check", "ui-share", "ui-link",
+]
+
 
 def get_icon(name):
     if name not in ICON_CACHE:
@@ -446,7 +450,7 @@ def get_icon(name):
 
 
 def build_sprites(out_png):
-    keys = list(ICON_BUILDERS.keys())
+    keys = SPRITE_ICON_NAMES
     cols = 4
     rows = (len(keys) + cols - 1) // cols
     cell = OUT + 8

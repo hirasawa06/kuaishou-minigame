@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 gen-menu-art.py — 首页（进入游戏前）美术
-生成 cozy 客厅背景与章节展示卡，风格对齐参考图：暖奶油底、木质家具、柔和阳光。
+生成 cozy 客厅背景，风格对齐参考图：暖奶油底、木质家具、柔和阳光。
 
 输出：
   package/res/Menu/menu-bg.png     首页全屏背景（不参与命中判定）
-  package/res/Menu/menu-card.png   章节展示卡插图（柴犬 + 猫咪 + 客厅敌人）
 """
 
 import math
@@ -158,146 +157,10 @@ def build_bg(path):
 
 
 # ─────────────────────────────────────────────── 章节卡
-def build_card(path):
-    img = Image.new("RGBA", (CARD_W, CARD_H), (255, 246, 234, 255))
-    d = ImageDraw.Draw(img)
-
-    # 室内背景
-    d.rectangle((0, 0, CARD_W, CARD_H), fill=(250, 238, 224, 255))
-    d.rectangle((0, int(CARD_H * 0.58), CARD_W, CARD_H), fill=(226, 190, 156, 255))
-    # 窗
-    d.rounded_rectangle((int(CARD_W * 0.46), 40, CARD_W - 24, int(CARD_H * 0.46)),
-                        radius=18, fill=(178, 218, 242, 255))
-    d.rectangle((int(CARD_W * 0.46) + (CARD_W * 0.54) / 2 - 6, 40,
-                 int(CARD_W * 0.46) + (CARD_W * 0.54) / 2 + 6, int(CARD_H * 0.46)),
-                fill=(252, 246, 234, 255))
-    # 地板
-    for i in range(8):
-        y = int(CARD_H * 0.58) + i * 32
-        d.line([(0, y), (CARD_W, y)], fill=(208, 172, 140, 255), width=3)
-
-    # 家具敌人：沙发（生气脸）
-    d.rounded_rectangle((20, int(CARD_H * 0.40), 250, int(CARD_H * 0.66)), radius=34,
-                        fill=(228, 140, 128, 255))
-    d.rounded_rectangle((40, int(CARD_H * 0.42), 230, int(CARD_H * 0.52)), radius=26,
-                        fill=(240, 158, 144, 255))
-    d.line([(84, int(CARD_H * 0.545)), (128, int(CARD_H * 0.575))], fill=(120, 60, 56, 255), width=6)
-    d.line([(176, int(CARD_H * 0.545)), (132, int(CARD_H * 0.575))], fill=(120, 60, 56, 255), width=6)
-
-    # 柜子（生气脸）
-    d.rounded_rectangle((int(CARD_W * 0.66), int(CARD_H * 0.40), CARD_W - 16, int(CARD_H * 0.68)),
-                        radius=16, fill=(204, 148, 98, 255))
-    d.rounded_rectangle((int(CARD_W * 0.66) + 18, int(CARD_H * 0.43),
-                         CARD_W - 34, int(CARD_H * 0.52)), radius=10, fill=(220, 166, 116, 255))
-    for ox in (int(CARD_W * 0.72), int(CARD_W * 0.84)):
-        d.line([(ox, int(CARD_H * 0.575)), (ox + 30, int(CARD_H * 0.60))],
-               fill=(126, 80, 52, 255), width=5)
-        d.line([(ox + 30, int(CARD_H * 0.575)), (ox, int(CARD_H * 0.60))],
-               fill=(126, 80, 52, 255), width=5)
-
-    # 地毯
-    d.ellipse((60, int(CARD_H * 0.72), CARD_W - 40, int(CARD_H * 0.95)),
-              fill=(252, 240, 226, 255))
-    d.ellipse((96, int(CARD_H * 0.745), CARD_W - 76, int(CARD_H * 0.925)),
-              fill=(255, 249, 240, 255))
-
-    # 左侧猫咪（戴护目镜、披红斗篷），呼应参考图里的猫主角
-    cat_img, cat_pos = build_cat(int(CARD_W * 0.25), int(CARD_H * 0.84))
-    img.alpha_composite(cat_img, cat_pos)
-
-    # 右侧柴犬：复用抠好的立绘
-    shiba = os.path.join(SRC_DIR, "shiba-front.png")
-    if os.path.exists(shiba):
-        sprite = Image.open(shiba).convert("RGBA")
-        scale = 0.82
-        sw, sh = int(sprite.width * scale), int(sprite.height * scale)
-        sprite = sprite.resize((sw, sh), Image.LANCZOS)
-        img.alpha_composite(sprite, (int(CARD_W * 0.66) - sw // 2,
-                                     int(CARD_H * 0.86) - sh))
-
-    img.convert("RGB").save(path, quality=92)
-    return path
-
-
-def build_cat(cx, feet_y):
-    """橘猫主角：护目镜 + 红斗篷 + 举爪，纯矢量绘制。"""
-    S = 300
-    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    cx0 = S // 2
-
-    # 地面投影
-    d.ellipse((cx0 - 84, S - 34, cx0 + 84, S - 6), fill=(150, 110, 80, 60))
-
-    # 斗篷
-    d.polygon([(cx0 - 52, S - 150), (cx0 - 118, S - 30),
-               (cx0 - 30, S - 40), (cx0 + 20, S - 120)], fill=(216, 62, 62, 255))
-    d.polygon([(cx0 - 52, S - 150), (cx0 - 96, S - 70),
-               (cx0 - 54, S - 88)], fill=(190, 44, 48, 255))
-
-    # 尾巴
-    d.arc((cx0 + 40, S - 150, cx0 + 150, S - 60), 250, 20,
-          fill=(240, 168, 78, 255), width=26)
-
-    # 身体
-    d.ellipse((cx0 - 76, S - 168, cx0 + 72, S - 10), fill=(246, 178, 88, 255))
-    d.ellipse((cx0 - 40, S - 96, cx0 + 40, S - 12), fill=(255, 240, 214, 255))
-
-    # 前爪：一只举起来挥
-    d.ellipse((cx0 - 104, S - 150, cx0 - 30, S - 70), fill=(255, 240, 214, 255))
-    for k in range(3):
-        d.ellipse((cx0 - 96 + k * 22, S - 152 + k * 2, cx0 - 76 + k * 22, S - 130 + k * 2),
-                  fill=(255, 248, 232, 255))
-    d.ellipse((cx0 + 6, S - 70, cx0 + 76, S - 14), fill=(255, 240, 214, 255))
-
-    # 头
-    head_y = S - 210
-    d.polygon([(cx0 - 62, head_y - 8), (cx0 - 78, head_y - 70), (cx0 - 18, head_y - 34)],
-              fill=(240, 168, 78, 255))
-    d.polygon([(cx0 + 58, head_y - 8), (cx0 + 76, head_y - 70), (cx0 + 16, head_y - 34)],
-              fill=(240, 168, 78, 255))
-    d.polygon([(cx0 - 56, head_y - 12), (cx0 - 66, head_y - 54), (cx0 - 26, head_y - 30)],
-              fill=(255, 196, 196, 255))
-    d.polygon([(cx0 + 52, head_y - 12), (cx0 + 64, head_y - 54), (cx0 + 24, head_y - 30)],
-              fill=(255, 196, 196, 255))
-    d.ellipse((cx0 - 82, head_y - 40, cx0 + 82, head_y + 96), fill=(248, 182, 92, 255))
-    # 脸上白斑
-    d.ellipse((cx0 - 44, head_y + 28, cx0 + 44, head_y + 98), fill=(255, 244, 226, 255))
-
-    # 护目镜
-    d.rounded_rectangle((cx0 - 74, head_y + 6, cx0 + 74, head_y + 30), 12,
-                        fill=(120, 86, 58, 255))
-    d.ellipse((cx0 - 60, head_y - 6, cx0 - 6, head_y + 40), fill=(255, 228, 150, 255))
-    d.ellipse((cx0 + 6, head_y - 6, cx0 + 60, head_y + 40), fill=(255, 228, 150, 255))
-    d.ellipse((cx0 - 54, head_y, cx0 - 12, head_y + 34), fill=(70, 52, 40, 255))
-    d.ellipse((cx0 + 12, head_y, cx0 + 54, head_y + 34), fill=(70, 52, 40, 255))
-    d.ellipse((cx0 - 48, head_y + 4, cx0 - 32, head_y + 20), fill=(255, 255, 255, 130))
-
-    # 眼睛 / 鼻子 / 嘴
-    d.ellipse((cx0 - 40, head_y + 44, cx0 - 18, head_y + 66), fill=(48, 34, 30, 255))
-    d.ellipse((cx0 + 18, head_y + 44, cx0 + 40, head_y + 66), fill=(48, 34, 30, 255))
-    d.polygon([(cx0 - 8, head_y + 66), (cx0 + 8, head_y + 66), (cx0, head_y + 76)],
-              fill=(232, 140, 150, 255))
-    d.arc((cx0 - 22, head_y + 66, cx0, head_y + 92), 20, 160,
-          fill=(120, 70, 60, 255), width=4)
-    d.arc((cx0, head_y + 66, cx0 + 22, head_y + 92), 20, 160,
-          fill=(120, 70, 60, 255), width=4)
-
-    # 胸前金牌
-    d.ellipse((cx0 - 16, S - 132, cx0 + 16, S - 100), fill=(240, 180, 64, 255))
-    d.ellipse((cx0 - 8, S - 124, cx0 + 8, S - 108), fill=(255, 224, 150, 255))
-
-    scale = 0.82
-    nw, nh = int(S * scale), int(S * scale)
-    img = img.resize((nw, nh), Image.LANCZOS)
-    return img, (cx - nw // 2, feet_y - nh + 30)
-
-
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     bg = build_bg(os.path.join(OUT_DIR, "menu-bg.png"))
-    card = build_card(os.path.join(OUT_DIR, "menu-card.png"))
-    print({"bg": os.path.relpath(bg, PKG), "card": os.path.relpath(card, PKG)})
+    print({"bg": os.path.relpath(bg, PKG)})
 
 
 if __name__ == "__main__":

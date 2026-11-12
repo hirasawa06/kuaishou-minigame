@@ -41,7 +41,7 @@
     HEROES: [
       {
         id: 'tank', name: '柴不破', cls: 'tank', clsName: '盾',
-        icon: 'unit-tank-1', cost: 8,
+        icon: 'tank-back-idle', cost: 8,
         // 体型扩大后的承伤补偿：生命与整体尺寸同为上一版的 1.2 倍。
         hp: 1080, atk: 0, interval: 1.0,
         // 逻辑直径 45.6；仅决定脚底占地、部署和阻挡，不随盾牌外沿变化。
@@ -65,7 +65,7 @@
       },
       {
         id: 'arch', name: '镭射喵', cls: 'archer', clsName: '射手',
-        icon: 'unit-arch-1', cost: 7,
+        icon: 'arch-back-idle', cost: 7,
         // 体型扩大后的承伤与输出补偿。
         hp: 216, atk: 115.2, interval: 1.15,
         // 逻辑直径 40.8；攻击距离同步扩大 1.2 倍。

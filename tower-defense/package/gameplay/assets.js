@@ -88,10 +88,8 @@
     if (A.GameAtlas && A.GameAtlas.src) manifest.push(['game', A.GameAtlas.src]);
     // 法师落地贴图只保留饼干与碎块，紫色能量由运行时粒子生成。
     if (A.MageVfx && A.MageVfx.src) manifest.push(['mage-vfx', A.MageVfx.src]);
-    manifest.push(['home-bg', 'res/home-asset/home-bg.png']);
-    // 首页美术（进入游戏前的客厅场景与章节卡）
+    // 首页美术（进入游戏前的客厅场景）
     manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
-    manifest.push(['menu-card', 'res/Menu/menu-card.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
     manifest.push(['avatars', 'res/Menu/avatars.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等

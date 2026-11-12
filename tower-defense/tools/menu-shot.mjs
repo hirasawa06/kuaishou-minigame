@@ -106,7 +106,6 @@ async function main() {
   }
 
   console.log('phase:', await evaluate('AIGCUtils.State.phase'),
-    'card:', await evaluate("!!AIGCUtils.Assets.entry('menu-card')"),
     'failures:', await evaluate('JSON.stringify(AIGCUtils.Assets.failures())'))
   await shot('01-menu')
 

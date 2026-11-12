@@ -214,8 +214,7 @@ const imageDims = {
   'font-48.png': [2048, 2048],
   'font-28.png': [512, 2048],
   'font-18.png': [512, 1024],
-  'sprites.png': [1056, 2048],
-  'home-bg.png': [640, 1400],
+  'sprites.png': [1056, 1024],
 }
 sandbox.KwaiRender.loadImage = (opts) => {
   const base = (opts.src || '').split('/').pop()
