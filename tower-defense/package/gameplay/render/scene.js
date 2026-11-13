@@ -282,7 +282,10 @@
     var shadowY = spriteY + size * 0.42;
 
     drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
-    if (rig) {
+    // 星级不改变立绘或动作，治疗猫统一沿用同一背面形象。
+    var levelIdle = A.HeroForms && d.cls === 'healer' && !un.dead &&
+      A.HeroForms.drawBattleIdle(d.id, 2, un.x, spriteY + size * 0.10, size * 0.68, 0.3 + 0.7 * spawn);
+    if (rig && !levelIdle) {
       A.Anim.draw(rig, un, un.x, spriteY, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
@@ -291,7 +294,7 @@
         additiveGlow(un.x, un.y, r * 2.4, '#ffffff', un.hitFlash * 2.2, 0);
         A.Render.setAdditive(false);
       }
-    } else {
+    } else if (!levelIdle) {
       var alpha = 0.25 + 0.75 * spawn;
       if (d.cls === 'healer') drawHealerPlaceholder(un.x, un.y, size, alpha);
       else icon(d.icon, un.x, un.y, size, alpha);
@@ -302,6 +305,7 @@
     var ratio = Math.max(0, un.hp / un.maxHp);
     var col = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
     hpBar(un.x - w / 2, un.y - r - 10, w, ratio, col);
+    D.text((un.star || 1) + '星', un.x + w / 2 + 3, un.y - r - 18, 18, COL.gold, 0);
   }
 
   function drawProjectiles() {
@@ -454,7 +458,7 @@
     if (S.phase !== 'playing') return;
     if (S.waveState === 'prep') {
       var t = Math.max(0, S.waveTimer);
-      var label = S.waveIndex < C.WAVES.length
+      var label = S.waveIndex < S.getWaves().length
         ? '第 ' + (S.waveIndex + 1) + ' 波准备 ' + t.toFixed(1)
         : '';
       if (label) {

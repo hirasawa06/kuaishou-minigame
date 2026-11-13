@@ -1,0 +1,40 @@
+{
+  "status": "asset processing only; pending visual acceptance",
+  "time": "2026-11-11T22:37:15",
+  "atlases": [
+    {
+      "name": "hero-levels",
+      "source": "hero-levels-runtime-fullRGBA.png",
+      "source_bytes": 587878,
+      "runtime_bytes": 129027,
+      "size": [
+        1000,
+        600
+      ],
+      "palette_colors": 256,
+      "method": "FASTOCTREE",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "new_opaque_background_pixels": 0
+    },
+    {
+      "name": "hero-levels-back",
+      "source": "hero-levels-back-runtime-fullRGBA.png",
+      "source_bytes": 542019,
+      "runtime_bytes": 112397,
+      "size": [
+        1000,
+        600
+      ],
+      "palette_colors": 256,
+      "method": "FASTOCTREE",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "new_opaque_background_pixels": 0
+    }
+  ]
+}

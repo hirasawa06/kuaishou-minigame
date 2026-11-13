@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>猫猫声景试听台</title>
+<style>body{background:#fff5e9;color:#65412b;font-family:system-ui;max-width:980px;margin:36px auto;padding:20px}h1{font-size:30px}section{background:#ffe7c6;border-radius:24px;padding:22px;margin:20px 0}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.sound{background:white;border:2px solid #efcba8;border-radius:18px;padding:16px}audio{width:100%;margin-top:12px}p{line-height:1.6}.tag{color:#a46c4e;font-size:13px}button{background:#f5b455;border:0;padding:12px 18px;border-radius:14px;color:#65412b;cursor:pointer}</style>
+<h1>🐾 猫猫声景试听台</h1><p>首页温馨、战斗俏皮。先听两首配乐，再听独立效果音；一次只播放一项。此页面仅是制作试听工具，不进入小游戏包。</p><button onclick="document.querySelectorAll('audio').forEach(a=>a.pause())">停止全部</button>
+<section><h2>原创循环配乐</h2><main id="music"></main></section><section><h2>操作与战斗音效</h2><main id="sounds"></main></section>
+<script>
+const version='user-selected-v3';
+function add(parent,file,title,note,loop=false){const card=document.createElement('div');card.className='sound';const label=document.createElement('b');label.textContent=title;const text=document.createElement('p');text.className='tag';text.textContent=note;const player=document.createElement('audio');player.controls=true;player.preload='none';player.loop=loop;player.src='../package/res/Audio/'+file+'.mp3?v='+version;player.addEventListener('play',()=>document.querySelectorAll('audio').forEach(other=>{if(other!==player)other.pause()}));card.append(label,text,player);document.getElementById(parent).append(card)}
+add('sounds','lose-v5','失败 · V5 沮丧版','3.2秒小调下行，当前游戏使用');
+add('music','bgm-home','首页 · V1','用户选定，循环播放',true);add('music','bgm','常规战斗 · V1','Boss出现前',true);add('music','bgm-boss','Boss战斗 · V2','Boss实际出场后渐变切入',true);
+[['ui-click','界面点击','柔软点击'],['place','角色上阵','弹跳登场'],['discard','刷新卡池','翻页与闪亮音'],['start','开始挑战','俏皮出发'],['select','切换关卡','小步跳跃'],['expand','扩建席位','搭积木升级'],['speed','速度切换','轻巧加速'],['sell','出售角色','金币回收'],['heal','单体治疗','温柔恢复'],['wave','波次来袭','小队提醒'],['arrow','镭射喵光弹','软萌弹射'],['magic','狗饼干魔法','闪亮魔法'],['hit','锤锤喵命中','玩具锤敲击'],['enemy-hit','家具攻击','柔化碰撞'],['base','基地受伤','轻量警告'],['enemy-death','家具退场','卡通消散'],['boss','首领击败','俏皮击败'],['win','通关胜利','庆祝乐句'],['lose','挑战失败','温柔鼓励']].forEach(s=>{for(let v=1;v<=3;v++)add('sounds',s[0]+(v===1?'':'-v'+v),s[1]+' · V'+v,s[2])});
+</script></html>

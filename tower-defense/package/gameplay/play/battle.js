@@ -7,7 +7,8 @@
 
   // ── 波次 ───────────────────────────────────────────────────
   function buildWave(index) {
-    var wave = C.WAVES[index];
+    var wave = S.getWaves()[index];
+    if (!wave) return false;
     var queue = [];
     var hpScale = Math.pow(C.waveHpScale, index);
     var atkScale = Math.pow(C.waveAtkScale, index);
@@ -79,7 +80,24 @@
   }
 
   // ── 英雄 ───────────────────────────────────────────────────
-  function placeHero(card, x, y) {
+  // 各实例保留独立的 1 星配置母版，实际属性由统一星级接口派生。
+  function copyDef(value) {
+    if (!value || typeof value !== 'object') return value;
+    var out = Array.isArray(value) ? [] : {};
+    for (var key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) out[key] = copyDef(value[key]);
+    }
+    return out;
+  }
+
+  function placeHero(card, x, y, star) {
+    if (!card) return null;
+    if (star === undefined) star = card.star === undefined ? 1 : card.star;
+    if (!S.isHeroUnlocked(card.id)) return null;
+    var base = S.heroById(card.id);
+    card = S.heroAtStar(card.id, star);
+    if (!base || !card || typeof x !== 'number' || !isFinite(x) ||
+        typeof y !== 'number' || !isFinite(y)) return null;
     var u = L.ui;
     x = S.clamp(x, u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
     y = S.clamp(y, u.placeTop, u.placeBottom);
@@ -124,9 +142,13 @@
       var enemyGap = card.radius + enemy.def.radius + C.ACTOR_BODY_GAP;
       if (Math.sqrt(S.dist2(x, y, enemy.x, enemy.y)) + 0.02 < enemyGap) return null;
     }
+    var baseDef = copyDef(base);
     var unit = {
       uid: S.uid++,
       def: card,
+      baseDef: baseDef,
+      star: star,
+      level: star, // 兼容旧绘制字段；星级只在购买前的商店合成改变。
       x: x,
       y: y,
       homeX: x,
@@ -136,6 +158,7 @@
       hp: card.hp,
       maxHp: card.hp,
       purchaseCost: card.cost,
+      spentGold: card.cost, // 兼容字段；只记录真实购入价，没有局内金币升级。
       atkTimer: card.cls === 'healer' ? card.interval : 0.3,
       hitFlash: 0,
       slowT: 0,
@@ -151,6 +174,10 @@
   }
 
   function canAfford(def) { return S.gold >= def.cost; }
+
+  // 旧 UI 兼容出口：直接金币升级已移除，不提供可用升级预览。
+  function getUpgradePreview() { return null; }
+  function upgradeUnit() { return false; }
 
   // 只接受仍在场上的存活驻守单位；不读取会随平衡调整改变的 def.cost。
   function canSellUnit(unit) {
@@ -188,10 +215,23 @@
     }
     S.gold += price;
     S.addFloat(unit.x, unit.y - unit.def.radius - 14, '+' + price, '#ffd166');
+    A.GameAudio && A.GameAudio.play('sell');
+    S.notifyAction('sell', { unit: unit, price: price });
     return true;
   }
 
-  function tryDeploy(card, x, y) {
+  function tryDeploy(card, x, y, star) {
+    if (S.phase !== 'playing' || !card) return false;
+    if (star === undefined) star = 1;
+    if (typeof x !== 'number' || !isFinite(x) ||
+        typeof y !== 'number' || !isFinite(y)) return false;
+    if (!S.isHeroUnlocked(card.id)) {
+      S.toastMsg('角色尚未解锁', 1.0);
+      return false;
+    }
+    // 对外只接受配置英雄与合法数值星级，不信任调用方传入的属性或价格。
+    card = S.heroAtStar(card.id, star);
+    if (!card) return false;
     var u = L.ui;
     var interactive = u.interactiveRect;
     if (x < interactive.x || x > interactive.x + interactive.w ||
@@ -207,7 +247,7 @@
       S.toastMsg('上场席位已满（' + S.heroCap + '），可花金币扩建', 1.3);
       return false;
     }
-    var unit = placeHero(card, x, y);
+    var unit = placeHero(card, x, y, star);
     if (!unit) {
       S.toastMsg('这里没有可放下的位置', 1.0);
       return false;
@@ -216,17 +256,21 @@
     S.cardsPlaced++;
     S.addEffect({ type: 'ring', x: unit.x, y: unit.y, r: card.radius + 4, r2: card.radius + 26, life: 0.36, max: 0.36, color: card.color });
     S.addFloat(unit.x, unit.y - card.radius - 14, '-' + card.cost, '#ffd166');
+    S.notifyAction('deploy', { unit: unit, cardId: card.id, star: star, cost: unit.purchaseCost });
     return true;
   }
 
   // 从卡池买下第 i 张：成功返回 true，卡位留空等刷新
   function buyCard(index, x, y) {
+    if (typeof index !== 'number' || Math.floor(index) !== index ||
+        index < 0 || index >= C.cardCount) return false;
     var slot = S.shop[index];
     if (!slot || slot.sold) return false;
-    var def = S.heroById(slot.cardId);
-    if (!def) return false;
-    if (!tryDeploy(def, x, y)) return false;
+    var def = S.heroAtStar(slot.cardId, slot.star);
+    if (!def || S.shopCost(slot) !== def.cost) return false;
+    if (!tryDeploy(def, x, y, slot.star)) return false;
     slot.sold = true;
+    slot.locked = false;
     return true;
   }
 
@@ -263,6 +307,7 @@
       S.addFloat(e.x, e.y - e.def.radius - 20, '+' + g, '#ffd166');
       S.addEffect({ type: 'pop', x: e.x, y: e.y, r: e.def.radius, life: 0.42, max: 0.42, color: e.def.color });
       if (e.def.tier === 'boss') onBossDeath(e);
+      else A.GameAudio && A.GameAudio.play('enemyDeath');
     }
   }
 
@@ -360,6 +405,7 @@
   }
 
   function enemyImpactEffect(enemy, target) {
+    A.GameAudio && A.GameAudio.play('enemyHit');
     var color = enemy.def.impactColor || '#ff9a9a';
     if (enemy.def.attackEffect === 'bump') {
       S.addEffect({
@@ -579,8 +625,10 @@
   }
 
   function bodyMoveWeight(body, other) {
-    // 固定宠物是玩家部署的阵位；主动出击的战士和怪物都属于可被挤开的移动角色。
+    // 固定宠物保留部署阵位；战士与怪物接触时由战士退让，不能把攻击变成推怪。
+    // 只改变敌人/战士这一对：怪物之间、怪物撞固定盾位仍沿用原来的分离规则。
     if (body.kind === 'unit') return body.actor.def.cls === 'warrior' ? 1 : 0;
+    if (other.kind === 'unit' && other.actor.def.cls === 'warrior') return 0;
     return 1;
   }
 
@@ -600,7 +648,7 @@
   function recordRun(won) {
     if (S.runRecorded) return;
     S.runRecorded = true;
-    var cleared = won ? C.WAVES.length : Math.max(0, S.waveIndex);
+    var cleared = won ? S.getWaves().length : Math.max(0, S.waveIndex);
     if (A.Profile && A.Profile.recordRun) A.Profile.recordRun(cleared, won);
     S.ranking = null;
   }
@@ -622,7 +670,7 @@
     }
     if (S.waveState === 'fighting' && S.enemies.length === 0) {
       S.waveIndex++;
-      if (S.waveIndex >= C.WAVES.length) {
+      if (S.waveIndex >= S.getWaves().length) {
         S.phase = 'win';
         recordRun(true);
         A.GameAudio && A.GameAudio.play('win');
@@ -687,21 +735,21 @@
       un.animT += dt;
       finishTransientAnimation(un, 0.6);
 
-      // 战士主动寻敌：有目标就走过去，没目标回原位
+      // 战士只追到攻击范围边缘；攻击起手/命中等待/收势期间都不主动移动。
       if (def.cls === 'warrior' && def.moveSpeed > 0) {
-        var chase = nearestEnemy(un, def.aggro || 240);
-        var tx = un.homeX;
-        var ty = un.homeY;
-        if (chase) {
-          tx = chase.x;
-          ty = chase.y - def.range * 0.55;
-        }
+        var attacking = un.anim === 'atk' || un.pendingHit >= 0;
+        var inRange = findTarget(un);
+        var chase = !attacking && !inRange ? nearestEnemy(un, def.aggro || 240) : null;
+        var tx = chase ? chase.x : un.homeX;
+        var ty = chase ? chase.y : un.homeY;
         var dx = tx - un.x;
         var dy = ty - un.y;
         var d = Math.sqrt(dx * dx + dy * dy);
-        if (d > 4) {
+        // 与 findTarget/命中检查共用中心距口径，不再追到敌人的北侧偏移点。
+        var remaining = chase ? Math.max(0, d - (def.range + chase.def.radius)) : d;
+        if (!attacking && !inRange && remaining > (chase ? 0 : 4)) {
           selectVerticalRig(un, ty);
-          var step = Math.min(d, def.moveSpeed * dt);
+          var step = Math.min(remaining, def.moveSpeed * dt);
           un.x += dx / d * step;
           un.y += dy / d * step;
           un.facing = dx >= 0 ? 1 : -1;
@@ -793,6 +841,7 @@
       x: target.x, y: target.y - target.def.radius * 0.3,
       r: target.def.radius, life: 0.6, max: 0.6, color: '#6ff0a8',
     });
+    A.GameAudio && A.GameAudio.play('heal');
   }
 
   function nearestEnemy(un, maxRange) {
@@ -1034,6 +1083,8 @@
     update: update,
     tryDeploy: tryDeploy,
     canAfford: canAfford,
+    getUpgradePreview: getUpgradePreview,
+    upgradeUnit: upgradeUnit,
     sellPrice: sellPrice,
     sellUnit: sellUnit,
     buyCard: buyCard,

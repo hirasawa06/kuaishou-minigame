@@ -1,0 +1,15 @@
+{
+  "source": "four-back-20261111-223051.png",
+  "model": "GPT-Image-2.5-Sunburst",
+  "references": [
+    "tools/src/characters/情绪版/宠物情绪版.png",
+    "tools/src/hero-levels/hero-lv1-lv3-20261111-211128-alpha.png",
+    "tools/src/hero-levels/existing-back-idle-reference.png",
+    "tools/src/characters/角色/柴不破/柴不破三视图-60度-已确认-v1.png",
+    "tools/src/characters/角色/近战猫/近战猫三视图参考-v1.png",
+    "tools/src/characters/角色/射手猫/射手猫.png",
+    "tools/src/characters/角色/法师狗/法师狗.png"
+  ],
+  "status": "pending visual camera/alpha inspection",
+  "alpha_source": "four-back-20261111-223051-alpha.png"
+}

@@ -462,13 +462,70 @@
       col('#c0ad95'), 1);
   }
 
+  // ── 英雄收藏：各星级沿用同一静态立绘 ──
+  function heroForm(def, level, cx, cy, size) {
+    if (A.HeroForms && A.HeroForms.draw) A.HeroForms.draw(def.id, 2, cx, cy, size);
+    else icon(def.icon, cx, cy, size);
+  }
+  function heroUnlocked(id) {
+    return S.isHeroUnlocked ? S.isHeroUnlocked(id) :
+      (P.data.completedLevel + 1 >= ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[id] || 1));
+  }
+  function drawCollection(detail) {
+    var u = L.ui, g = u.collection;
+    D.vGradient(0, 0, u.w, u.h, col(COLOR.pageTop), col(COLOR.pageBottom), 18);
+    backButton(g.back);
+    if (detail) {
+      var def = S.heroById(UI.collectionHero);
+      if (!def || !heroUnlocked(def.id)) { back(); return; }
+      D.text(def.name, u.safeLeft + (u.safeRight - u.safeLeft) / 2, g.detailNameY, 28, col(COLOR.brownDeep), 1);
+      for (var lv = 1; lv <= 3; lv++) {
+        var r = g.forms(lv - 1);
+        var starDef = S.heroAtStar(def.id, lv);
+        var edge = lv === 3 ? '#e8b84c' : lv === 2 ? '#88b9dc' : '#e9d8c0';
+        D.roundRect(r.x, r.y, r.w, r.h, 16, col(COLOR.paper));
+        D.strokeRect(r.x, r.y, r.w, r.h, lv > 1 ? 2 : 1, col(edge));
+        var formSize = Math.min(r.w - 8, Math.max(24, r.h - 202));
+        heroForm(def, 2, r.x + r.w / 2, r.y + 10 + formSize / 2, formSize);
+        var textY = r.y + 18 + formSize;
+        var attributes = [
+          lv + '星',
+          '生命 ' + Math.round(starDef.hp),
+          def.cls === 'healer' ? '回血 ' + Math.round(starDef.heal) : '攻击 ' + Math.round(starDef.atk),
+          def.cls === 'tank' ? '攻速 --' : (def.cls === 'healer' ? '治疗/秒 ' : '攻击/秒 ') + (1 / starDef.interval).toFixed(2),
+          (def.cls === 'healer' ? '治疗距离 ' : '攻击距离 ') + Math.round(starDef.range),
+          '嘲讽范围 ' + Math.round(starDef.taunt || 0),
+          '群攻范围 ' + Math.round(starDef.splash || 0),
+          starDef.cost + ' 金币'
+        ];
+        for (var ai = 0; ai < attributes.length; ai++) {
+          D.text(attributes[ai], r.x + r.w / 2, textY + ai * 22, 18, col(ai === 0 ? edge : COLOR.text), 1);
+        }
+      }
+      return;
+    }
+    D.text('英雄收藏', u.safeLeft + (u.safeRight - u.safeLeft) / 2, g.titleY, 28, col(COLOR.brownDeep), 1);
+    for (var i = 0; i < C.HEROES.length; i++) {
+      var h = C.HEROES[i], cell = g.rect(i), unlocked = heroUnlocked(h.id);
+      D.roundRect(cell.x, cell.y, cell.w, cell.h, 16, col(unlocked ? COLOR.paper : '#e2d8ca'));
+      if (!unlocked) {
+        D.text('?', cell.x + cell.w / 2, cell.y + cell.h * 0.2, 48, col(COLOR.textDim), 1);
+        var unlockLevel = h.unlockLevel || ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[h.id] || 1);
+        D.text('第 ' + unlockLevel + ' 关解锁', cell.x + cell.w / 2, cell.y + cell.h - 28, 18, col(COLOR.textDim), 1);
+      } else {
+        heroForm(h, 1, cell.x + cell.w / 2, cell.y + cell.h * 0.39, Math.min(80, cell.h * 0.62));
+        D.text(h.name, cell.x + cell.w / 2, cell.y + cell.h - 28, 18, col(COLOR.brownDeep), 1);
+      }
+    }
+  }
+
   // ── 栈管理 ──────────────────────────────────────────────────
   function top() {
     return UI.stack.length ? UI.stack[UI.stack.length - 1] : null;
   }
 
   function open(name) {
-    if (!name) return;
+    if (!name || name === 'upgrade') return;
     if (name === 'rank') UI.stack = ['rank'];
     else if (UI.stack.indexOf(name) === -1) UI.stack.push(name);
     prepare(name);
@@ -519,7 +576,6 @@
     var link = linkOf();
     var done = function () {
       toast('邀请口令已复制', 1.2);
-      play('start');
     };
     var fail = function () {
       // 剪贴板不可用时降级为系统分享，仍给用户可用的出口
@@ -560,7 +616,7 @@
   }
 
   function play(name) {
-    if (A.GameAudio) A.GameAudio.play(name);
+    if (A.GameAudio) A.GameAudio.play('click');
   }
 
   function setMusic(on) {
@@ -603,7 +659,6 @@
     }
     UI.draftNickname = res.value;
     toast('昵称已保存', 1.1);
-    play('place');
     back();
     return true;
   }
@@ -613,6 +668,32 @@
     var name = top();
     if (!name) return false;
     var u = L.ui;
+    if (!pointIn(u.interactiveRect, x, y, 0)) return true;
+    if (name === 'collection' || name === 'heroDetail') {
+      if (pointIn(u.collection.back, x, y, 0)) { play('click'); back(); return true; }
+      if (name === 'collection') {
+        for (var hi = 0; hi < C.HEROES.length; hi++) {
+          if (pointIn(u.collection.rect(hi), x, y, 0) && heroUnlocked(C.HEROES[hi].id)) {
+            UI.collectionHero = C.HEROES[hi].id; play('click'); open('heroDetail'); return true;
+          }
+        }
+      }
+      return true;
+    }
+    // 为关闭、返回、分享、保存等此前无声音的按钮补齐统一点击反馈。
+    var controls = [];
+    if (name === 'settings') controls = [u.settings.close, u.settings.musicRow, u.settings.sfxRow, u.settings.shareBtn];
+    else if (name === 'profile') controls = [u.profile.close, u.profile.avatar, u.profile.avatarBtn, u.profile.nickBtn];
+    else if (name === 'avatars') {
+      controls = [u.avatarPick.close, u.avatarPick.save];
+      for (var ai = 0; ai < P.AVATARS.length; ai++) controls.push(u.avatarPick.rect(ai));
+    } else if (name === 'nickname') controls = [u.nickname.close, u.nickname.field, u.nickname.save];
+    else if (name === 'rank') controls = [u.rank.back, u.rank.bar, u.rank.mine];
+    else if (name === 'regions') controls = [u.regionPick.close].concat(u.regionPick.rows);
+    else if (name === 'invite') controls = [u.invite.close, u.invite.copy];
+    for (var ci = 0; ci < controls.length; ci++) {
+      if (pointIn(controls[ci], x, y, 0)) { play('click'); break; }
+    }
 
     if (name === 'settings') {
       var g = u.settings;
@@ -645,14 +726,12 @@
       for (var i = 0; i < P.AVATARS.length; i++) {
         if (pointIn(a.rect(i), x, y, 3)) {
           UI.draftAvatar = i;
-          play('place');
           return true;
         }
       }
       if (pointIn(a.save, x, y, 4)) {
         P.setAvatar(UI.draftAvatar);
         toast('头像已保存', 1.1);
-        play('place');
         back();
         return true;
       }
@@ -664,7 +743,7 @@
     if (name === 'nickname') {
       var n = u.nickname;
       if (pointIn(n.close, x, y, 6)) { back(); return true; }
-      if (pointIn(n.field, x, y, 4)) { play('hit'); openKeyboard(); return true; }
+      if (pointIn(n.field, x, y, 4)) { openKeyboard(); return true; }
       if (pointIn(n.save, x, y, 4)) { saveNickname(); return true; }
       if (pointIn(n.sheet, x, y, 0)) return true;
       back();
@@ -689,7 +768,6 @@
           P.setTown(k);
           S.ranking = P.buildRanking();
           toast('已切换到 ' + towns[k], 1.2);
-          play('start');
           back();
           return true;
         }
@@ -725,6 +803,8 @@
     else if (name === 'rank') drawRank();
     else if (name === 'regions') drawRegionPick();
     else if (name === 'invite') drawInvite();
+    else if (name === 'collection') drawCollection(false);
+    else if (name === 'heroDetail') drawCollection(true);
   }
 
   A.ProfileUI = {

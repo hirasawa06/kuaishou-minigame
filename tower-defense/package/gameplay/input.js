@@ -38,12 +38,17 @@
     return inInteractiveArea(x, y) && pointIn(rect, x, y, pad);
   }
 
+  function allowed(action, unit) {
+    return !A.Tutorial || A.Tutorial.allow(action, unit);
+  }
+
   function menuHitKey(x, y) {
     var m = L.ui.menu;
     if (!m || !inInteractiveArea(x, y)) return null;
     if (hitControl(m.levelPrev, x, y, 0)) return 'levelPrev';
     if (hitControl(m.levelNext, x, y, 0)) return 'levelNext';
     if (hitControl(m.start, x, y, 12)) return 'start';
+    if (hitControl(m.collection, x, y, 0)) return 'collection';
     if (hitControl(m.settings, x, y, 6)) return 'settings';
     if (hitControl(m.rank, x, y, 6)) return 'rank';
     if (hitControl(m.avatar, x, y, 6)) return 'avatar';
@@ -76,28 +81,36 @@
         S.menuSwipe = { startX: px, startY: py, x: px, y: py };
       }
     }
-    if (S.phase !== 'playing') return;
+    if (S.phase !== 'playing' && S.phase !== 'paused') return;
 
     if (hitControl(L.ui.speedBtn, px, py, 0) || hitControl(L.ui.pauseBtn, px, py, 0)) return;
 
+    if (S.phase === 'paused') {
+      var pauseKeys = ['resume', 'settings', 'restart', 'home'];
+      for (var pk = 0; pk < pauseKeys.length; pk++) {
+        if (hitControl(L.ui.pausePanel.btn(pauseKeys[pk]), px, py, 8)) return;
+      }
+    }
+
     var u = L.ui;
-    if (S.gold >= S.refreshCost && hitControl(u.refreshBtn, px, py, 0)) {
+    if (S.phase === 'playing' && S.gold >= S.refreshCost && hitControl(u.refreshBtn, px, py, 0)) {
       S.shopPressed = 'refresh';
       shopPressStarted = true;
       return;
     }
-    if (S.heroCap < C.UNIT_CAP_MAX && S.gold >= S.capCost &&
+    if (S.phase === 'playing' && S.heroCap < C.UNIT_CAP_MAX && S.gold >= S.capCost &&
         hitControl(u.capBtn, px, py, 0)) {
       S.shopPressed = 'cap';
       shopPressStarted = true;
       return;
     }
 
-    var hit = shopAt(px, py);
+    var hit = S.phase === 'playing' ? shopAt(px, py) : null;
     if (!hit) {
       for (var i = S.units.length - 1; i >= 0; i--) {
         var unit = S.units[i];
-        if (unit.dead || unit.hp <= 0 || unit.def.moveSpeed !== 0) continue;
+        if (unit.dead || unit.hp <= 0) continue;
+        if (!allowed('inspect', unit) && !allowed('sell', unit)) continue;
         var hitRadius = Math.max(unit.def.radius, 26);
         if (S.dist2(px, py, unit.x, unit.y) > hitRadius * hitRadius) continue;
         drag = { kind: 'unit', unit: unit, def: unit.def, x: px, y: py,
@@ -107,8 +120,14 @@
       }
       return;
     }
-    var def = S.heroById(hit.slot.cardId);
+    var def = S.heroAtStar(hit.slot.cardId, hit.slot.star || 1);
     if (!def) return;
+    if ((hit.slot.star || 1) >= 2 && hitControl(L.shopLockRect(hit.index), px, py, 0)) {
+      drag = { kind: 'lock', index: hit.index, slot: hit.slot, startX: px, startY: py, x: px, y: py };
+      return;
+    }
+    if (!allowed('deploy', { def: def, star: hit.slot.star || 1 }) &&
+      !allowed('merge', { def: def, star: hit.slot.star || 1 })) return;
     drag = {
       index: hit.index,
       slot: hit.slot,
@@ -136,7 +155,18 @@
     drag.y = py;
     var dx = px - drag.startX;
     var dy = py - drag.startY;
-    if (!drag.active && Math.abs(dx) + Math.abs(dy) > MOVE_TOL) drag.active = true;
+    if (Math.abs(dx) + Math.abs(dy) > MOVE_TOL) drag.moved = true;
+    if (!drag.active && drag.moved) {
+      if (drag.kind !== 'unit' || (S.phase === 'playing' && drag.unit.def.moveSpeed === 0 && allowed('sell', drag.unit))) drag.active = true;
+    }
+    if (drag.kind === 'lock') return;
+    if (drag.active && drag.kind !== 'unit') {
+      var target = shopAt(px, py);
+      drag.mergeTarget = target ? target.index : null;
+      drag.mergeValid = !!(target && target.index !== drag.index &&
+        target.slot.cardId === drag.slot.cardId && (target.slot.star || 1) === (drag.slot.star || 1) &&
+        (drag.slot.star || 1) < 3 && allowed('merge', { def: drag.def, star: drag.slot.star || 1 }));
+    }
     if (drag.active) S.dragging = drag;
   }
 
@@ -174,6 +204,9 @@
     }
 
     down = false;
+    if (drag && drag.kind === 'unit' && S.phase === 'paused') {
+      finishDrag(px, py); drag = null; S.dragging = null; return;
+    }
     if (S.phase !== 'playing') {
       drag = null;
       S.dragging = null;
@@ -189,23 +222,65 @@
     tap(px, py);
   }
 
+  // 单击仍然自动部署；已有射手占中心时寻找空落点，避免教学第二次购买卡住。
+  function buyAtFreePoint(d) {
+    var u = L.ui, radius = d.def.radius || 22;
+    var points = [{ x: u.field.x + u.field.w * 0.5, y: u.placeBottom - 10 }];
+    for (var row = 0; row < 5; row++) {
+      for (var col = 0; col < 5; col++) points.push({
+        x: u.placeLeft + (u.placeRight - u.placeLeft) * col / 4,
+        y: u.placeBottom - 10 - (u.placeBottom - u.placeTop - 10) * row / 4
+      });
+    }
+    var actors = S.units.concat(S.enemies);
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i], clear = true;
+      for (var j = 0; j < actors.length; j++) {
+        var actor = actors[j];
+        if (actor.dead || actor.hp <= 0) continue;
+        var min = Math.max(32, radius + actor.def.radius + 2);
+        if (S.dist2(p.x, p.y, actor.x, actor.y) < min * min) { clear = false; break; }
+      }
+      if (clear) return A.Battle.buyCard(d.index, p.x, p.y);
+    }
+    return A.Battle.buyCardAtCenter(d.index);
+  }
+
   function finishDrag(px, py) {
     var u = L.ui;
     var d = drag;
+    if (d.kind === 'lock') {
+      if (!d.moved && S.phase === 'playing' && S.shop[d.index] === d.slot &&
+        hitControl(L.shopLockRect(d.index), px, py, 0) && allowed('lock', d.slot)) {
+        if (S.toggleShopLock(d.index)) A.GameAudio && A.GameAudio.play('click');
+      }
+      return;
+    }
     if (!d.def) return;
     if (d.kind === 'unit') {
-      if (d.active && hitControl(u.sellZone, px, py, 0)) {
+      if (d.active && S.phase === 'playing' && !d.unit.dead && d.unit.hp > 0 &&
+        S.units.indexOf(d.unit) >= 0 && d.unit.def.moveSpeed === 0 && allowed('sell', d.unit) && hitControl(u.sellZone, px, py, 0)) {
         A.Battle.sellUnit(d.unit);
-      } else if (!d.active && !d.unit.dead) {
-        S.inspect = d.def;
-        S.inspectT = 2.4;
-        S.inspectX = d.unit.x;
-        S.inspectY = d.unit.y - 140;
+      } else if (!d.active && !d.moved && hitControl(u.interactiveRect, px, py, 0) &&
+        !d.unit.dead && allowed('inspect', d.unit)) {
+        S.inspect = d.unit.def; S.inspectStar = d.unit.star || d.unit.level || 1;
+        S.inspectT = 2.4; S.inspectX = px - 124; S.inspectY = py - 150;
       }
       return;
     }
 
+    // 松手在商店卡上优先走合成，不购买、不自动扣费；包括无效与自合。
+    if (d.active && inInteractiveArea(px, py)) {
+      var target = shopAt(px, py);
+      if (target) {
+        if (target.index !== d.index && allowed('merge', { def: d.def, star: d.slot.star || 1 })) {
+          if (S.mergeShopCards(d.index, target.index)) A.GameAudio && A.GameAudio.play('click');
+        }
+        return;
+      }
+    }
     // 拖到战场：直接部署
+    if (!allowed('deploy', { def: d.def, star: d.slot.star || 1 })) return;
     if (d.active && py < u.tray.y - 4 && inInteractiveArea(px, py)) {
       if (A.Battle.buyCard(d.index, px, py)) {
         A.GameAudio && A.GameAudio.play('place');
@@ -216,10 +291,11 @@
     if (d.active) return;
 
     // 点一下：默认放到战场中下方（省一次拖拽）
-    if (A.Battle.buyCardAtCenter(d.index)) {
+    if (buyAtFreePoint(d)) {
       A.GameAudio && A.GameAudio.play('place');
     } else {
       S.inspect = d.def;
+      S.inspectStar = d.slot.star || 1;
       S.inspectT = 2.4;
       S.inspectX = d.rect.x;
       S.inspectY = d.rect.y - 140;
@@ -239,10 +315,14 @@
       if (S.menuStartDelay > 0) return;
       if (S.menuPanel) {
         S.menuPanel = null;
+        A.GameAudio && A.GameAudio.play('click');
         return;
       }
       var key = menuHitKey(px, py);
       if (key) S.menuFeedback = { key: key, life: 0.18 };
+      if (key === 'settings' || key === 'rank' || key === 'avatar' || key === 'stamina') {
+        A.GameAudio && A.GameAudio.play('click');
+      }
       if (key === 'levelPrev') { A.Game.selectLevel(-1); return; }
       if (key === 'levelNext') { A.Game.selectLevel(1); return; }
       if (key === 'start') {
@@ -253,6 +333,7 @@
         S.menuStartDelay = 0.18;
         return;
       }
+      if (key === 'collection') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('collection'); return; }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
       if (key === 'rank') { A.ProfileUI.open('rank'); return; }
       if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
@@ -271,23 +352,32 @@
     if (S.phase === 'paused') {
       var pp = u.pausePanel;
       if (hitControl(pp.btn('resume'), px, py, 8)) { A.Game.togglePause(); return; }
-      if (hitControl(pp.btn('settings'), px, py, 8)) { A.Game.openSettings(); return; }
+      if (hitControl(pp.btn('settings'), px, py, 8)) {
+        A.GameAudio && A.GameAudio.play('click');
+        A.Game.openSettings();
+        return;
+      }
       if (hitControl(pp.btn('restart'), px, py, 8)) { A.Game.restart(); return; }
       if (hitControl(pp.btn('home'), px, py, 8)) { A.Game.goMenu(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) A.Game.togglePause();
       return;
     }
     if (S.phase === 'playing') {
-      if (hitControl(u.speedBtn, px, py, 0)) { A.Game.toggleSpeed(); return; }
-      if (hitControl(u.pauseBtn, px, py, 10)) { A.Game.togglePause(); return; }
+      if (hitControl(u.speedBtn, px, py, 0)) { if (allowed('speed')) A.Game.toggleSpeed(); return; }
+      if (hitControl(u.pauseBtn, px, py, 10)) { if (allowed('pause')) A.Game.togglePause(); return; }
+      if (A.Tutorial && A.Tutorial.isActive() && hitControl(u.tutorial.start, px, py, 0) && allowed('start')) {
+        A.Tutorial.startBattle(); return;
+      }
       if (hitControl(u.refreshBtn, px, py, 4)) {
+        if (!allowed('refresh')) return;
+        A.GameAudio && A.GameAudio.play('click');
         S.refreshShop();
-        A.GameAudio && A.GameAudio.play('discard');
         return;
       }
       if (hitControl(u.capBtn, px, py, 4)) {
+        if (!allowed('cap')) return;
+        A.GameAudio && A.GameAudio.play('click');
         S.buyCap();
-        A.GameAudio && A.GameAudio.play('start');
         return;
       }
       // 点战场空白处：收起详情
