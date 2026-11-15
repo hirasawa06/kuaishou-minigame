@@ -220,30 +220,39 @@
     return true;
   }
 
+
+  function deployBlockReason(card, x, y) {
+    if (!card || typeof x !== 'number' || !isFinite(x) ||
+        typeof y !== 'number' || !isFinite(y)) return 'outside';
+    var u = L.ui;
+    var interactive = u.interactiveRect;
+    if (x < interactive.x || x > interactive.x + interactive.w ||
+        y < interactive.y || y > interactive.y + interactive.h) return 'outside';
+    if (x < u.field.x || x > u.field.x + u.field.w) return 'outside';
+    if (y < u.field.y - 24 || y > u.base.y + 10) return 'outside';
+    if (!canAfford(card)) return 'gold';
+    if (S.liveUnits() >= S.heroCap) return 'cap';
+    return null;
+  }
+
   function tryDeploy(card, x, y, star) {
     if (S.phase !== 'playing' || !card) return false;
     if (star === undefined) star = 1;
-    if (typeof x !== 'number' || !isFinite(x) ||
-        typeof y !== 'number' || !isFinite(y)) return false;
     if (!S.isHeroUnlocked(card.id)) {
       S.toastMsg('角色尚未解锁', 1.0);
       return false;
     }
-    // 对外只接受配置英雄与合法数值星级，不信任调用方传入的属性或价格。
+    // 星级、售价和战斗属性只取当前配置，避免调用方传入过时的卡牌对象。
     card = S.heroAtStar(card.id, star);
     if (!card) return false;
-    var u = L.ui;
-    var interactive = u.interactiveRect;
-    if (x < interactive.x || x > interactive.x + interactive.w ||
-        y < interactive.y || y > interactive.y + interactive.h) return false;
-    if (x < u.field.x || x > u.field.x + u.field.w) return false;
-    if (y < u.field.y - 24 || y > u.base.y + 10) return false;
-    if (!canAfford(card)) {
+    var reason = deployBlockReason(card, x, y);
+    if (reason === 'outside') return false;
+    if (reason === 'gold') {
       S.toastMsg('金币不足', 0.9);
       return false;
     }
     // 死亡动画中的英雄不算占位
-    if (S.liveUnits() >= S.heroCap) {
+    if (reason === 'cap') {
       S.toastMsg('上场席位已满（' + S.heroCap + '），可花金币扩建', 1.3);
       return false;
     }
@@ -494,6 +503,7 @@
     }
     S.time += dt;
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt);
+    if (S.goalHitT > 0) S.goalHitT = Math.max(0, S.goalHitT - dt);
     if (S.hitstop > 0) S.hitstop = Math.max(0, S.hitstop - dt);
     var battleDt = S.hitstop > 0 ? dt * 0.18 : dt;
     if (S.toast) {
@@ -952,14 +962,17 @@
         if (dy < bestDy) { bestDy = dy; blocker = un; }
       }
 
-      var atBase = e.y >= u.baseStopY;
+      // 三路在底部汇向合照。敌人必须靠近相框本体才可造成伤害。
+      var goalX = u.base.x + u.base.w * 0.5;
+      var atBase = e.y >= u.baseStopY && Math.abs(e.x - goalX) <= Math.max(16, e.def.radius * 0.55);
       if (atBase && e.def.tier === 'boss') {
         if (e.anim === 'move') enterAnimation(e, 'idle');
         if (e.atkTimer <= 0) {
           e.atkTimer = e.def.interval;
           S.baseHp -= e.def.baseDamage;
           S.shake = Math.max(S.shake, 0.35);
-          S.addFloat(e.x, e.y - 40, '-' + e.def.baseDamage, '#ff7a8a');
+          S.goalHitT = 0.3;
+          S.addFloat(goalX, u.base.y - 72, '-' + e.def.baseDamage, '#ff7a8a');
           for (var bi = 0; bi < S.units.length; bi++) {
             var bu = S.units[bi];
             if (bu.dead) continue;
@@ -974,8 +987,8 @@
           e.atkTimer = e.def.interval;
           S.baseHp -= e.def.baseDamage;
           S.shake = Math.max(S.shake, 0.2);
-          S.addFloat(u.base.x + u.base.w * 0.5 + (Math.random() - 0.5) * 100,
-            u.base.y + 4, '-' + e.def.baseDamage, '#ff7a8a');
+          S.goalHitT = 0.3;
+          S.addFloat(goalX, u.base.y - 72, '-' + e.def.baseDamage, '#ff7a8a');
           A.GameAudio && A.GameAudio.play('base');
         }
       } else if (blocker) {
@@ -989,6 +1002,11 @@
         }
       } else {
         var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
+        if (e.y >= u.baseStopY - 100) {
+          var dx = goalX - e.x;
+          var stepX = sp * dt * 0.85;
+          e.x += S.clamp(dx, -stepX, stepX);
+        }
         e.y += sp * dt;
         if (e.y > u.baseStopY) e.y = u.baseStopY;
         if (e.anim === 'idle' || e.anim === 'move') enterAnimation(e, 'move');
@@ -1082,6 +1100,7 @@
   A.Battle = {
     update: update,
     tryDeploy: tryDeploy,
+    deployBlockReason: deployBlockReason,
     canAfford: canAfford,
     getUpgradePreview: getUpgradePreview,
     upgradeUnit: upgradeUnit,

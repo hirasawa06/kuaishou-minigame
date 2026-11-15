@@ -19,55 +19,52 @@
   var CARD_TEXT_COLOR = {
     tank: '#456d9a', warrior: '#9b5a28', archer: '#397b4d', mage: '#76539a',
   };
-  // 透明按钮图的有效像素范围；源图保留透明边，采样时只取按钮本身。
-  var MENU_BUTTONS = {
-    avatar: { asset: 'home-avatar-button', crop: [35, 22, 309, 324] },
-    stamina: { asset: 'home-stamina-button', crop: [46, 31, 417, 123] },
-    settings: { asset: 'home-settings-button', crop: [69, 60, 241, 252] },
-    rank: { asset: 'home-rank-button', crop: [49, 37, 280, 291] },
-    start: { asset: 'home-start-button', crop: [44, 24, 424, 126] },
+  // 遮罩几何按卡片局部坐标定义；卡片在不同安全区缩放时保持同一圆角轮廓。
+  var LEVEL_CARD_MASK = { insetX: 0.024, insetY: 0.025, radius: 0.09 };
+  // 导航图标与按钮底板分离：底板/文字按布局实时绘制，图集只保留透明图标。
+  var MENU_ICON_CROPS = {
+    settings: [160, 48, 315, 332],
+    rank: [700, 48, 475, 335],
+    collection: [125, 439, 400, 370],
+    avatar: [727, 420, 435, 400],
+    stamina: [182, 873, 287, 354],
   };
+  var menuTextMetrics = {};
 
   function fmt(n) {
     return String(Math.floor(n));
   }
 
 
-  // ── 顶部 HUD：波次 / 敌人 / 基地血量 / 已上场 / 暂停 ──────
+  // ── 顶部 HUD：波次 / 剩余敌人 / 暂停；合照状态显示在相框旁 ──────
+
   function drawHud() {
     var u = L.ui;
     var h = u.hud;
     var pb = u.pauseBtn;
     var panelX = u.safeLeft + u.pad;
-    var panelY = h.y + Math.max(0, (h.h - 70) / 2);
+    var panelY = h.y;
     var panelW = Math.max(1, pb.x - panelX - 5);
     var panel = A.Assets.entry('hud-panel');
     if (panel) {
       D.texture(panel.tex, panel.w, panel.h, 0, 0, panel.w, panel.h,
-        panelX, panelY, panelW, 70);
+        panelX, panelY, panelW, h.h);
     } else {
-      D.roundRect(panelX, panelY, panelW, 70, 24, D.color('#ffe4bd'));
+      D.roundRect(panelX, panelY, panelW, h.h, 24, D.color('#ffe4bd'));
     }
     var brown = D.color('#78432b');
-    var muted = D.color('#a0603c');
-    // 避开面板两侧的爪印和底部描边；两列两行共用固定基线。
-    var left = panelX + 48;
-    var right = panelX + panelW * 0.54;
-    var row1 = panelY + 14;
-    var row2 = panelY + 36;
+    // 避开面板两侧爪印；局内 HUD 不重复相框完好度与上场数量。
+    var compact = panelW < 280;
+    var left = panelX + (compact ? 37 : 48);
+    var right = panelX + panelW - (compact ? 25 : 39);
+    var row = panelY + Math.max(10, (h.h - 18) / 2);
     var totalWaves = S.getWaves().length;
     var waveNo = Math.min(S.waveIndex + 1, totalWaves);
-    D.text('第 ' + waveNo + '/' + totalWaves + ' 波', left, row1, 18, brown, 0);
+    D.text(compact ? '第' + waveNo + '/' + totalWaves + '波'
+      : '第 ' + waveNo + '/' + totalWaves + ' 波', left, row, 18, brown, 0);
     var remain = A.Battle.remainingEnemies();
-    D.text('剩余敌人 ' + remain, right, row1, 18, brown, 0);
-
-    // 目标血量仍由实时状态绘制；细条与文字共享面板坐标。
-    var hpRatio = Math.max(0, S.baseHp) / C.BASE_HP;
-    icon('ui-heart', left + 5, row2 + 10, 16);
-    D.text('基地血量 ' + String(Math.ceil(Math.max(0, S.baseHp))), left + 18, row2, 18,
-      hpRatio > 0.4 ? brown : COL.hpRed, 0);
-    D.text('已上场 ' + S.liveUnits() + '/' + S.heroCap,
-      right, row2, 18, muted, 0);
+    D.text(compact ? '剩余' + remain : '剩余敌人 ' + remain,
+      right, row, 18, brown, 2);
 
     // 暂停按钮的绘制与命中区同用 Layout.ui.pauseBtn。
     D.roundRect(pb.x, pb.y, pb.w, pb.h, pb.h / 2, D.color('#ad6732'));
@@ -99,9 +96,6 @@
     icon('ui-coin', gb.x + gb.h * 0.55, gb.y + gb.h / 2, gb.h * 0.74);
     D.text('金币 ' + fmt(S.gold), gb.x + gb.h * 1.08, gb.y + (gb.h - 18) / 2,
       18, D.color('#78432b'), 0);
-    D.text('已上场 ' + S.liveUnits() + '/' + S.heroCap,
-      gb.x + statusW - 12, gb.y + (gb.h - 18) / 2,
-      18, D.color('#865137'), 2);
   }
 
   // ── 商店按钮 ──────────────────────────────────────────────
@@ -222,21 +216,27 @@
       D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#ffe6c3', a));
     }
 
-    // 立绘：占满卡片高度，留 3px 内边距
-    var iconSize = rect.h - 4;
-    Scene.heroArt(def, rect.x + 5 + iconSize / 2, rect.y + rect.h / 2, iconSize, a);
+    // 立绘和两行文字都落在卡片内框内，避免压到圆角边框。
+    var iconSize = Math.max(24, rect.h - 12);
+    Scene.heroArt(def, rect.x + 7 + iconSize / 2, rect.y + rect.h / 2, iconSize, a);
     if (star > 1) D.text(star + '星', rect.x + 7, rect.y + rect.h - 20,
       18, D.color(star === 3 ? '#b17713' : '#426788', a), 0);
+    // 头像区域可点开详情，角标提示它与卡牌购买区是两种操作。
+    D.circle(rect.x + 11, rect.y + 10, 9, D.color('#fff0d9', a));
+    D.ring(rect.x + 11, rect.y + 10, 8, 1.2, D.color('#a66b3b', a));
+    D.text('i', rect.x + 11, rect.y + 1, 18, D.color('#704026', a), 1);
 
-    var tx = rect.x + 10 + iconSize;
-    var nameY = rect.y + 5;
+    var tx = rect.x + 13 + iconSize;
+    var nameY = rect.y + 2;
     D.text(def.name, tx, nameY, 18, D.color('#663c2b', a), 0);
     // 职业 + 关键数值压到一行，避免溢出
     var line1 = def.cls === 'tank'
       ? def.clsName + ' · 生命 ' + def.hp
+
       : def.cls === 'healer' ? def.clsName + ' · 回血 ' + def.heal
         : def.clsName + ' · 攻 ' + def.atk;
-    D.text(line1, tx, nameY + 21, 18, clsCol, 0);
+    D.text(line1, tx, nameY + 18, 18, clsCol, 0);
+
 
     // 费用角标
     var cr = Math.max(12, Math.min(16, rect.h * 0.24));
@@ -264,9 +264,9 @@
   }
 
   function drawInspect() {
-    if (!S.inspect || !S.inspectT || S.inspectT <= 0) return;
+    if (!S.inspect) return;
     var def = S.inspect;
-    var a = Math.min(1, S.inspectT / 0.45);
+    var a = 1;
     var w = Math.min(300, L.ui.interactiveRect.w - 16);
     var h = 172;
     var x = S.inspectX === undefined ? L.ui.safeLeft + 8 : S.inspectX;
@@ -305,9 +305,9 @@
           D.color('#fff0d9', 0.9));
         D.strokeRect(u.w / 2 - 127, hintY, 254, 58, 2,
           D.color('#ae7548', 0.85));
-        D.text('点击卡牌自动上场', u.w / 2, hintY + 7, 18,
+        D.text('点头像看详情 · 点卡牌上场', u.w / 2, hintY + 7, 18,
           D.color('#704026'), 1);
-        D.text('拖动卡牌指定位置', u.w / 2, hintY + 31, 18,
+        D.text('自动落在下方 · 拖动可选位置', u.w / 2, hintY + 31, 18,
           D.color('#704026'), 1);
       }
       return;
@@ -359,13 +359,180 @@
   }
 
   // ── 首页（参考图：客厅 + 头像 + 体力 + 设置 / 排行榜 + 章节卡 + 开始） ──
+  function menuIcon(key, x, y, w, h) {
+    var art = A.Assets.entry('home-menu-icons');
+    var crop = MENU_ICON_CROPS[key];
+    if (!art || !crop) return;
+    D.texture(art.tex, art.w, art.h, crop[0], crop[1], crop[2], crop[3], x, y, w, h);
+  }
+
+  function menuIconInBox(key, box) {
+    var crop = MENU_ICON_CROPS[key];
+    if (!crop) return;
+    var fit = Math.min(box.w / crop[2], box.h / crop[3]);
+    var w = crop[2] * fit, h = crop[3] * fit;
+    menuIcon(key, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
+  }
+
+  // 按位图字形的可见范围居中，避免“文字 y 值居中”却压到底边。
+  function menuText(str, cx, cy, col, size, scale) {
+    size = size || 18;
+    scale = scale === undefined ? 1 : scale;
+    var cacheKey = size + ':' + str;
+    var bounds = menuTextMetrics[cacheKey];
+    if (!bounds) {
+      var atlas = A.FontAtlas && A.FontAtlas[String(size)];
+      if (!atlas) return;
+      var glyphs = atlas.glyphs, pen = 0;
+      var left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+      for (var i = 0; i < str.length; i++) {
+        var glyph = glyphs[str.charAt(i)] || glyphs[' '];
+        if (!glyph) continue;
+        if (!glyph.blank && glyph.w > 0) {
+          left = Math.min(left, pen + glyph.ox);
+          right = Math.max(right, pen + glyph.ox + glyph.w * 0.5);
+          top = Math.min(top, glyph.oy);
+          bottom = Math.max(bottom, glyph.oy + glyph.h * 0.5);
+        }
+        pen += glyph.adv;
+      }
+      bounds = menuTextMetrics[cacheKey] = { left: left, right: right, top: top, bottom: bottom };
+    }
+    if (!isFinite(bounds.left)) return;
+    D.text(str, cx - (bounds.left + bounds.right) * scale / 2,
+      cy - (bounds.top + bounds.bottom) * scale / 2, size, col, 0, scale);
+  }
+
+  function menuPaw(cx, cy, unit) {
+    var art = A.Assets.entry('home-start-paw');
+    if (!art) return;
+    var size = 20 * unit;
+    D.texture(art.tex, art.w, art.h, 321, 256, 667, 672,
+      cx - size / 2, cy - size / 2, size, size);
+  }
+
+  function drawMenuStartButton(target, scale, disabled, label) {
+    var w = target.w * scale, h = target.h * scale;
+    var x = target.x + (target.w - w) / 2;
+    var y = target.y + (target.h - h) / 2;
+    var unit = Math.min(w / 260.92, h / 85.6);
+    var rim = disabled ? '#8c786d' : '#a95617';
+    var edge = disabled ? '#b5aba5' : '#dc7817';
+    var face = disabled ? '#d3cbc4' : '#ffac2c';
+    var light = disabled ? '#e5ddd4' : '#ffd771';
+    var ink = disabled ? '#756a63' : '#fff3dc';
+    var textScale = disabled ? Math.min(1, 1.17 * unit) : unit;
+    var labelSize = disabled ? 28 : 48;
+    var centerY = y + h * 0.49;
+    var radius = h * 0.48;
+
+    D.roundRect(x, y + 5 * unit, w, h - 2 * unit, radius,
+      D.color('#6e391c', disabled ? 0.22 : 0.30));
+    D.roundRect(x, y, w, h - 5 * unit, radius, D.color(rim));
+    D.roundRect(x + 2 * unit, y + 2 * unit, w - 4 * unit, h - 10 * unit,
+      radius - 2 * unit, D.color(edge));
+    D.roundRect(x + 5 * unit, y + 5 * unit, w - 10 * unit, h - 16 * unit,
+      radius - 5 * unit, D.color(face));
+    // 高光只落在胶囊顶部直边内，不越过圆角肩部。
+    var shineX = x + radius + 5 * unit;
+    var shineW = w - 2 * (radius + 5 * unit);
+    D.roundRect(shineX, y + 7 * unit, shineW, 5 * unit,
+      2.5 * unit, D.color(light, disabled ? 0.35 : 0.63));
+    D.roundRect(shineX + 9 * unit, y + 8 * unit, 32 * unit, 1.5 * unit,
+      0.75 * unit, D.color('#fff6db', disabled ? 0.20 : 0.76));
+
+    if (!disabled) {
+      var textWidth = D.textWidth(label, A.FontAtlas['48']) * textScale;
+      var pawGap = 13 * unit, pawW = 20 * unit;
+      var groupW = textWidth + 2 * (pawGap + pawW);
+      var groupX = x + (w - groupW) / 2;
+      menuPaw(groupX + pawW / 2, centerY, unit);
+      menuText(label, x + w / 2, centerY, D.color('#77401e'), labelSize,
+        textScale);
+      menuText(label, x + w / 2, centerY - 2 * unit, D.color(ink), labelSize,
+        textScale);
+      menuPaw(groupX + groupW - pawW / 2, centerY, unit);
+    } else {
+      menuText(label, x + w / 2, centerY, D.color(ink), labelSize, textScale);
+    }
+  }
+
+  function menuPlate(r, pill) {
+    var x = r.x, y = r.y, w = r.w, h = r.h;
+    var unit = pill ? h / 44 : w / 78;
+    var radius = pill ? h / 2 : 18 * unit;
+    var border = 2 * unit, inset = 4 * unit, shadow = 3 * unit;
+    D.roundRect(x, y + shadow, w, h - shadow, radius, D.color('#5f3722', 0.25));
+    D.roundRect(x, y, w, h - shadow, radius, D.color('#a3663d'));
+    D.roundRect(x + border, y + border, w - border * 2, h - shadow - border * 2,
+      Math.max(1, radius - border), D.color('#f3cf9e'));
+    D.roundRect(x + inset, y + inset, w - inset * 2, h - shadow - inset * 2,
+      Math.max(1, radius - inset), D.color('#ffecd2'));
+    D.roundRect(x + 10 * unit, y + 7 * unit, 14 * unit, 2 * unit, unit,
+      D.color('#ffffff', 0.36));
+  }
+
+  function drawMenuControl(key, target, scale) {
+    var w = target.w * scale, h = target.h * scale;
+    var r = { x: target.x + (target.w - w) / 2,
+      y: target.y + (target.h - h) / 2, w: w, h: h };
+    if (key === 'stamina') {
+      menuPlate(r, true);
+      var barUnit = h / 44;
+      var boltW = 19 * barUnit, boltH = 25 * barUnit;
+      var gap = 5 * barUnit, labelW = 48 * barUnit;
+      var valueW = D.textWidth('30/30', A.FontAtlas['18']);
+      var compact = target.w < 89 * (target.h / 44) + valueW;
+      var groupW = boltW + gap + valueW + (compact ? 0 : labelW + gap);
+      var groupX = r.x + (w - groupW) / 2;
+      var boltBox = { x: groupX, y: r.y + (h - boltH) / 2,
+        w: boltW, h: boltH };
+      menuIconInBox('stamina', boltBox);
+      if (!compact) {
+        var labelX = groupX + boltW + gap;
+        D.roundRect(labelX, r.y + (h - 28 * barUnit) / 2,
+          labelW, 28 * barUnit, 14 * barUnit, D.color('#794322'));
+        menuText('体力', labelX + labelW / 2, r.y + h / 2, D.color('#fff1d9'));
+      }
+      menuText('30/30', groupX + groupW - valueW / 2,
+        r.y + h / 2, D.color('#704026'));
+      return;
+    }
+    menuPlate(r, false);
+    var unit = w / 78;
+    if (key === 'avatar') {
+      D.roundRect(r.x + 5 * unit, r.y + 5 * unit, w - 10 * unit, h - 13 * unit,
+        14 * unit,
+        D.color('#dcc1d1'));
+      menuIconInBox('avatar', { x: r.x + 7 * unit, y: r.y + 6 * unit,
+        w: w - 14 * unit, h: h - 15 * unit });
+      return;
+    }
+    var label = key === 'settings' ? '设置' : key === 'rank' ? '排行榜' : '收藏';
+    var showLabel = w >= 64;
+    var labelCenterY = r.y + h - 22;
+    var iconY = r.y + (showLabel ? 9 * unit : 8 * unit);
+    menuIconInBox(key, { x: r.x + 10 * unit, y: iconY,
+      w: w - 20 * unit,
+      h: showLabel ? Math.min(32 * unit, labelCenterY - 8.5 - iconY - 6 * unit)
+        : h - 16 * unit });
+    if (showLabel) menuText(label, r.x + w / 2, labelCenterY, D.color('#704026'));
+  }
+
   function drawMenu() {
     var u = L.ui;
     var m = u.menu;
     if (!m) { drawMenuFallback(); return; }
-    var art = A.Assets.entry('figma-home');
+    var art = A.Assets.entry('home-background-clean');
+    var cardArt = A.Assets.entry('home-level-card-no-banner');
+    var frameOverlayArt = A.Assets.entry('home-level-frame-overlay');
+    var arrowArt = A.Assets.entry('home-level-arrows');
+    var disabledArrowArt = A.Assets.entry('home-level-arrows-disabled');
+    var nameplateArt = A.Assets.entry('home-level-nameplate');
+    var lockArt = A.Assets.entry('home-level-lock');
     var frame = u.menuArtwork;
-    if (!art || !frame) { drawMenuFallback(); return; }
+    if (!art || !cardArt || !frameOverlayArt || !arrowArt || !disabledArrowArt || !nameplateArt ||
+        !lockArt || !frame) { drawMenuFallback(); return; }
 
     // 原图的 0..45.77 与 45.77..845 连续拼接；上段拉伸到安全区顶部。
     var split = 45.77 / 845 * art.h;
@@ -378,52 +545,123 @@
       D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
     }
 
-    var keys = ['avatar', 'stamina', 'settings', 'rank', 'start'];
+    var keys = ['avatar', 'stamina', 'settings', 'rank', 'collection', 'start'];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
       var target = m[key];
-      var spec = MENU_BUTTONS[key];
-      var sprite = A.Assets.entry(spec.asset);
-      if (!target || !sprite) continue;
+      if (!target) continue;
+      if (key === 'start' && !A.Profile.isLevelUnlocked(S.selectedLevel)) continue;
       var active = S.menuPressed === key;
       var feedback = S.menuFeedback && S.menuFeedback.key === key && S.menuFeedback.life > 0;
       var progress = feedback ? 1 - S.menuFeedback.life / 0.18 : 1;
-      var scale = active ? 1.045 : feedback ?
-        1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress) : 1;
-      // 体力条紧邻头像，必须内接原槽位，避免等比铺满时横向溢出。
-      var fit = key === 'stamina'
-        ? Math.min(target.w / spec.crop[2], target.h / spec.crop[3])
-        : Math.max(target.w / spec.crop[2], target.h / spec.crop[3]);
-      var w = spec.crop[2] * fit * scale;
-      var h = spec.crop[3] * fit * scale;
-      D.texture(sprite.tex, sprite.w, sprite.h,
-        spec.crop[0], spec.crop[1], spec.crop[2], spec.crop[3],
-        target.x + (target.w - w) / 2, target.y + (target.h - h) / 2, w, h);
+      var scale = key === 'start'
+        ? (active ? 1.045 : feedback ?
+          1 + 0.045 * (1 - progress) + 0.03 * Math.sin(progress * Math.PI * 2) * (1 - progress) : 1)
+        : (active ? 0.94 : feedback ? 1 - 0.06 * Math.pow(1 - progress, 3) : 1);
+      if (key !== 'start') {
+        drawMenuControl(key, target, scale);
+        continue;
+      }
+      drawMenuStartButton(target, scale, false, '开始游戏');
     }
-    drawButton('收藏', m.collection, false, 18);
-    // 首页原图上的章节文字是静态的，用同风格牌匾覆盖后绘制真实选关。
-    var banner = m.banner;
-    D.roundRect(banner.x + 22, banner.y + 6, banner.w - 44, banner.h - 12, 24, D.color('#8a4b22'));
-    D.strokeRect(banner.x + 22, banner.y + 6, banner.w - 44, banner.h - 12, 2, D.color('#ffdfac'));
-    var level = C.LEVELS[S.selectedLevel - 1];
-    D.text('第 ' + S.selectedLevel + ' 关 · ' + level.name,
-      banner.x + banner.w / 2, banner.y + (banner.h - 18) / 2, 18, D.color('#fff0d4'), 1);
+    // 背景和卡片是两张独立纹理；选关只移动透明卡片与其动态文案。
+    var card = m.card;
+    var swipe = S.menuSwipe;
+    var slide = S.menuSlide;
+    var offset = 0;
+    if (slide) {
+      var t = Math.min(1, slide.elapsed / slide.duration);
+      t = 1 - Math.pow(1 - t, 3);
+      offset = slide.offset + (slide.end - slide.offset) * t;
+    } else if (swipe) {
+      var dx = swipe.x - swipe.startX;
+      var dy = swipe.y - swipe.startY;
+      if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        offset = Math.max(-card.w * 0.85, Math.min(card.w * 0.85, dx));
+        if ((dx > 0 && S.selectedLevel === 1) ||
+            (dx < 0 && S.selectedLevel === C.LEVELS.length)) offset *= 0.25;
+      }
+    }
+    var moving = Math.abs(offset) > 0.5;
+    var clipY = card.y;
+    var clipH = card.h;
+    if (moving) {
+      // 批次须先提交，再以 WebGL scissor 裁剪两张相邻卡；不改变主包图片。
+      A.Render.flush();
+      var gl = A.Render.gl;
+      var canvas = window.canvas;
+      var sx = canvas.width / u.w, sy = canvas.height / u.h;
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(Math.round(card.x * sx), Math.round((u.h - clipY - clipH) * sy),
+        Math.round(card.w * sx), Math.round(clipH * sy));
+    }
+    function drawLevelCard(levelNo, shift) {
+      if (levelNo < 1 || levelNo > C.LEVELS.length) return;
+      // 只绘透明插画卡片；章节信息统一落入卡片底部信息区。
+      D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
+        card.x + shift, clipY, card.w, clipH);
+      var unlocked = A.Profile.isLevelUnlocked(levelNo);
+      if (!unlocked) {
+        // 锁定遮罩由 WebGL 圆角几何绘制；略伸入框内，再以原卡图像素重绘画框。
+        // 这样场景四角被遮住，外部背景不会出现随卡片移动的黑色矩形。
+        var maskX = card.x + shift + card.w * LEVEL_CARD_MASK.insetX;
+        var maskY = clipY + clipH * LEVEL_CARD_MASK.insetY;
+        var maskW = card.w * (1 - 2 * LEVEL_CARD_MASK.insetX);
+        var maskH = clipH * (1 - 2 * LEVEL_CARD_MASK.insetY);
+        D.roundRect(maskX, maskY, maskW, maskH, card.w * LEVEL_CARD_MASK.radius,
+          D.color('#000000', 0.45));
+        // 仅用提取层的 alpha 标识画框；重绘原卡图像素，内外边界不会放大。
+        A.Render.setMaskTexture(frameOverlayArt.tex);
+        D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
+          card.x + shift, clipY, card.w, clipH, undefined, { alphaCutout: true });
+        A.Render.setMaskTexture(null);
+        var scene = { x: card.x + shift + 13, y: card.y + 13,
+          w: card.w - 26, h: card.h - 26 };
+        var lockW = Math.min(76, scene.w * 0.24);
+        var lockH = lockW * 1.25;
+        D.texture(lockArt.tex, lockArt.w, lockArt.h, 48, 26, 160, 200,
+          scene.x + (scene.w - lockW) / 2, scene.y + (scene.h - lockH) / 2,
+          lockW, lockH);
+        var hintW = Math.min(186, scene.w - 28);
+        D.roundRect(scene.x + (scene.w - hintW) / 2, scene.y + 12,
+          hintW, 29, 14, D.color('#3c2a25', 0.78));
+        D.text('先通关第 ' + (levelNo - 1) + ' 关',
+          scene.x + scene.w / 2, scene.y + 17, 18, D.color('#fff1d9'), 1);
+      }
+      var status = m.levelStatus;
+      D.texture(nameplateArt.tex, nameplateArt.w, nameplateArt.h, 27, 32, 970, 270,
+        status.x + shift, status.y, status.w, status.h);
+      var medallionX = status.x + shift + status.w * 0.125;
+      var nameX = status.x + shift + status.w * 0.61;
+      D.text(String(levelNo), medallionX, status.y + 12, 28, D.color('#784323'), 1);
+      D.text('关', medallionX, status.y + 46, 18, D.color('#784323'), 1);
+      D.text(C.LEVELS[levelNo - 1].name,
+        nameX, status.y + 12, 18, D.color('#784323'), 1);
+      D.text(levelNo + '/' + C.LEVELS.length + ' · ' + (unlocked ?
+        (levelNo <= A.Profile.data.completedLevel ? '已通关' : '可挑战') : '未解锁'),
+        nameX, status.y + 45, 18, D.color(unlocked ? '#784323' : '#8f8276'), 1);
+    }
+    drawLevelCard(S.selectedLevel, offset);
+    if (moving) {
+      var neighbor = offset < 0 ? S.selectedLevel + 1 : S.selectedLevel - 1;
+      drawLevelCard(neighbor, offset + (offset < 0 ? card.w : -card.w));
+      A.Render.flush();
+      gl.disable(gl.SCISSOR_TEST);
+    }
     var unlocked = A.Profile.isLevelUnlocked(S.selectedLevel);
     var nav = [m.levelPrev, m.levelNext];
     for (var ni = 0; ni < nav.length; ni++) {
       var nr = nav[ni];
-      D.roundRect(nr.x, nr.y, nr.w, nr.h, 18, D.color('#fff0d4', 0.94));
-      D.text(ni === 0 ? '<' : '>', nr.x + nr.w / 2, nr.y + 8, 28, D.color('#784323'), 1);
+      var enabled = !slide && (ni === 0 ? S.selectedLevel > 1 : S.selectedLevel < C.LEVELS.length);
+      var pressed = S.menuPressed === (ni === 0 ? 'levelPrev' : 'levelNext');
+      var size = nr.w * (pressed ? 1.08 : 1);
+      var arrowSprite = enabled ? arrowArt : disabledArrowArt;
+      D.texture(arrowSprite.tex, arrowSprite.w, arrowSprite.h,
+        ni === 0 ? 60 : 305, 12, 145, 155,
+        nr.x + (nr.w - size) / 2, nr.y + (nr.h - size) / 2, size, size);
     }
-    var status = m.levelStatus;
-    D.roundRect(status.x, status.y, status.w, status.h, 16, D.color('#fff0d4', 0.94));
-    D.text(S.selectedLevel + '/10 · ' + (unlocked ?
-      (S.selectedLevel <= A.Profile.data.completedLevel ? '已通关' : '可挑战') : '未解锁'),
-      status.x + status.w / 2, status.y + 8, 18, D.color('#784323'), 1);
     if (!unlocked) {
-      D.roundRect(m.start.x, m.start.y, m.start.w, m.start.h, 32, D.color('#fff0d4', 0.93));
-      D.text('先通过第 ' + (S.selectedLevel - 1) + ' 关',
-        m.start.x + m.start.w / 2, m.start.y + (m.start.h - 28) / 2, 28, D.color('#784323'), 1);
+      drawMenuStartButton(m.start, 1, true, '尚未解锁');
     }
     if (S.toast) {
       D.text(S.toast.text, m.card.x + m.card.w / 2, m.card.y + 12, 18, D.color('#fff0d4'), 1);
@@ -495,7 +733,7 @@
     drawModalPanel(px, py, pw, resultBtn.y + resultBtn.h + 20 - py);
     D.text(win ? '胜利' : '失败', u.w / 2, y, 48,
       win ? D.color('#a86a24') : D.color('#b04f4c'), 1);
-    D.text(win ? '你守住了客厅！' : '客厅失守了', u.w / 2, u.result.subY, 28,
+    D.text(win ? '合照守住了！' : '合照被毁了', u.w / 2, u.result.subY, 28,
       D.color('#704026'), 1);
     if (win && S.unlockNotice && S.unlockNotice.length) {
       var notice = u.result.notice;
@@ -519,7 +757,7 @@
       '击杀数量  ' + S.kills,
       '累计金币  ' + S.goldEarned,
       '上阵英雄  ' + S.cardsPlaced,
-      '剩余基地  ' + Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP,
+      '合照完好  ' + Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP,
     ];
     for (var i = 0; i < stats.length; i++) {
       D.text(stats[i], u.w / 2, u.result.statsY + i * u.result.statsGap, 18,

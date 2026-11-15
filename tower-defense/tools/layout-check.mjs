@@ -55,13 +55,31 @@ function check(name, input, expected) {
     assert(button.x >= ui.safeLeft && button.x + button.w <= ui.safeRight, `${name}: ${kind} button outside safe width`)
     assert(button.y >= ui.contentTop && button.y + button.h <= ui.contentBottom, `${name}: ${kind} button outside safe height`)
   }
-  for (const key of ['avatar', 'stamina', 'settings', 'rank', 'start', 'panel', 'panelAction']) {
+  for (const key of ['avatar', 'stamina', 'settings', 'rank', 'collection', 'start', 'panel', 'panelAction']) {
     const rect = ui.menu[key]
     assert(rect.x >= ui.safeLeft - 0.01 && rect.x + rect.w <= ui.safeRight + 0.01,
       `${name}: menu ${key} outside safe width`)
     assert(rect.y >= ui.contentTop - 0.01 && rect.y + rect.h <= ui.contentBottom + 0.01,
       `${name}: menu ${key} outside safe height`)
   }
+  const m = ui.menu
+  const close = (a, b) => Math.abs(a - b) < 0.01
+  for (const key of ['avatar', 'settings', 'rank', 'collection']) {
+    assert(close(m[key].w, m.avatar.w) && close(m[key].h, m.avatar.h) && close(m[key].w, m[key].h),
+      `${name}: ${key} square button size differs`)
+  }
+  assert(close(m.avatar.x, m.rank.x) && close(m.settings.x, m.collection.x),
+    `${name}: menu columns misaligned`)
+  assert(close(m.avatar.y, m.settings.y) && close(m.rank.y, m.collection.y),
+    `${name}: menu rows misaligned`)
+  assert(close(m.rank.y - m.avatar.y, m.collection.y - m.settings.y),
+    `${name}: row spacing differs`)
+  assert(close(m.stamina.y + m.stamina.h / 2, m.avatar.y + m.avatar.h / 2),
+    `${name}: stamina bar not vertically centered`)
+  assert(m.stamina.x - (m.avatar.x + m.avatar.w) >= 5,
+    `${name}: stamina bar too close to avatar`)
+  assert(m.rank.y + m.rank.h < m.card.y && m.collection.y + m.collection.h < m.card.y,
+    `${name}: navigation overlaps chapter card`)
   console.log(`${name}: ok`, {
     content: [ui.contentTop, ui.contentBottom],
     field: [ui.field.y, ui.field.h],

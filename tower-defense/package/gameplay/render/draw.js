@@ -66,7 +66,7 @@
     var v0 = sy / th;
     var v1 = (sy + sh) / th;
     var o = {
-      mode: 1,
+      mode: opts && opts.alphaCutout ? 3 : 1,
       u0: sx / tw, v0: v0, u1: (sx + sw) / tw, v1: v1,
     };
     if (opts) {
@@ -113,12 +113,13 @@
   };
 
   // align: 0 左对齐 / 1 居中 / 2 右对齐
-  draw.text = function (str, x, y, size, col, align) {
+  draw.text = function (str, x, y, size, col, align, scale) {
     var atlas = A.FontAtlas[String(size)];
     if (!atlas) return 0;
     var tex = A.Assets ? A.Assets.tex('font-' + size) : null;
     if (!tex) return 0;
-    var total = draw.textWidth(str, atlas);
+    scale = scale === undefined ? 1 : scale;
+    var total = draw.textWidth(str, atlas) * scale;
     var penX = x;
     if (align === 1) penX = x - total / 2;
     else if (align === 2) penX = x - total;
@@ -128,14 +129,14 @@
       var gl = g[str.charAt(i)] || g[' '];
       if (!gl) continue;
       if (!gl.blank && gl.w > 0) {
-        GL.push(penX + gl.ox, y + gl.oy,
-          gl.w * TEXT_SCALE, gl.h * TEXT_SCALE, col, {
+        GL.push(penX + gl.ox * scale, y + gl.oy * scale,
+          gl.w * TEXT_SCALE * scale, gl.h * TEXT_SCALE * scale, col, {
             mode: 1,
             u0: gl.x / atlas.texW, v0: gl.y / atlas.texH,
             u1: (gl.x + gl.w) / atlas.texW, v1: (gl.y + gl.h) / atlas.texH,
           });
       }
-      penX += gl.adv;
+      penX += gl.adv * scale;
     }
     return total;
   };

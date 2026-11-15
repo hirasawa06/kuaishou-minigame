@@ -12,24 +12,30 @@ const ui = {
     avatar: rect(12, 140, 85, 87),
     stamina: rect(100, 159, 150, 48),
     settings: rect(328, 140, 78, 87),
+    collection: rect(328, 237, 78, 90),
     rank: rect(12, 237, 87, 90),
     start: rect(68, 735, 277, 91),
+    card: rect(9, 423, 396, 305),
+    levelPrev: rect(18, 535, 44, 44),
+    levelNext: rect(352, 535, 44, 44),
     panelAction: rect(144, 530, 126, 42),
   },
   btnRect(kind) { return kind === 'menu' ? this.menu.start : rect(100, 400, 180, 54) },
 }
 const state = { phase: 'menu', menuPanel: null, menuSoundEnabled: true,
-  menuPressed: null, menuFeedback: null, menuStartDelay: 0 }
+  menuPressed: null, menuFeedback: null, menuStartDelay: 0, selectedLevel: 1, menuSlide: null }
 let starts = 0
 let openPanel = null
+const selections = []
+let unlocked = true
 const sandbox = {
   console,
   AIGCUtils: {
-    Config: { cardCount: 4 },
+    Config: { cardCount: 4, LEVELS: Array(10).fill({}) },
     State: state,
     Layout: { w: 414, h: 896, ui },
-    Game: { start() { starts++ } },
-    Profile: { isLevelUnlocked() { return true } },
+    Game: { start() { starts++ }, selectLevel(delta, offset) { selections.push({ delta, offset }) } },
+    Profile: { isLevelUnlocked() { return unlocked } },
     ProfileUI: {
       isOpen() { return openPanel !== null },
       open(name) { openPanel = name },
@@ -63,6 +69,10 @@ tap(44, 275)
 assert(openPanel === 'rank', '排行榜未打开')
 tap(200, 800)
 assert(starts === 0 && openPanel === null, '弹层下的开始按钮被误触')
+tap(365, 275)
+assert(openPanel === 'collection' && state.menuFeedback.key === 'collection', '收藏入口或点击反馈未响应')
+tap(200, 600)
+assert(openPanel === null, '收藏弹层未关闭')
 tap(50, 180)
 assert(openPanel === 'profile', '头像入口未响应')
 tap(200, 600)
@@ -71,6 +81,21 @@ assert(state.menuPanel === 'stamina', '体力入口未响应')
 tap(200, 600)
 tap(200, 80)
 assert(starts === 0, '安全区外触发了交互')
+tap(36, 557)
+assert(selections.length === 0, '首关左箭头应禁用')
+tap(375, 557)
+assert(selections.length === 1 && selections[0].delta === 1, '右箭头未切换相邻关')
+tap(210, 525)
+assert(selections.length === 1 && state.menuStartDelay === 0, '轻点卡面不应开战')
+listeners.mousedown({ clientX: 280, clientY: 525 })
+listeners.mousemove({ clientX: 200, clientY: 526 })
+assert(state.menuSwipe.x === 200, '卡片未跟手')
+listeners.mouseup({ clientX: 200, clientY: 526 })
+assert(selections.length === 2 && selections[1].delta === 1, '横滑未切换相邻关')
+unlocked = false
+tap(200, 780)
+assert(state.menuStartDelay === 0, '锁定关开始按钮不应可点')
+unlocked = true
 tap(200, 780)
 assert(state.menuStartDelay === 0.18 && state.menuFeedback.key === 'start', '开始按钮未进入反馈阶段')
 assert(starts === 0, '开始按钮在反馈完成前进入战斗')

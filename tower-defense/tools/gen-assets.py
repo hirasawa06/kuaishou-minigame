@@ -19,6 +19,7 @@ import json
 import math
 import os
 import re
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +30,8 @@ YOOLA_DIR = os.path.join(PKG, "yoola-assets")
 
 FONT_PATH = "/System/Library/Fonts/STHeiti Medium.ttc"
 FONT_INDEX = 1  # Heiti SC
+UI_CJK_FONT = os.path.join(ROOT, "tools", "fonts", "ZCOOLKuaiLe-Regular.ttf")
+UI_LATIN_FONT = os.path.join(ROOT, "tools", "fonts", "Fredoka.ttf")
 
 SUPERSAMPLE = 2  # 纹理按 2 倍烘焙
 
@@ -103,9 +106,12 @@ def charset():
 
 def build_font(size, out_png, pad=3, width=None):
     px = size * SUPERSAMPLE
-    font = ImageFont.truetype(FONT_PATH, px, index=FONT_INDEX)
-    asc, desc = font.getmetrics()
-    line_h = asc + desc
+    cjk_font = ImageFont.truetype(UI_CJK_FONT, px)
+    latin_font = ImageFont.truetype(UI_LATIN_FONT, px)
+    latin_font.set_variation_by_axes([600, 100])
+    def font_for(ch):
+        return latin_font if ord(ch) < 128 else cjk_font
+    line_h = max(sum(cjk_font.getmetrics()), sum(latin_font.getmetrics()))
     chars = charset()
     if width is None:
         width = pick_width(size, len(chars))
@@ -114,7 +120,7 @@ def build_font(size, out_png, pad=3, width=None):
     x = y = 0
     row_h = 0
     for ch in chars:
-        adv = int(math.ceil(font.getlength(ch)))
+        adv = int(math.ceil(font_for(ch).getlength(ch)))
         w = max(adv, 1) + pad * 2
         h = line_h + pad * 2
         if x + w > width:
@@ -131,7 +137,7 @@ def build_font(size, out_png, pad=3, width=None):
     img = Image.new("L", (width, height), 0)
     d = ImageDraw.Draw(img)
     for ch, (gx, gy, gw, gh, adv) in placed.items():
-        d.text((gx + pad, gy + pad), ch, font=font, fill=255)
+        d.text((gx + pad, gy + pad), ch, font=font_for(ch), fill=255)
 
     glyphs = {}
     for ch, (gx, gy, gw, gh, adv) in placed.items():
@@ -516,7 +522,7 @@ def build_yoola():
 
 
 # ─────────────────────────────────────────────── main
-def main():
+def generate_fonts():
     global DATA_DIR_ROOT
     DATA_DIR_ROOT = os.path.join(PKG, "gameplay")
     os.makedirs(IMG_DIR, exist_ok=True)
@@ -526,13 +532,17 @@ def main():
     for size, name in ((48, "font-48.png"), (28, "font-28.png"), (18, "font-18.png")):
         fonts[size] = build_font(size, os.path.join(IMG_DIR, name))
 
-    sprites = build_sprites(os.path.join(IMG_DIR, "sprites.png"))
-
     with open(os.path.join(DATA_DIR, "font-atlas.js"), "w", encoding="utf-8") as f:
         f.write("/* 由 tools/gen-assets.py 生成，请勿手改 */\n")
         f.write("(function () {\n  var A = window.AIGCUtils = window.AIGCUtils || {};\n")
         f.write("  A.FontAtlas = " + json.dumps(fonts, ensure_ascii=False,
                                              separators=(",", ":")) + ";\n})();\n")
+    return fonts
+
+
+def main():
+    fonts = generate_fonts()
+    sprites = build_sprites(os.path.join(IMG_DIR, "sprites.png"))
 
     with open(os.path.join(DATA_DIR, "sprites.js"), "w", encoding="utf-8") as f:
         f.write("/* 由 tools/gen-assets.py 生成，请勿手改 */\n")
@@ -550,4 +560,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--fonts-only" in sys.argv:
+        print(json.dumps({"glyphs": len(generate_fonts()[18]["glyphs"]),
+                          "fontSizes": [48, 28, 18]}, ensure_ascii=False))
+    else:
+        main()

@@ -10,7 +10,7 @@
   var drag = null;
   var shopPressStarted = false;
   var MOVE_TOL = 6;
-  var LONG_PRESS = 0.22;   // 按住不动超过这个时间显示详情
+  var LONG_PRESS = 0.45;
 
   function toLocal(clientX, clientY) {
     var r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
@@ -44,10 +44,10 @@
 
   function menuHitKey(x, y) {
     var m = L.ui.menu;
-    if (!m || !inInteractiveArea(x, y)) return null;
-    if (hitControl(m.levelPrev, x, y, 0)) return 'levelPrev';
-    if (hitControl(m.levelNext, x, y, 0)) return 'levelNext';
-    if (hitControl(m.start, x, y, 12)) return 'start';
+    if (!m || !inInteractiveArea(x, y) || S.menuSlide) return null;
+    if (S.selectedLevel > 1 && hitControl(m.levelPrev, x, y, 0)) return 'levelPrev';
+    if (S.selectedLevel < C.LEVELS.length && hitControl(m.levelNext, x, y, 0)) return 'levelNext';
+    if (A.Profile.isLevelUnlocked(S.selectedLevel) && hitControl(m.start, x, y, 12)) return 'start';
     if (hitControl(m.collection, x, y, 0)) return 'collection';
     if (hitControl(m.settings, x, y, 6)) return 'settings';
     if (hitControl(m.rank, x, y, 6)) return 'rank';
@@ -69,15 +69,26 @@
     return null;
   }
 
+  function showCardDetails(d) {
+    S.inspect = d.def;
+    S.inspectT = 1;
+    S.inspectX = d.rect.x;
+    S.inspectY = d.rect.y - 180;
+  }
+
+  function onCardPortrait(d, x, y) {
+    return pointIn({ x: d.rect.x, y: d.rect.y, w: Math.min(47, d.rect.w * 0.27), h: d.rect.h }, x, y);
+  }
+
   function onDown(px, py) {
     shopPressStarted = false;
     down = inInteractiveArea(px, py);
     if (!down) return;
     // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
     if (A.ProfileUI && A.ProfileUI.isOpen()) return;
-    if (S.phase === 'menu' && !S.menuPanel) {
+    if (S.phase === 'menu' && !S.menuPanel && !S.menuSlide) {
       S.menuPressed = menuHitKey(px, py);
-      if (pointIn(L.ui.menu.card, px, py, 0) || pointIn(L.ui.menu.banner, px, py, 0)) {
+      if (pointIn(L.ui.menu.card, px, py, 0)) {
         S.menuSwipe = { startX: px, startY: py, x: px, y: py };
       }
     }
@@ -136,13 +147,18 @@
       startX: px, startY: py,
       active: false,
       holdT: 0,
+      startedAt: A._now ? A._now() : Date.now(),
       rect: hit.rect,
     };
     S.dragging = drag;
   }
 
   function onMove(px, py) {
-    if (down && S.menuSwipe) { S.menuSwipe.x = px; S.menuSwipe.y = py; }
+    if (down && S.menuSwipe) {
+      S.menuSwipe.x = px;
+      S.menuSwipe.y = py;
+      if (Math.abs(px - S.menuSwipe.startX) > MOVE_TOL) S.menuPressed = null;
+    }
     if (S.phase === 'menu' && S.menuPressed && menuHitKey(px, py) !== S.menuPressed) {
       S.menuPressed = null;
     }
@@ -180,9 +196,18 @@
     if (swipe && S.phase === 'menu') {
       var dx = px - swipe.startX;
       var dy = py - swipe.startY;
-      if (Math.abs(dx) >= 36 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+      if (Math.abs(dx) > MOVE_TOL) {
         down = false;
-        A.Game.selectLevel(dx < 0 ? 1 : -1);
+        var horizontal = Math.abs(dx) > Math.abs(dy) * 1.3;
+        var cardW = L.ui.menu.card.w;
+        var edge = dx < 0 ? S.selectedLevel === C.LEVELS.length : S.selectedLevel === 1;
+        var offset = horizontal ? Math.max(-cardW * 0.85, Math.min(cardW * 0.85, dx)) : 0;
+        if (edge) offset *= 0.25;
+        if (horizontal && Math.abs(dx) >= 36 && !edge) {
+          A.Game.selectLevel(dx < 0 ? 1 : -1, offset);
+        } else if (Math.abs(offset) > 0) {
+          A.Game.selectLevel(0, offset);
+        }
         return;
       }
     }
@@ -202,6 +227,9 @@
       if (validShopRelease) tap(px, py);
       return;
     }
+
+    // 忽略没有对应按下动作的抬手事件；触屏浏览器可能补发鼠标事件。
+    if (!down && !drag) return;
 
     down = false;
     if (drag && drag.kind === 'unit' && S.phase === 'paused') {
@@ -280,8 +308,13 @@
       }
     }
     // 拖到战场：直接部署
-    if (!allowed('deploy', { def: d.def, star: d.slot.star || 1 })) return;
-    if (d.active && py < u.tray.y - 4 && inInteractiveArea(px, py)) {
+    if (d.active && py < u.tray.y - 4) {
+      if (!allowed('deploy', { def: d.def, star: d.slot.star || 1 })) return;
+      var reason = A.Battle.deployBlockReason(d.def, px, py);
+      if (reason === 'outside') {
+        S.toastMsg('请拖到高亮战场区域', 1.2);
+        return;
+      }
       if (A.Battle.buyCard(d.index, px, py)) {
         A.GameAudio && A.GameAudio.play('place');
       }
@@ -290,15 +323,19 @@
     // 拖回商店区域松手：什么都不做
     if (d.active) return;
 
-    // 点一下：默认放到战场中下方（省一次拖拽）
-    if (buyAtFreePoint(d)) {
+    // 头像是明确的详情入口；按住卡牌也能查看，不会误购。
+    if (onCardPortrait(d, px, py) ||
+        ((A._now ? A._now() : Date.now()) - d.startedAt) >= LONG_PRESS * 1000) {
+      showCardDetails(d);
+      return;
+    }
+    // 点卡牌文字区：默认放到战场中下方。
+    if (A.Battle.buyCardAtCenter(d.index)) {
+      S.inspect = null;
+      S.inspectT = 0;
       A.GameAudio && A.GameAudio.play('place');
     } else {
-      S.inspect = d.def;
-      S.inspectStar = d.slot.star || 1;
-      S.inspectT = 2.4;
-      S.inspectX = d.rect.x;
-      S.inspectY = d.rect.y - 140;
+      showCardDetails(d);
     }
   }
 

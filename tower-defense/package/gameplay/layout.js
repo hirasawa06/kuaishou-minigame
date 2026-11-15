@@ -275,19 +275,22 @@
     ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
       h: 845 * figmaScale, scale: figmaScale };
     ui.menu = {};
-    ui.menu.avatar = figmaRect(11.44, 45.77, 80.56, 82.4);
-    ui.menu.stamina = figmaRect(93.84, 63.17, 141.9, 45.78);
-    ui.menu.settings = figmaRect(308.98, 45.77, 73.24, 82.4);
-    ui.menu.collection = { x: Math.min(metrics.safeRight - pad - 64, ui.menu.settings.x),
-      y: ui.menu.settings.y + ui.menu.settings.h + 8, w: 64, h: 48 };
-    ui.menu.rank = figmaRect(10.99, 137.32, 82.4, 84.68);
-    ui.menu.banner = figmaRect(8.24, 244.89, 373.06, 64.09);
-    ui.menu.card = figmaRect(8.24, 308.98, 373.06, 286.09);
+    // 顶部四个方牌同尺寸、同列线和同排距；体力胶囊以头像的垂直中心对齐。
+    var navSize = 78, navMargin = 11.5, navRowGap = 12;
+    var navTop = 45.77, navLeft = navMargin, navRight = 390 - navMargin - navSize;
+    var navBottom = navTop + navSize + navRowGap;
+    ui.menu.avatar = figmaRect(navLeft, navTop, navSize, navSize);
+    ui.menu.settings = figmaRect(navRight, navTop, navSize, navSize);
+    ui.menu.rank = figmaRect(navLeft, navBottom, navSize, navSize);
+    ui.menu.collection = figmaRect(navRight, navBottom, navSize, navSize);
+    ui.menu.stamina = figmaRect(navLeft + navSize + 10,
+      navTop + (navSize - 44) / 2, 142, 44);
+    ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
     ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
-    ui.menu.levelStatus = { x: ui.menu.card.x + 56, y: ui.menu.card.y + ui.menu.card.h - 44,
-      w: ui.menu.card.w - 112, h: 36 };
+    ui.menu.levelStatus = { x: ui.menu.card.x + 48, y: ui.menu.card.y + ui.menu.card.h - 82,
+      w: ui.menu.card.w - 96, h: 78 };
     var panelW = Math.min(300, safeW - pad * 2);
     var panelH = Math.min(210, contentH * 0.45);
     ui.menu.panel = { x: metrics.safeLeft + (safeW - panelW) / 2,

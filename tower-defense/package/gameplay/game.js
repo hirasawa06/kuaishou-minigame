@@ -49,7 +49,12 @@
       return false;
     }
     // 资源就绪时若已经开局（极端情况），不要覆盖当前阶段
-    if (S.phase === 'loading') S.phase = 'menu';
+    if (S.phase === 'loading') {
+      // 仅冷启动时根据本地通关记录定位；局内返回首页仍保留玩家所选关卡。
+      var completed = A.Profile && A.Profile.data ? A.Profile.data.completedLevel : 0;
+      S.selectedLevel = S.clamp((completed | 0) + 1, 1, C.LEVELS.length);
+      S.phase = 'menu';
+    }
     return true;
   }
 
@@ -87,7 +92,8 @@
     if (A.Tutorial) A.Tutorial.begin();
     A.GameAudio && A.GameAudio.syncPhase(S.phase);
     syncViewport();
-    S.toastMsg('布阵准备', 1.2);
+    S.toastMsg('守护主人与猫狗的合照', 1.8);
+    A.GameAudio && A.GameAudio.play('start');
   }
 
   function nextLevel() {
@@ -105,12 +111,19 @@
     A.GameAudio && A.GameAudio.play('speed');
   }
 
-  function selectLevel(delta) {
-    if (S.phase !== 'menu' || S.menuStartDelay > 0) return;
-    var previousLevel = S.selectedLevel;
-    S.selectedLevel = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
+  function selectLevel(delta, releaseOffset) {
+    if (S.phase !== 'menu' || S.menuStartDelay > 0 || S.menuSlide) return false;
+    var target = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
+    var cardW = L.ui.menu && L.ui.menu.card ? L.ui.menu.card.w : 300;
+    var offset = releaseOffset || 0;
+    if (target === S.selectedLevel && Math.abs(offset) < 1) return false;
+    S.menuSlide = {
+      from: S.selectedLevel, to: target, offset: offset,
+      end: target === S.selectedLevel ? 0 : (delta > 0 ? -cardW : cardW),
+      elapsed: 0, duration: target === S.selectedLevel ? 0.18 : 0.22,
+    };
     S.menuFeedback = null;
-    if (S.selectedLevel !== previousLevel) A.GameAudio && A.GameAudio.play('select');
+    return true;
   }
 
   function togglePause() {
@@ -171,8 +184,15 @@
   }
 
   function update(dt) {
-    if (S.inspectT > 0) S.inspectT -= dt;
     if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
+    if (S.menuSlide) {
+      S.menuSlide.elapsed += dt;
+      if (S.menuSlide.elapsed >= S.menuSlide.duration) {
+        if (S.selectedLevel !== S.menuSlide.to) A.GameAudio && A.GameAudio.play('select');
+        S.selectedLevel = S.menuSlide.to;
+        S.menuSlide = null;
+      }
+    }
     if (S.shopFeedback && S.shopFeedback.life > 0) S.shopFeedback.life -= dt;
     if (S.phase === 'menu' && S.menuStartDelay > 0) {
       S.menuStartDelay -= dt;
@@ -203,7 +223,6 @@
     var D = A.Render.draw;
     Scene.drawBackground();
     Scene.drawFieldGuides();
-    Scene.drawBase();
 
     var i;
     Scene.drawSpawnHint();
@@ -222,6 +241,8 @@
       if (actors[i].isEnemy) Scene.drawEnemy(actors[i].actor);
       else Scene.drawUnit(actors[i].actor);
     }
+    // 守护物位于战场前景，命中和血量反馈覆盖到合照本体。
+    Scene.drawBase();
     Scene.drawProjectiles();
     Scene.drawEffects();
     Scene.drawFloats();

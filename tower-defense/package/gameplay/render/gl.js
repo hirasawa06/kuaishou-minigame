@@ -1,6 +1,6 @@
 /* gameplay/render/gl.js — 极简 WebGL 1.0 精灵批渲染器 */
 // 只用 gl.* API：单纹理 + 顶点色 + 四边形批处理。
-// mode 0 = 实心圆角矩形/圆，mode 1 = 纹理，mode 2 = 圆环
+// mode 0 = 实心圆角矩形/圆，mode 1 = 纹理，mode 2 = 圆环，mode 3 = 高 alpha 纹理遮罩
 (function () {
   var A = window.AIGCUtils;
 
@@ -32,11 +32,17 @@
     'varying vec3 vShape;',
     'varying float vMode;',
     'uniform sampler2D uTex;',
+    'uniform sampler2D uMaskTex;',
     'uniform float uAdd;',
     'void main() {',
     '  vec4 c = vColor;',
     '  vec2 h = vShape.xy;',
-    '  if (vMode > 0.5 && vMode < 1.5) {',
+    '  if (vMode > 2.5) {',
+    '    vec4 t = texture2D(uTex, vUV);',
+    '    vec4 m = texture2D(uMaskTex, vUV);',
+    '    if (t.a < 0.004 || m.a < 0.5) discard;',
+    '    c = vec4(c.rgb * t.rgb, c.a * t.a);',
+    '  } else if (vMode > 0.5 && vMode < 1.5) {',
     '    vec4 t = texture2D(uTex, vUV);',
     '    if (t.a < 0.004) discard;',
     // 顶点色作为 tint 与贴图颜色相乘：tint 为白色时保留原图配色
@@ -73,6 +79,7 @@
   var ibo = null;
   var whiteTex = null;
   var currentTex = null;
+  var currentMaskTex = null;
   var buffer = new Float32Array(MAX_QUADS * 4 * FLOATS_PER_VERT);
   var quadCount = 0;
   var resW = 1;
@@ -142,6 +149,7 @@
     loc.aMode = gl.getAttribLocation(prog, 'aMode');
     loc.uRes = gl.getUniformLocation(prog, 'uRes');
     loc.uTex = gl.getUniformLocation(prog, 'uTex');
+    loc.uMaskTex = gl.getUniformLocation(prog, 'uMaskTex');
     loc.uAdd = gl.getUniformLocation(prog, 'uAdd');
 
     vbo = gl.createBuffer();
@@ -168,11 +176,16 @@
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.uniform1i(loc.uTex, 0);
+    gl.uniform1i(loc.uMaskTex, 1);
     gl.uniform1f(loc.uAdd, 0);
     currentTex = null;
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, whiteTex);
     currentTex = whiteTex;
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, whiteTex);
+    currentMaskTex = whiteTex;
+    gl.activeTexture(gl.TEXTURE0);
 
     A.Render.gl = gl;
     A.Render.textureFromSource = textureFromSource;
@@ -199,6 +212,17 @@
     flush();
     currentTex = t;
     gl.bindTexture(gl.TEXTURE_2D, t);
+  }
+
+  function setMaskTexture(t) {
+    if (!gl) return;
+    t = t || whiteTex;
+    if (currentMaskTex === t) return;
+    flush();
+    currentMaskTex = t;
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.activeTexture(gl.TEXTURE0);
   }
 
   // opts: { mode, u0,v0,u1,v1, hw, hh, r }
@@ -339,6 +363,7 @@
   A.Render.init = init;
   A.Render.setRes = setRes;
   A.Render.setTexture = setTexture;
+  A.Render.setMaskTexture = setMaskTexture;
   A.Render.invalidateTexture = invalidateTexture;
   A.Render.flush = flush;
   A.Render.beginFrame = beginFrame;

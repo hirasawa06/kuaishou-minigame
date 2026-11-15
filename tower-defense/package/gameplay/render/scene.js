@@ -1,4 +1,4 @@
-/* gameplay/render/scene.js — 战场绘制（背景、基地、单位、敌人、投射物、特效） */
+/* gameplay/render/scene.js — 战场绘制（背景、合照守护物、单位、敌人、投射物、特效） */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
@@ -7,6 +7,13 @@
   var D = A.Render.draw;
   var Assets = A.Assets;
   var SMOKE_FRAMES = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
+  // 正视立绘的可见边界（纹理像素）；统一卡牌、详情与拖拽中的角色视觉大小。
+  var CARD_ART = {
+    tank: { key: 'shield-dog-front', crop: [69, 62, 332, 380] },
+    war: { key: 'melee-cat-front', crop: [37, 28, 407, 434] },
+    arch: { key: 'archer-cat-front', crop: [82, 73, 308, 365] },
+    mage: { key: 'mage-dog-front', crop: [52, 20, 371, 460] },
+  };
 
   var COL = {
     bgTop: D.color('#101a33'),
@@ -37,32 +44,47 @@
 
 
   function heroArt(def, cx, cy, size, alpha, view, facing) {
-    var artKey = null;
-    if (def.id === 'war') artKey = view === 'battle' ? 'melee-cat-back' : 'melee-cat-front';
-    else if (def.id === 'mage') artKey = view === 'battle' ? 'mage-dog-back' : 'mage-dog-front';
+    var card = CARD_ART[def.id];
+    var artKey = view === 'battle'
+      ? (def.id === 'war' ? 'melee-cat-back' : def.id === 'mage' ? 'mage-dog-back' : null)
+      : (card && card.key);
     var art = artKey && Assets.entry(artKey);
     if (art) {
-      var w = size * art.w / art.h;
-      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+      var crop = view === 'battle' ? [0, 0, art.w, art.h] : card.crop;
+      var w = size * crop[2] / crop[3];
+      D.texture(art.tex, art.w, art.h, crop[0], crop[1], crop[2], crop[3],
         cx - w / 2, cy - size / 2, w, size,
         { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha },
         { flipX: facing < 0 });
       return;
     }
-    var atlas = Assets.entry('hero-pets-atlas');
-    var cell = null;
-    if (def.id === 'tank') cell = [0, 0];
-    else if (def.id === 'war') cell = [1, 0];
-    else if (def.id === 'arch') cell = [0, 1];
-    else if (def.id === 'mage') cell = [1, 1];
-    if (!atlas || !cell) {
-      icon(def.icon, cx, cy, size, alpha);
-      return;
+    icon(def.icon, cx, cy, size, alpha);
+  }
+
+  // 背视姿势图只用于战场；卡牌继续使用角色正面图。
+  function battlePose(un, cx, cy, size, alpha) {
+    var id = un.def.id;
+    var state = un.anim === 'hurt' ? 1 : un.anim === 'die' ? 2 : 0;
+    var key = id === 'war' ? 'melee-cat-poses' : id === 'mage' ? 'mage-dog-poses' : null;
+    var art = key && Assets.entry(key);
+    if (art) {
+      var cell = art.w / 3;
+      D.texture(art.tex, art.w, art.h, cell * state, 0, cell, art.h,
+        cx - size / 2, cy - size / 2, size, size,
+        { r: 1, g: 1, b: 1, a: alpha }, { flipX: un.facing < 0 });
+      return true;
     }
-    var cw = atlas.w / 2, ch = atlas.h / 2;
-    D.texture(atlas.tex, atlas.w, atlas.h, cell[0] * cw, cell[1] * ch, cw, ch,
-      cx - size / 2, cy - size / 2, size, size,
-      { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
+    if (id === 'arch' && state === 1) {
+      art = Assets.entry('archer-cat-hurt');
+      if (art) {
+        var w = size * art.w / art.h;
+        D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+          cx - w / 2, cy - size / 2, w, size,
+          { r: 1, g: 1, b: 1, a: alpha }, { flipX: un.facing < 0 });
+        return true;
+      }
+    }
+    return false;
   }
 
   // 治疗角色暂无参考图与专属 Rig：复用心形占位，叠绿色医疗十字便于识别。
@@ -99,23 +121,33 @@
   function drawBase(dt) {
     var u = L.ui;
     var b = u.base;
-    var sofa = Assets.entry('guardian-sofa');
-    if (sofa) {
-      var sofaW = Math.min(b.w * 0.66, b.h * 5);
-      var sofaH = sofaW * sofa.h / sofa.w;
-      // 沙发是独立游戏对象，靠近战场底边；生命条仍实时绘制在它前方。
-      D.texture(sofa.tex, sofa.w, sofa.h, 0, 0, sofa.w, sofa.h,
-        b.x + (b.w - sofaW) / 2, b.y - sofaH * 0.56, sofaW, sofaH);
-    }
     var ratio = Math.max(0, S.baseHp) / C.BASE_HP;
+    // 与战斗中的受击锚点共用 Layout.ui.base，避免敌人攻击血条。
+    var photo = Assets.entry('guardian-photo');
+    var fw = Math.min(112, b.w * 0.29), fh = fw;
+    var fx = b.x + (b.w - fw) / 2, fy = b.y - fh * 0.92;
+    if (photo) {
+      D.texture(photo.tex, photo.w, photo.h, 0, 0, photo.w, photo.h,
+        fx, fy, fw, fh);
+    }
+    if (ratio <= 0.5) {
+      D.roundRect(fx + fw * 0.67, fy + fh * 0.20, 2, fh * 0.40, 1, D.color('#fff8ed', 0.9));
+      D.roundRect(fx + fw * 0.55, fy + fh * 0.60, fw * 0.12, 2, 1, D.color('#fff8ed', 0.9));
+    }
+    if (S.goalHitT > 0) {
+      var flash = Math.min(0.55, S.goalHitT * 1.9);
+      D.roundRect(fx + fw * 0.14, fy + fh * 0.16, fw * 0.72, fh * 0.69,
+        12, D.color('#ff6b68', flash));
+    }
     var bx = b.x + b.w * 0.16, bw = b.w * 0.68;
     var barY = b.y + b.h * 0.69;
     D.roundRect(bx - 4, barY - 4, bw + 8, 18, 9, D.color('#784436', 0.95));
     D.roundRect(bx, barY, bw, 10, 5, COL.hpBack);
     var hpCol = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
     D.roundRect(bx + 1, barY + 1, Math.max(0, (bw - 2) * ratio), 8, 4, hpCol);
+    D.text('合照', bx, barY - 21, 18, COL.textMain, 0);
     D.text(String(Math.ceil(Math.max(0, S.baseHp))), bx + bw - 2, barY - 21, 18, COL.textMain, 2);
-    // 基地范围提示
+    // 守护物受击范围提示
     if (S.shake > 0.05) {
       var a = S.shake * 1.6;
       D.roundRect(b.x, b.y, b.w, b.h, 12, D.color('#ff5a6e', Math.min(0.35, a)));
@@ -296,8 +328,13 @@
       }
     } else if (!levelIdle) {
       var alpha = 0.25 + 0.75 * spawn;
+
+      var poseSize = r * 3.4 * (0.8 + 0.2 * spawn);
       if (d.cls === 'healer') drawHealerPlaceholder(un.x, un.y, size, alpha);
-      else icon(d.icon, un.x, un.y, size, alpha);
+      else if (!battlePose(un, un.x, un.y - r * 0.12, poseSize, alpha)) {
+        heroArt(d, un.x, un.y - r * 0.12, poseSize, alpha, 'battle', un.facing);
+      }
+
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
@@ -499,9 +536,8 @@
     var h = bottom - top;
     if (h <= 0) return;
     // 部署是连续坐标，不绘制虚假的格子。
-    D.roundRect(field.x, top, field.w, h, 8, D.color('#73e5a0', 0.055));
-    D.roundRect(field.x, top, field.w, 2, 1, D.color('#eaffbd', 0.56));
-    D.roundRect(field.x, bottom - 2, field.w, 2, 1, D.color('#eaffbd', 0.56));
+    D.roundRect(field.x, top, field.w, h, 8, D.color('#73e5a0', 0.13));
+    D.strokeRect(field.x, top, field.w, h, 2, D.color('#eaffbd', 0.8));
   }
 
   function drawDragGhost() {

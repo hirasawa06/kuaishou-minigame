@@ -41,6 +41,7 @@
     upgradeUnit: null, // 兼容旧角色详情选中字段；不再允许直接金币升级
     inspectT: 0,
     shake: 0,
+    goalHitT: 0,
     hitstop: 0,
     cardsPlaced: 0,
     assetErrors: [],
@@ -60,6 +61,7 @@
     levelHpScale: 1,
     levelAtkScale: 1,
     menuSwipe: null,
+    menuSlide: null,   // 首页选关吸附动画；切换完成后才更新 selectedLevel
 
     menuStartDelay: 0,
   };
@@ -303,6 +305,7 @@
     S.upgradeUnit = null;
     S.inspectT = 0;
     S.shake = 0;
+    S.goalHitT = 0;
     S.hitstop = 0;
     S.drag = null;
     S.dragging = null;
