@@ -401,6 +401,7 @@
       slow: def.slow || null,
       color: def.color,
       life: 1.6,
+      animT: 0,
     };
     S.projectiles.push(projectile);
     return projectile;
@@ -972,6 +973,7 @@
     for (var i = 0; i < S.projectiles.length; i++) {
       var p = S.projectiles[i];
       p.life -= dt;
+      p.animT += dt;
       var target = null;
       for (var j = 0; j < S.enemies.length; j++) {
         if (S.enemies[j].uid === p.targetUid && !S.enemies[j].dead) {
@@ -992,7 +994,7 @@
         if (p.kind === 'magic') {
           S.addEffect({
             type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
-            life: 0.2, max: 0.2, color: p.color,
+            life: 0.6, max: 0.6, color: p.color,
           });
         }
         else if (p.slow && target) {

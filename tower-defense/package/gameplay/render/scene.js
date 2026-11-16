@@ -173,13 +173,47 @@
     });
   }
 
-  function mageVfx(name, cx, cy, w, h, rot, alpha, tint) {
-    var fx = A.MageVfx && A.MageVfx.effects[name];
-    var tex = Assets.entry('mage-vfx');
-    if (!fx || !tex) return;
-    tint = tint || { r: 1, g: 1, b: 1 };
-    D.sprite(tex.tex, tex.w, tex.h, fx[0], fx[1], fx[2], fx[3], cx, cy, w,
-      { rot: rot || 0, w: w, h: h, tint: { r: tint.r, g: tint.g, b: tint.b, a: alpha } });
+  // GIF 已离线拆为透明 PNG 帧表。按固定节奏取格，飞行距离变化也不会拉伸动画速度。
+  function mageFlightVfx(p, rot, scale, alpha) {
+    var spec = A.MageFlight;
+    var tex = Assets.entry('mage-flight');
+    if (!spec || !tex) return;
+    var index = Math.floor((p.animT || 0) * 1000 / spec.frameMs) % spec.frames;
+    var col = index % spec.cols;
+    var row = Math.floor(index / spec.cols);
+    var cell = spec.cell;
+    var size = 76 * scale;
+    D.sprite(tex.tex, tex.w, tex.h, col * cell, row * cell, cell, cell, p.x, p.y, size, {
+      rot: rot, w: size, h: size, tint: { r: 1, g: 1, b: 1, a: alpha },
+    });
+  }
+
+  // 命中帧表用固定“落地点”锚定。爆发可以向上扩散，但每一帧都从同一个地面原点生长。
+  function mageImpactVfx(e, t, scale, alpha) {
+    var spec = A.MageImpact;
+    var tex = Assets.entry('mage-impact');
+    if (!spec || !tex) return;
+    var index = 0;
+    var timeline = spec.timeline || [];
+    for (var step = 1; step < timeline.length; step++) {
+      if (t >= timeline[step]) index = step;
+    }
+    var col = index % spec.cols;
+    var row = Math.floor(index / spec.cols);
+    var cell = spec.cell;
+    var size = (spec.drawSize || 108) * scale;
+    var anchor = spec.anchor || [cell * 0.5, cell * 0.5];
+    var cy = e.y - (anchor[1] - cell * 0.5) * size / cell;
+    var lastFrame = timeline.length - 1;
+    var fade = 1;
+    if (index === lastFrame) {
+      var finalStart = timeline[lastFrame];
+      var finalDuration = Math.max(0.001, (spec.duration || e.max) - finalStart);
+      fade = Math.max(0, 1 - (t - finalStart) / finalDuration);
+    }
+    D.sprite(tex.tex, tex.w, tex.h, col * cell, row * cell, cell, cell, e.x, cy, size, {
+      w: size, h: size, tint: { r: 1, g: 1, b: 1, a: alpha * fade },
+    });
   }
 
   // 加法混合光斑：rgb 预先乘 alpha，这样加法混合下淡出才不会“越淡越亮”
@@ -205,6 +239,34 @@
 
   function clamp01(value) { return Math.max(0, Math.min(1, value)); }
 
+  function vfxTune(kind) {
+    return kind === 'mage'
+      ? { hue: 266, saturation: 0.76, brightness: 1, alpha: 0.92, blendMode: 1, layers: 2, particles: 18, particleStyle: 0, lightStyle: 0, pulseSpeed: 1, glowScale: 1, scale: 0.6, particleSize: 1, particleSpeed: 1, spread: 1, shape: 0, travel: 1, rotation: 0, drift: 0 }
+      : { hue: 96, saturation: 0.76, brightness: 1, alpha: 0.88, blendMode: 1, layers: 2, particles: 4, particleStyle: 1, lightStyle: 0, pulseSpeed: 1, glowScale: 1, scale: 1, particleSize: 1, particleSpeed: 1, spread: 1, shape: 0, travel: 1, rotation: 0, drift: 0 };
+  }
+
+  function vfxColor(kind, offset, light, fallback) {
+    return fallback;
+  }
+
+  // 统一处理软光、脉冲与光环：层数由外向内叠加，避免为每种效果复制混合逻辑。
+  function tunedLight(x, y, size, color, alpha, config, time, ground) {
+    var pulse = config.lightStyle === 1 ? 0.84 + Math.sin(time * Math.PI * 4 * config.pulseSpeed) * 0.16 : 1;
+    for (var i = 0; i < config.layers; i++) {
+      var layer = 1 - i * 0.19;
+      var layerSize = size * pulse * (1 - i * 0.14) * config.glowScale;
+      if (ground) additiveGroundGlow(x, y, layerSize, layerSize * 0.42, color, alpha * layer * config.alpha);
+      else additiveGlow(x, y, layerSize, color, alpha * layer * config.alpha, 0);
+    }
+    if (config.lightStyle === 2) D.ring(x, y, size * 0.30 * config.glowScale, 1.2, D.color(color, alpha * config.alpha));
+  }
+
+  function tunedParticle(style, x, y, size, color, alpha) {
+    if (style === 1) { drawHealMote(x, y, size, color, alpha); return; }
+    if (style === 2) { D.ring(x, y, size * 0.72, 1.1, D.color(color, alpha)); return; }
+    D.circle(x, y, size * 0.42, D.color(color, alpha));
+  }
+
   function healCastOrigin(unit) {
     var rig = A.Rigs && A.Rigs[unit.rigId || unit.def.id];
     var origin = rig && rig.castOrigin || [0, -unit.def.radius * 0.7];
@@ -219,51 +281,41 @@
   }
 
   function drawHealEffect(e, t, source, target) {
+    var config = vfxTune('healer');
     var from = healCastOrigin(source);
     var tx = target.x, ty = target.y + target.def.radius * 0.22;
-    var travel = clamp01(t / 0.28);
-    var arrive = clamp01((t - 0.14) / 0.28);
+    var travelDuration = 0.28 / config.travel;
+    var travel = clamp01(t / travelDuration);
+    var arrive = clamp01((t - 0.14 / config.travel) / travelDuration);
     var fade = 1 - t;
-    A.Render.setAdditive(true);
-    additiveGlow(from.x, from.y, 15 + t * 8, '#d9ff8a', (1 - travel) * 0.46, 0);
-    for (var i = 0; i < 4; i++) {
+    var core = vfxColor('healer', 0, 0.70, '#a8ef8f');
+    var accent = vfxColor('healer', 52, 0.80, '#ffe4f1');
+    var count = config.particles;
+    A.Render.setAdditive(config.blendMode === 1);
+    tunedLight(from.x, from.y, 15 + t * 8, core, (1 - travel) * 0.46, config, t, false);
+    for (var i = 0; i < count; i++) {
       var p = clamp01(travel * 1.35 - i * 0.16);
-      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7);
+      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7) * config.spread;
       var x = from.x + (tx - from.x) * p + arc;
-      var y = from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9;
-      additiveGlow(x, y, 7 + (i % 2) * 2, i === 0 ? '#ffe4f1' : '#a8ef8f', fade * 0.32, 0);
+      var y = from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9 + config.drift * p * 18;
+      tunedLight(x, y, 7 + (i % 2) * 2, i === 0 ? accent : core, fade * 0.32, config, t + i * 0.08, false);
     }
-    additiveGroundGlow(tx, ty + 4, 18 + arrive * 24, 6 + arrive * 8, '#a8ef8f', arrive * fade * 0.45);
+    tunedLight(tx, ty + 4, 18 + arrive * 24, core, arrive * fade * 0.45, config, t, true);
     A.Render.setAdditive(false);
-    for (var k = 0; k < 4; k++) {
+    for (var k = 0; k < count; k++) {
       var kp = clamp01(travel * 1.35 - k * 0.16);
-      var kArc = Math.sin(kp * Math.PI) * (k % 2 ? 7 : -7);
-      drawHealMote(from.x + (tx - from.x) * kp + kArc,
-        from.y + (ty - from.y) * kp - Math.sin(kp * Math.PI) * 9,
-        3.2 + (k % 2), k === 0 ? '#ffe4f1' : '#a8ef8f', fade * 0.88);
+      var kArc = Math.sin(kp * Math.PI) * (k % 2 ? 7 : -7) * config.spread;
+      tunedParticle(config.particleStyle, from.x + (tx - from.x) * kp + kArc,
+        from.y + (ty - from.y) * kp - Math.sin(kp * Math.PI) * 9 + config.drift * kp * 18,
+        (3.2 + (k % 2)) * config.particleSize, k === 0 ? accent : core, fade * 0.88 * config.alpha);
     }
-    for (var j = 0; j < 3; j++) {
+    var riseCount = count ? Math.min(3, Math.ceil(count * 0.75)) : 0;
+    for (var j = 0; j < riseCount; j++) {
       var rise = clamp01((t - 0.18 - j * 0.06) / 0.24);
       if (rise <= 0) continue;
-      drawHealMote(tx + (j - 1) * 7, ty - 4 - rise * 15, 3, '#d9ffb5', (1 - rise) * fade);
+      tunedParticle(config.particleStyle, tx + (j - 1) * 7, ty - 4 - rise * 15,
+        3 * config.particleSize, core, (1 - rise) * fade * config.alpha);
     }
-  }
-
-  function drawMageImpactParticles(e, t) {
-    var fade = 1 - t;
-    var burst = Math.min(1, t * 2.4);
-    A.Render.setAdditive(true);
-    additiveGroundGlow(e.x, e.y + 4, 42 + burst * 108, 20 + burst * 52, '#7130ff', fade * 0.92);
-    additiveGroundGlow(e.x, e.y + 4, 20 + burst * 58, 9 + burst * 28, '#d8baff', fade * 0.56);
-    for (var i = 0; i < 18; i++) {
-      var angle = i * Math.PI * 2 / 18 + 0.38;
-      var distance = 8 + burst * (44 + (i % 4) * 9);
-      var px = e.x + Math.cos(angle) * distance;
-      var py = e.y + 4 + Math.sin(angle) * distance * 0.52;
-      var color = i % 4 === 0 ? '#f2dcff' : '#b368ff';
-      additiveGlow(px, py, 7 + (i % 3) * 2, color, fade * (0.72 - (i % 3) * 0.08), 0);
-    }
-    A.Render.setAdditive(false);
   }
 
   function drawUnit(un) {
@@ -318,10 +370,11 @@
         D.circle(p.x, p.y, 6, D.color(p.color, 0.55));
         D.circle(p.x, p.y, 3.4, D.color('#ffd9a0'));
       } else if (p.kind === 'magic') {
+        var magicConfig = vfxTune('mage');
         var mdx = p.tx - p.x, mdy = p.ty - p.y;
         // 源图的北向是画面上方；从这个基准绕中心转向实际目标方向。
         var magicRot = Math.atan2(mdy, mdx) + Math.PI / 2;
-        mageVfx('flight', p.x, p.y, 58, 88, magicRot, 1);
+        mageFlightVfx(p, magicRot, magicConfig.scale, magicConfig.alpha);
       } else {
         D.circle(p.x, p.y, 5.6, D.color(p.color, 0.6));
         D.circle(p.x, p.y, 3, D.color('#e6fbff'));
@@ -372,11 +425,8 @@
         if (!source || !target) continue;
         drawHealEffect(e, t, source, target);
       } else if (e.type === 'mage-biscuit-impact') {
-        // 贴图只含饼干和实体碎块；紫色地面能量全部由运行时粒子负责。
-        var biscuitSize = (e.r || 34) * (1.85 + t * 0.28);
-        drawMageImpactParticles(e, t);
-        // 饼干是命中残留物：保持完整 0.2 秒，到时由效果生命周期直接移除。
-        mageVfx('impact', e.x, e.y + 3, biscuitSize, biscuitSize * 0.92, 0, 1);
+        var mageConfig = vfxTune('mage');
+        mageImpactVfx(e, t, mageConfig.scale, mageConfig.alpha);
       } else if (e.type === 'smoke') {
         var smokeIndex = smokeFrame(t);
         var sp = Assets.sprite(smokeFrames[smokeIndex]);
@@ -406,7 +456,7 @@
     var a = (1 - t) * 0.95;
     var c = D.color(e.color, 1);
     var size = 40 - t * 10;
-    A.Render.setAdditive(true);
+    A.Render.setAdditive(config.blendMode === 1);
     D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, px, py, size, {
       rot: rot,
       w: size,

@@ -14,7 +14,7 @@ import json
 import math
 import os
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +29,7 @@ COLS = 8
 ROWS = 8
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
-ATLAS_VERSION = 15
+ATLAS_VERSION = 16
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICON_BOXES = {
@@ -80,9 +80,20 @@ DEFEAT_SMOKE = [
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-02.png"),
 ]
 DEFEAT_SMOKE_SIZES = [CELL - 2 * PAD, CELL - 2 * PAD]
-MAGE_BISCUIT_VFX = os.path.join(SRC_DIR, "effects", "mage-biscuit", "mage-biscuit-vfx-v5.png")
-MAGE_BISCUIT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-vfx.png")
-MAGE_VFX_CELL = 256
+MAGE_FLIGHT_GIF = os.path.join(SRC_DIR, "effects", "mage-biscuit-flight", "mage-biscuit-flight-v1.gif")
+MAGE_FLIGHT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-flight.png")
+MAGE_FLIGHT_CELL = 128
+MAGE_FLIGHT_COLS = 4
+MAGE_IMPACT_STRIP = os.path.join(SRC_DIR, "effects", "mage-biscuit-impact", "mage-biscuit-impact-v2.png")
+MAGE_IMPACT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-impact.png")
+MAGE_IMPACT_CELL = 160
+MAGE_IMPACT_COLS = 4
+MAGE_IMPACT_FRAME = (96, 128)
+MAGE_IMPACT_PAD = 16
+MAGE_IMPACT_LEFT_EDGE_FADE = 26
+MAGE_IMPACT_RIGHT_EDGE_FADE = 14
+MAGE_IMPACT_ANCHOR = (80, 108)
+MAGE_IMPACT_DRAW_SIZE = 150
 
 
 # ─────────────────────────────────────────── 图像归一化
@@ -237,35 +248,87 @@ def make_glow(size=96):
     return img
 
 
-def mage_biscuit_texture():
-    """导出双格特效：飞弹保留，落地格只保留饼干本体与实体碎块。"""
-    sheet = Image.open(MAGE_BISCUIT_VFX).convert("RGBA")
-    split = int(round(sheet.width * 0.36))
-    out = Image.new("RGBA", (MAGE_VFX_CELL * 2, MAGE_VFX_CELL), (0, 0, 0, 0))
-
-    def pack(src, x):
-        rgba = np.asarray(src)
-        ys, xs = np.where(rgba[:, :, 3] >= 16)
-        if len(xs) == 0:
-            raise ValueError("法师饼干特效帧为空")
-        crop = src.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
-        scale = min((MAGE_VFX_CELL - 32) / crop.width, (MAGE_VFX_CELL - 32) / crop.height)
+def mage_flight_texture():
+    """把用户确认的 GIF 拆为共享锚点的透明 PNG 帧表，运行时逐格播放。"""
+    source = Image.open(MAGE_FLIGHT_GIF)
+    frames = []
+    for index in range(source.n_frames):
+        source.seek(index)
+        frames.append(source.convert("RGBA").copy())
+    alpha = np.maximum.reduce([np.asarray(frame)[:, :, 3] for frame in frames])
+    ys, xs = np.where(alpha >= 16)
+    if len(xs) == 0:
+        raise ValueError("法师飞行 GIF 没有可见内容")
+    # 所有帧共用同一个裁切与缩放，避免飞行时因逐帧裁切产生跳动。
+    bbox = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    crop_w, crop_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    scale = min((MAGE_FLIGHT_CELL - 16) / crop_w, (MAGE_FLIGHT_CELL - 16) / crop_h)
+    cols = MAGE_FLIGHT_COLS
+    rows = math.ceil(len(frames) / cols)
+    sheet = Image.new("RGBA", (cols * MAGE_FLIGHT_CELL, rows * MAGE_FLIGHT_CELL), (0, 0, 0, 0))
+    for index, frame in enumerate(frames):
+        crop = frame.crop(bbox)
         size = (max(1, round(crop.width * scale)), max(1, round(crop.height * scale)))
         crop = crop.resize(size, Image.LANCZOS)
-        out.alpha_composite(crop, (x + (MAGE_VFX_CELL - crop.width) // 2,
-                                  (MAGE_VFX_CELL - crop.height) // 2))
-
-    pack(sheet.crop((0, 0, split, sheet.height)), 0)
-    pack(sheet.crop((split, 0, sheet.width, sheet.height)), MAGE_VFX_CELL)
-    out.save(MAGE_BISCUIT_TEXTURE)
+        col, row = index % cols, index // cols
+        x = col * MAGE_FLIGHT_CELL + (MAGE_FLIGHT_CELL - crop.width) // 2
+        y = row * MAGE_FLIGHT_CELL + (MAGE_FLIGHT_CELL - crop.height) // 2
+        sheet.alpha_composite(crop, (x, y))
+    sheet.save(MAGE_FLIGHT_TEXTURE, optimize=True, compress_level=9)
     return {
-        "src": "res/Image/mage-biscuit-vfx.png?v=5",
-        "texW": MAGE_VFX_CELL * 2,
-        "texH": MAGE_VFX_CELL,
-        "effects": {
-            "flight": [0, 0, MAGE_VFX_CELL, MAGE_VFX_CELL],
-            "impact": [MAGE_VFX_CELL, 0, MAGE_VFX_CELL, MAGE_VFX_CELL],
-        },
+        "src": "res/Image/mage-biscuit-flight.png?v=1",
+        "texW": sheet.width,
+        "texH": sheet.height,
+        "cell": MAGE_FLIGHT_CELL,
+        "cols": cols,
+        "frames": len(frames),
+        "frameMs": source.info.get("duration", 80),
+    }
+
+
+def fade_frame_edges(frame, left=MAGE_IMPACT_LEFT_EDGE_FADE, right=MAGE_IMPACT_RIGHT_EDGE_FADE):
+    """把横向拼接图的硬边融为透明，避免烟尘在帧边界被截成直线。"""
+    mask = Image.new("L", frame.size, 255)
+    draw = ImageDraw.Draw(mask)
+    for offset in range(left):
+        alpha = int(255 * offset / left)
+        draw.line((offset, 0, offset, frame.height), fill=alpha)
+    for offset in range(right):
+        alpha = int(255 * offset / right)
+        draw.line((frame.width - 1 - offset, 0, frame.width - 1 - offset, frame.height), fill=alpha)
+    frame.putalpha(ImageChops.multiply(frame.getchannel("A"), mask))
+    return frame
+
+
+def mage_impact_texture():
+    """切分四段落地序列，保留安全边并以同一落地点对齐所有帧。"""
+    source = Image.open(MAGE_IMPACT_STRIP).convert("RGBA")
+    cols = MAGE_IMPACT_COLS
+    if source.width % cols:
+        raise ValueError("法师落地序列宽度必须能被四段整除")
+    panel_w = source.width // cols
+    sheet = Image.new("RGBA", (cols * MAGE_IMPACT_CELL, MAGE_IMPACT_CELL), (0, 0, 0, 0))
+    # ── 拼接源安全区 ─────────────────────────────────────────────
+    # 源图并非四张独立 PNG，烟尘和外发光压在横向分格边缘。
+    # 先在内容区将硬边渐隐，再放进带透明边距的公共画布；不可逐帧追踪重心。
+    for index in range(cols):
+        panel = source.crop((index * panel_w, 0, (index + 1) * panel_w, source.height))
+        frame = panel.resize(MAGE_IMPACT_FRAME, Image.LANCZOS)
+        frame = fade_frame_edges(frame)
+        x = index * MAGE_IMPACT_CELL + (MAGE_IMPACT_CELL - frame.width) // 2
+        sheet.alpha_composite(frame, (x, MAGE_IMPACT_PAD))
+    sheet.save(MAGE_IMPACT_TEXTURE, optimize=True, compress_level=9)
+    return {
+        "src": "res/Image/mage-biscuit-impact.png?v=10",
+        "texW": sheet.width,
+        "texH": sheet.height,
+        "cell": MAGE_IMPACT_CELL,
+        "cols": cols,
+        "frames": cols,
+        "timeline": [0, 0.08, 0.28, 0.44],
+        "duration": 0.60,
+        "anchor": list(MAGE_IMPACT_ANCHOR),
+        "drawSize": MAGE_IMPACT_DRAW_SIZE,
     }
 
 
@@ -480,15 +543,17 @@ def build():
     return data
 
 
-def write_rigs(atlas_data, mage_vfx):
+def write_rigs(atlas_data, mage_flight, mage_impact):
     src = os.path.join(DATA_DIR, "rigs.js")
     with open(src, "w", encoding="utf-8") as f:
         f.write("/* 由 tools/gen-shiba-atlas.py 生成，请勿手改 */\n")
         f.write("(function () {\n  var A = window.AIGCUtils = window.AIGCUtils || {};\n")
         f.write("  A.GameAtlas = " + json.dumps(atlas_data, ensure_ascii=False,
                                             separators=(",", ":")) + ";\n")
-        f.write("  A.MageVfx = " + json.dumps(mage_vfx, ensure_ascii=False,
-                                                 separators=(",", ":")) + ";\n")
+        f.write("  A.MageFlight = " + json.dumps(mage_flight, ensure_ascii=False,
+                                                    separators=(",", ":")) + ";\n")
+        f.write("  A.MageImpact = " + json.dumps(mage_impact, ensure_ascii=False,
+                                                    separators=(",", ":")) + ";\n")
         f.write("})();\n")
     return src
 
@@ -515,9 +580,10 @@ if __name__ == "__main__":
     os.makedirs(IMG_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
     data = build()
-    mage_vfx = mage_biscuit_texture()
-    rigs_path = write_rigs(data, mage_vfx)
+    mage_flight = mage_flight_texture()
+    mage_impact = mage_impact_texture()
+    rigs_path = write_rigs(data, mage_flight, mage_impact)
     spec_path = write_character_animations()
-    print(json.dumps({"atlas": data["src"], "cells": len(data["icons"]), "mageVfx": mage_vfx["src"],
+    print(json.dumps({"atlas": data["src"], "cells": len(data["icons"]), "mageFlight": mage_flight["src"], "mageImpact": mage_impact["src"],
                       "rigs": os.path.relpath(rigs_path, ROOT),
                       "animations": os.path.relpath(spec_path, ROOT)}, ensure_ascii=False))

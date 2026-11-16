@@ -12,7 +12,7 @@
   }
 
   var S = {
-    phase: 'loading',  // loading / menu / playing / paused / win / lose / error
+    phase: 'loading',  // loading / menu / playing / paused / win / lose / vfxLab / error
     time: 0,
     gold: C.GOLD_START,
     baseHp: C.BASE_HP,

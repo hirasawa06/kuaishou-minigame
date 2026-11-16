@@ -86,8 +86,10 @@
     }
     // 战斗图集（单位、常规特效、继承图标都在这张里）
     if (A.GameAtlas && A.GameAtlas.src) manifest.push(['game', A.GameAtlas.src]);
-    // 法师落地贴图只保留饼干与碎块，紫色能量由运行时粒子生成。
-    if (A.MageVfx && A.MageVfx.src) manifest.push(['mage-vfx', A.MageVfx.src]);
+    // 法师飞行特效为 GIF 拆出的透明 PNG 帧表；主包不加载 GIF 解码器。
+    if (A.MageFlight && A.MageFlight.src) manifest.push(['mage-flight', A.MageFlight.src]);
+    // 落地爆发同样使用固定原点的 PNG 帧表，避免原 GIF 的镜头漂移。
+    if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
     // 首页美术（进入游戏前的客厅场景）
     manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
