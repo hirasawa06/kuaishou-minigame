@@ -86,22 +86,45 @@
     }
     // 战斗图集（单位、常规特效、继承图标都在这张里）
     if (A.GameAtlas && A.GameAtlas.src) manifest.push(['game', A.GameAtlas.src]);
-    // 法师飞行特效为 GIF 拆出的透明 PNG 帧表；主包不加载 GIF 解码器。
+    // 法师飞行与落地均使用离线生成的透明 PNG 帧表，运行时无需解码 GIF。
     if (A.MageFlight && A.MageFlight.src) manifest.push(['mage-flight', A.MageFlight.src]);
-    // 落地爆发同样使用固定原点的 PNG 帧表，避免原 GIF 的镜头漂移。
     if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
-    // 首页美术（进入游戏前的客厅场景）
-    manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
     manifest.push(['avatars', 'res/Menu/avatars.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
     if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
-    manifest.push(['figma-home', 'res/Image/figma-home.jpg']);
-    manifest.push(['home-start-button', 'res/Image/home-start-button.png']);
-    manifest.push(['home-avatar-button', 'res/Image/home-avatar-button.png']);
-    manifest.push(['home-settings-button', 'res/Image/home-settings-button.png']);
-    manifest.push(['home-rank-button', 'res/Image/home-rank-button.png']);
-    manifest.push(['home-stamina-button', 'res/Image/home-stamina-button.png']);
+    if (A.HeroForms) {
+      manifest.push(['hero-levels', A.HeroForms.src]);
+      manifest.push(['hero-levels-back', A.HeroForms.backSrc]);
+    }
+    manifest.push(['home-background-clean', 'res/Image/home-background-clean-v2.png']);
+    manifest.push(['home-level-card-no-banner', 'res/Image/home-level-card-no-banner-v1.png']);
+    manifest.push(['home-level-frame-overlay', 'res/Image/home-level-frame-overlay-v1.png']);
+    manifest.push(['home-level-arrows', 'res/Image/home-level-arrows-v1.png']);
+    manifest.push(['home-level-arrows-disabled', 'res/Image/home-level-arrows-disabled-v1.png']);
+    manifest.push(['home-level-nameplate', 'res/Image/home-level-nameplate-v1.png']);
+    manifest.push(['home-level-lock', 'res/Image/home-level-lock-v1.png']);
+    manifest.push(['home-menu-icons', 'res/Image/home-menu-icons-v1.png']);
+    manifest.push(['home-start-paw', 'res/Image/home-start-paw-v1.png']);
+    manifest.push(['in-game-background', 'res/Image/in-game-background-topdown.png']);
+    manifest.push(['guardian-photo', 'res/Image/guardian-photo-v1.png']);
+
+    manifest.push(['enemy-furniture-atlas', 'res/Image/enemy-furniture-atlas.png']);
+    manifest.push(['lamp-small', 'res/Image/lamp-small.png']);
+    manifest.push(['shield-dog-front', 'res/Image/shield-dog-front.png']);
+    manifest.push(['archer-cat-front', 'res/Image/archer-cat-front.png']);
+    manifest.push(['melee-cat-poses', 'res/Image/melee-cat-poses.png']);
+    manifest.push(['mage-dog-poses', 'res/Image/mage-dog-poses.png']);
+    manifest.push(['archer-cat-hurt', 'res/Image/archer-cat-hurt.png']);
+    manifest.push(['melee-cat-front', 'res/Image/melee-cat-front.png']);
+    manifest.push(['melee-cat-back', 'res/Image/melee-cat-back.png']);
+    manifest.push(['mage-dog-front', 'res/Image/mage-dog-front.png']);
+    manifest.push(['mage-dog-back', 'res/Image/mage-dog-back.png']);
+    manifest.push(['battle-fx-atlas', 'res/Image/battle-fx-atlas.png']);
+    manifest.push(['hud-panel', 'res/Image/hud-panel.png']);
+    manifest.push(['shop-tray', 'res/Image/shop-tray.png']);
+    manifest.push(['shop-button', 'res/Image/shop-button.png']);
+
     pending = manifest.length;
     for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);
     if (pending === 0) check();

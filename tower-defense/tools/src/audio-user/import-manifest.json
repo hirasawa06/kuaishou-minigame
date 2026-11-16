@@ -1,0 +1,421 @@
+{
+  "source": "/Users/wangyuzhe06/Doubao/chats/2026-11-10/new-chat/猫狗大战家具_音频包.zip",
+  "seed": 20261110,
+  "music_policy": "one randomly selected version per scene at import; all source variants retained outside package",
+  "sfx_policy": "all three versions available for runtime random selection",
+  "files": [
+    {
+      "key": "arrow",
+      "version": 1,
+      "file": "arrow.mp3",
+      "bytes": 2759,
+      "source_sha256": "84ac283db446c40336075470122c6cf14138f38612198c62e2fb6a8cae8abb37"
+    },
+    {
+      "key": "arrow",
+      "version": 2,
+      "file": "arrow-v2.mp3",
+      "bytes": 2759,
+      "source_sha256": "93fc39a60e93166649d40500dbca1dc9ba638c2a837f99687de48f037cc3e695"
+    },
+    {
+      "key": "arrow",
+      "version": 3,
+      "file": "arrow-v3.mp3",
+      "bytes": 2759,
+      "source_sha256": "33d68c7b07dddd32e347c05f87a0eea3a09eae3efe5c6884d74dd8888b4cc774"
+    },
+    {
+      "key": "base",
+      "version": 1,
+      "file": "base.mp3",
+      "bytes": 3386,
+      "source_sha256": "548be70676a2f6c0802676f935c812dbf0f4490393bf8310064059285203bc29"
+    },
+    {
+      "key": "base",
+      "version": 2,
+      "file": "base-v2.mp3",
+      "bytes": 5267,
+      "source_sha256": "5e7705b7050f0c92c4ca871a17d5652e4e440e33ea61b29cf6a742ee46dfc28f"
+    },
+    {
+      "key": "base",
+      "version": 3,
+      "file": "base-v3.mp3",
+      "bytes": 4013,
+      "source_sha256": "272e3c76f9b6afd5067cd5e5742f7460f8fdb9ae05b69fb925c6c262cec0222e"
+    },
+    {
+      "key": "bgm",
+      "version": 2,
+      "file": "bgm.mp3",
+      "bytes": 748191,
+      "source_sha256": "4450e8e7aa456d296683c623a92fd88121f22ea8d65bd7601923b611f4cab5f3"
+    },
+    {
+      "key": "bgm-home",
+      "version": 3,
+      "file": "bgm-home.mp3",
+      "bytes": 738003,
+      "source_sha256": "046850d93fd57a5e81cf1886a45796cffc33efc1742b834d2b03502d5594c76a"
+    },
+    {
+      "key": "boss",
+      "version": 1,
+      "file": "boss.mp3",
+      "bytes": 14253,
+      "source_sha256": "dcec0f12ea0e4334e50baed72298fe3fcd7bb712deeca3bf0ec6e9c79f9d7325"
+    },
+    {
+      "key": "boss",
+      "version": 2,
+      "file": "boss-v2.mp3",
+      "bytes": 14253,
+      "source_sha256": "3c548677272c37db4247b8e83c7b16b3dc71b628f4f4200b39092e310fa4f338"
+    },
+    {
+      "key": "boss",
+      "version": 3,
+      "file": "boss-v3.mp3",
+      "bytes": 7775,
+      "source_sha256": "d98c4c227a23e7e7440148f7e20498be4fef5a29762bcc7f2df6c57843e6ead7"
+    },
+    {
+      "key": "discard",
+      "version": 1,
+      "file": "discard.mp3",
+      "bytes": 4222,
+      "source_sha256": "a1071c4794924feea97ca541f9bb6a53b67e68a3b730ae7e0e372f93fea3e290"
+    },
+    {
+      "key": "discard",
+      "version": 2,
+      "file": "discard-v2.mp3",
+      "bytes": 4222,
+      "source_sha256": "c647ab8685925eaa67fc7a8cd0104ae210cfe3e4239c15938901b439e08e53c1"
+    },
+    {
+      "key": "discard",
+      "version": 3,
+      "file": "discard-v3.mp3",
+      "bytes": 4222,
+      "source_sha256": "16837e0ef0f383a57b389824b246352cb8ad7d079eb489d80a240a8776420da8"
+    },
+    {
+      "key": "enemy-death",
+      "version": 1,
+      "file": "enemy-death.mp3",
+      "bytes": 5058,
+      "source_sha256": "abbce56a7cd45a53bb9a38af1dac1484adb211126f253f3663501100420e5197"
+    },
+    {
+      "key": "enemy-death",
+      "version": 2,
+      "file": "enemy-death-v2.mp3",
+      "bytes": 4222,
+      "source_sha256": "4cc6b63f9aabe3c7c3420a2df629015aaa24bf1675ca14ab59b343b8eebc021d"
+    },
+    {
+      "key": "enemy-death",
+      "version": 3,
+      "file": "enemy-death-v3.mp3",
+      "bytes": 5058,
+      "source_sha256": "d2a84a39b2b491d9f726400b8c1b7144088fdd0f097b0156154089edb6529fbf"
+    },
+    {
+      "key": "enemy-hit",
+      "version": 1,
+      "file": "enemy-hit.mp3",
+      "bytes": 2550,
+      "source_sha256": "2f8f0757d2caf5700ee4627d8244eb764b2099ba4a6bd98c939d7356047f8518"
+    },
+    {
+      "key": "enemy-hit",
+      "version": 2,
+      "file": "enemy-hit-v2.mp3",
+      "bytes": 2550,
+      "source_sha256": "02eded2d702bc9577b6ef1d61a82e1cfc5568e49b468d833425ec2990d4edf01"
+    },
+    {
+      "key": "enemy-hit",
+      "version": 3,
+      "file": "enemy-hit-v3.mp3",
+      "bytes": 2550,
+      "source_sha256": "bb3c341731e899c22269c64353cd3b188c5f1d67fb4746cd8f44db4b899b6672"
+    },
+    {
+      "key": "expand",
+      "version": 1,
+      "file": "expand.mp3",
+      "bytes": 5894,
+      "source_sha256": "37cffbf32e52a0ad90a080d430fbb55d887cea7088e7e5f01e4c049d89967edb"
+    },
+    {
+      "key": "expand",
+      "version": 2,
+      "file": "expand-v2.mp3",
+      "bytes": 5476,
+      "source_sha256": "4796d08ca3b28706783dd42ed155ab551d8717086a9dc0e4570379faa5878f88"
+    },
+    {
+      "key": "expand",
+      "version": 3,
+      "file": "expand-v3.mp3",
+      "bytes": 6939,
+      "source_sha256": "26a1cd86c867018df87a5804621e37820e754825ffaed3cb95b59b79ed85cdad"
+    },
+    {
+      "key": "heal",
+      "version": 1,
+      "file": "heal.mp3",
+      "bytes": 7148,
+      "source_sha256": "f5002776cd8b573f8ea0d411d8682dc054e534175e7543539ac31577f05cf97f"
+    },
+    {
+      "key": "heal",
+      "version": 2,
+      "file": "heal-v2.mp3",
+      "bytes": 7148,
+      "source_sha256": "85012c2d2ed941ee2cac7680318ba8ffba2924892c9e73eae605b0a291df4501"
+    },
+    {
+      "key": "heal",
+      "version": 3,
+      "file": "heal-v3.mp3",
+      "bytes": 7357,
+      "source_sha256": "a1bd72ad579eeeb30daa09fad710b9c3df3a69aa42cf1dfa51f42c51faf80473"
+    },
+    {
+      "key": "hit",
+      "version": 1,
+      "file": "hit.mp3",
+      "bytes": 1923,
+      "source_sha256": "f2815de3bd70beaffbfdd780a2b502b2e3c7e10e2c2416085aa1a9934474fc2d"
+    },
+    {
+      "key": "hit",
+      "version": 2,
+      "file": "hit-v2.mp3",
+      "bytes": 2132,
+      "source_sha256": "204e7dac0eb65e5a8d00746b8294ea4ebfc141741a0c1c416a12d22bb1f57c41"
+    },
+    {
+      "key": "hit",
+      "version": 3,
+      "file": "hit-v3.mp3",
+      "bytes": 2968,
+      "source_sha256": "ba6d96516b0aab93bdfaf1e17da186ce5d64676c07002854c5add3ec2d43a28e"
+    },
+    {
+      "key": "lose",
+      "version": 1,
+      "file": "lose.mp3",
+      "bytes": 15089,
+      "source_sha256": "e30a4c2f8c1b609075a759d93a8345c3bc3de7107f3f0dfc6cccf05c285787fd"
+    },
+    {
+      "key": "lose",
+      "version": 2,
+      "file": "lose-v2.mp3",
+      "bytes": 15089,
+      "source_sha256": "c27dbf7a61e88da465839fcc293430132f0f5772625dd3539625940361e6b5de"
+    },
+    {
+      "key": "lose",
+      "version": 3,
+      "file": "lose-v3.mp3",
+      "bytes": 15089,
+      "source_sha256": "84ea063a9b27d5dff307dd8919f11a15aa2032467ebd54ee9b2aa80a5f5fbce5"
+    },
+    {
+      "key": "magic",
+      "version": 1,
+      "file": "magic.mp3",
+      "bytes": 7357,
+      "source_sha256": "ad6e1ae7ba4c15207c2a30422d98b9ff2b7e438dc0c64ca41acfd6df0f9f7f95"
+    },
+    {
+      "key": "magic",
+      "version": 2,
+      "file": "magic-v2.mp3",
+      "bytes": 7357,
+      "source_sha256": "57028f40dc92e7a3ce223c8ffae3551b4a3de5e98cb7b85eac74841f4aba9f90"
+    },
+    {
+      "key": "magic",
+      "version": 3,
+      "file": "magic-v3.mp3",
+      "bytes": 6939,
+      "source_sha256": "14019b26824508a0fd36eb784bc3c72d3ce420a8b1274d5fdf29de9e9eb161b5"
+    },
+    {
+      "key": "place",
+      "version": 1,
+      "file": "place.mp3",
+      "bytes": 4640,
+      "source_sha256": "1c7ef03b038ff28169a0cbae3573377590c773ef54a8be7022ad7734f833ee0f"
+    },
+    {
+      "key": "place",
+      "version": 2,
+      "file": "place-v2.mp3",
+      "bytes": 4640,
+      "source_sha256": "aded5dfd6fb673855676873da92a31b04931edad486fb37dca67a1ea5136a6a4"
+    },
+    {
+      "key": "place",
+      "version": 3,
+      "file": "place-v3.mp3",
+      "bytes": 4640,
+      "source_sha256": "9e300e48f8ee5aa82bbdf8257157650f6ce064ab45e12b1eb01e7d3a698c657f"
+    },
+    {
+      "key": "select",
+      "version": 1,
+      "file": "select.mp3",
+      "bytes": 2968,
+      "source_sha256": "d291ed29ba888109a8601c58b9c18d1539b767b08643c90e8cfb238242ce9c03"
+    },
+    {
+      "key": "select",
+      "version": 2,
+      "file": "select-v2.mp3",
+      "bytes": 2968,
+      "source_sha256": "a9ab97cb9b0c6224d1ccf4bf3108c795dc18751b4e7f6740704c4392663e96ba"
+    },
+    {
+      "key": "select",
+      "version": 3,
+      "file": "select-v3.mp3",
+      "bytes": 2968,
+      "source_sha256": "8b034b6e82b0ef006406021096c91b23c0d47735f3872bc53fb809a7576daca4"
+    },
+    {
+      "key": "sell",
+      "version": 1,
+      "file": "sell.mp3",
+      "bytes": 5058,
+      "source_sha256": "cff3b43026ab8d61d6832a5af191e9ba9d00615f3b1d37accc574d91f133cece"
+    },
+    {
+      "key": "sell",
+      "version": 2,
+      "file": "sell-v2.mp3",
+      "bytes": 4013,
+      "source_sha256": "565c83ac3e0e40c26e8c59498d3cf311e585a65d21d679d92d37e9d124e9a395"
+    },
+    {
+      "key": "sell",
+      "version": 3,
+      "file": "sell-v3.mp3",
+      "bytes": 3177,
+      "source_sha256": "a45b8cb666f6e384eead610804d8953ed0054affabdd075e5ef018706cc47fca"
+    },
+    {
+      "key": "speed",
+      "version": 1,
+      "file": "speed.mp3",
+      "bytes": 3804,
+      "source_sha256": "8213a2fc7f419461df22c3bf50cf8e4f913b20b0f33eb6093c9edb33b3855b03"
+    },
+    {
+      "key": "speed",
+      "version": 2,
+      "file": "speed-v2.mp3",
+      "bytes": 3804,
+      "source_sha256": "357fa95350b8e6ee3ec8a799f7f43c95409aa2a0530bfa52f389ed435224aafc"
+    },
+    {
+      "key": "speed",
+      "version": 3,
+      "file": "speed-v3.mp3",
+      "bytes": 3804,
+      "source_sha256": "db2dfe227db062e0493d017415b97afdb4c9153ce8a4813c020c0381dde57c13"
+    },
+    {
+      "key": "start",
+      "version": 1,
+      "file": "start.mp3",
+      "bytes": 10909,
+      "source_sha256": "1479cf4307b083b9f16b4a15a61d9359fd589fc33c33342614c709ec80147d1c"
+    },
+    {
+      "key": "start",
+      "version": 2,
+      "file": "start-v2.mp3",
+      "bytes": 7775,
+      "source_sha256": "ca383263bb139cf3f3fc37a185d006cff1e88da1c8a96fbee814b382884ded32"
+    },
+    {
+      "key": "start",
+      "version": 3,
+      "file": "start-v3.mp3",
+      "bytes": 10909,
+      "source_sha256": "270f74334dcbd2dc3e7db07d3c5547302420ff930c2642c0de80186aae94e9ec"
+    },
+    {
+      "key": "ui-click",
+      "version": 1,
+      "file": "ui-click.mp3",
+      "bytes": 2132,
+      "source_sha256": "e783b1495fbadf82405ffa5cc04afe4f79ab06b9a35a5f8050939b61b1bb7c4c"
+    },
+    {
+      "key": "ui-click",
+      "version": 2,
+      "file": "ui-click-v2.mp3",
+      "bytes": 2132,
+      "source_sha256": "e9e331f72c650dc8f5a8ea8457903336a4f062f8558278e39ab35a87173de9f9"
+    },
+    {
+      "key": "ui-click",
+      "version": 3,
+      "file": "ui-click-v3.mp3",
+      "bytes": 2132,
+      "source_sha256": "85308c90806ac38d97f7b3fdb74a06f0bc5eb270005345958fb53ed7cf999f17"
+    },
+    {
+      "key": "wave",
+      "version": 1,
+      "file": "wave.mp3",
+      "bytes": 6312,
+      "source_sha256": "20434bddf3a482a48089882dd021a1e98575220cf3fc704d31ced3bd31c5beac"
+    },
+    {
+      "key": "wave",
+      "version": 2,
+      "file": "wave-v2.mp3",
+      "bytes": 7357,
+      "source_sha256": "d46cf3b724f41def74d7ecd79dc06363ec1ec1a81ee6c9daf349e7f0079f40d4"
+    },
+    {
+      "key": "wave",
+      "version": 3,
+      "file": "wave-v3.mp3",
+      "bytes": 7148,
+      "source_sha256": "217a7e3e0d32b77d8f9219e49bb29142948c1cf4907e8643e1203bfa3f562ab3"
+    },
+    {
+      "key": "win",
+      "version": 1,
+      "file": "win.mp3",
+      "bytes": 15925,
+      "source_sha256": "fb4acf67ea4ea76a0796504d85cb43855acdb5b9b9882fd12e8ec0a81a7fa771"
+    },
+    {
+      "key": "win",
+      "version": 2,
+      "file": "win-v2.mp3",
+      "bytes": 19896,
+      "source_sha256": "be795eac968b7778f4daf53bc6c019cefa0906f3f23d2d208ab072147076a229"
+    },
+    {
+      "key": "win",
+      "version": 3,
+      "file": "win-v3.mp3",
+      "bytes": 15716,
+      "source_sha256": "5632d2bfe6c22915e80c2410a8daba43ded3555a9a5712f2b1b0c202da4b5539"
+    }
+  ]
+}

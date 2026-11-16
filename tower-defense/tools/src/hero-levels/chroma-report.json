@@ -1,0 +1,82 @@
+[
+  {
+    "id": "tank",
+    "level": 1,
+    "source_alpha_bounds": [
+      27,
+      117,
+      442,
+      533
+    ]
+  },
+  {
+    "id": "war",
+    "level": 1,
+    "source_alpha_bounds": [
+      501,
+      118,
+      944,
+      532
+    ]
+  },
+  {
+    "id": "arch",
+    "level": 1,
+    "source_alpha_bounds": [
+      974,
+      118,
+      1419,
+      533
+    ]
+  },
+  {
+    "id": "mage",
+    "level": 1,
+    "source_alpha_bounds": [
+      1497,
+      83,
+      1973,
+      533
+    ]
+  },
+  {
+    "id": "tank",
+    "level": 3,
+    "source_alpha_bounds": [
+      9,
+      619,
+      482,
+      1059
+    ]
+  },
+  {
+    "id": "war",
+    "level": 3,
+    "source_alpha_bounds": [
+      492,
+      582,
+      1009,
+      1058
+    ]
+  },
+  {
+    "id": "arch",
+    "level": 3,
+    "source_alpha_bounds": [
+      965,
+      615,
+      1458,
+      1059
+    ]
+  },
+  {
+    "id": "mage",
+    "level": 3,
+    "source_alpha_bounds": [
+      1468,
+      575,
+      2037,
+      1060
+    ]
+  }
+]

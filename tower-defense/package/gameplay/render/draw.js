@@ -19,6 +19,22 @@
     GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: r });
   };
 
+  // 商店卡片与教学提示共用的暖色圆角底板；所有层均限制在传入矩形内。
+  draw.creamPanel = function (rect, alpha, radius) {
+    if (!rect || rect.w <= 8 || rect.h <= 8) return;
+    var a = alpha === undefined ? 1 : alpha;
+    var r = Math.min(radius || 13, rect.h * 0.2);
+    draw.roundRect(rect.x, rect.y, rect.w, rect.h, r, draw.color('#9b542c', a));
+    draw.roundRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 4,
+      Math.max(1, r - 2), draw.color('#e8ac69', a));
+    draw.roundRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8,
+      Math.max(1, r - 4), draw.color('#fff0da', a));
+    if (rect.w > 38 && rect.h > 25) {
+      draw.roundRect(rect.x + r, rect.y + 4, rect.w - r * 2, 2, 1,
+        draw.color('#ffffff', 0.55 * a));
+    }
+  };
+
   draw.circle = function (cx, cy, radius, col) {
     if (radius <= 0) return;
     GL.push(cx - radius, cy - radius, radius * 2, radius * 2, col,
@@ -66,7 +82,7 @@
     var v0 = sy / th;
     var v1 = (sy + sh) / th;
     var o = {
-      mode: 1,
+      mode: opts && opts.alphaCutout ? 3 : 1,
       u0: sx / tw, v0: v0, u1: (sx + sw) / tw, v1: v1,
     };
     if (opts) {
@@ -113,12 +129,13 @@
   };
 
   // align: 0 左对齐 / 1 居中 / 2 右对齐
-  draw.text = function (str, x, y, size, col, align) {
+  draw.text = function (str, x, y, size, col, align, scale) {
     var atlas = A.FontAtlas[String(size)];
     if (!atlas) return 0;
     var tex = A.Assets ? A.Assets.tex('font-' + size) : null;
     if (!tex) return 0;
-    var total = draw.textWidth(str, atlas);
+    scale = scale === undefined ? 1 : scale;
+    var total = draw.textWidth(str, atlas) * scale;
     var penX = x;
     if (align === 1) penX = x - total / 2;
     else if (align === 2) penX = x - total;
@@ -128,14 +145,14 @@
       var gl = g[str.charAt(i)] || g[' '];
       if (!gl) continue;
       if (!gl.blank && gl.w > 0) {
-        GL.push(penX + gl.ox, y + gl.oy,
-          gl.w * TEXT_SCALE, gl.h * TEXT_SCALE, col, {
+        GL.push(penX + gl.ox * scale, y + gl.oy * scale,
+          gl.w * TEXT_SCALE * scale, gl.h * TEXT_SCALE * scale, col, {
             mode: 1,
             u0: gl.x / atlas.texW, v0: gl.y / atlas.texH,
             u1: (gl.x + gl.w) / atlas.texW, v1: (gl.y + gl.h) / atlas.texH,
           });
       }
-      penX += gl.adv;
+      penX += gl.adv * scale;
     }
     return total;
   };

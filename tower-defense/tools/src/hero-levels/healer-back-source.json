@@ -1,0 +1,11 @@
+{
+  "source": "healer-back-20261111-223051.png",
+  "model": "GPT-Image-2.5-Sunburst",
+  "references": [
+    "tools/src/characters/情绪版/宠物情绪版.png",
+    "tools/src/hero-levels/healer-three-levels-20261111-221014-alpha.png",
+    "tools/src/hero-levels/existing-back-idle-reference.png"
+  ],
+  "status": "pending visual camera/alpha inspection",
+  "alpha_source": "healer-back-20261111-223051-alpha.png"
+}

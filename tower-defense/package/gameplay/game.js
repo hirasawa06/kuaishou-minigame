@@ -49,7 +49,12 @@
       return false;
     }
     // 资源就绪时若已经开局（极端情况），不要覆盖当前阶段
-    if (S.phase === 'loading') S.phase = 'menu';
+    if (S.phase === 'loading') {
+      // 仅冷启动时根据本地通关记录定位；局内返回首页仍保留玩家所选关卡。
+      var completed = A.Profile && A.Profile.data ? A.Profile.data.completedLevel : 0;
+      S.selectedLevel = S.clamp((completed | 0) + 1, 1, C.LEVELS.length);
+      S.phase = 'menu';
+    }
     return true;
   }
 
@@ -82,9 +87,12 @@
     A.Input.cancel();
     L.ui.ready = false;
     L.calc();
+    if (A.ProfileUI) A.ProfileUI.close();
     S.reset();
+    if (A.Tutorial) A.Tutorial.begin();
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
     syncViewport();
-    S.toastMsg('布阵准备', 1.2);
+    S.toastMsg('守护主人与猫狗的合照', 1.8);
     A.GameAudio && A.GameAudio.play('start');
   }
 
@@ -98,22 +106,36 @@
   }
 
   function toggleSpeed() {
-    if (S.phase === 'playing') S.battleSpeed = S.battleSpeed === 2 ? 1 : 2;
+    if (S.phase !== 'playing') return;
+    S.battleSpeed = S.battleSpeed === 2 ? 1 : 2;
+    A.GameAudio && A.GameAudio.play('speed');
   }
 
-  function selectLevel(delta) {
-    if (S.phase !== 'menu' || S.menuStartDelay > 0) return;
-    S.selectedLevel = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
+  function selectLevel(delta, releaseOffset) {
+    if (S.phase !== 'menu' || S.menuStartDelay > 0 || S.menuSlide) return false;
+    var target = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
+    var cardW = L.ui.menu && L.ui.menu.card ? L.ui.menu.card.w : 300;
+    var offset = releaseOffset || 0;
+    if (target === S.selectedLevel && Math.abs(offset) < 1) return false;
+    S.menuSlide = {
+      from: S.selectedLevel, to: target, offset: offset,
+      end: target === S.selectedLevel ? 0 : (delta > 0 ? -cardW : cardW),
+      elapsed: 0, duration: target === S.selectedLevel ? 0.18 : 0.22,
+    };
     S.menuFeedback = null;
+    return true;
   }
 
   function togglePause() {
+    if (A.Tutorial && !A.Tutorial.allow('pause')) return;
     A.Input.cancel();
     if (S.phase === 'playing') {
       S.phase = 'paused';
       S.dragging = null;
+      A.GameAudio && A.GameAudio.play('click');
     } else if (S.phase === 'paused') {
       S.phase = 'playing';
+      A.GameAudio && A.GameAudio.play('click');
     }
   }
 
@@ -125,11 +147,17 @@
 
   // 返回主页：清空本局临时状态，回到首页；未结束的一局不计入存档
   function goMenu() {
+    if (A.Tutorial) A.Tutorial.stop();
     A.Input.cancel();
     S.menuStartDelay = 0;
-    if (A.ProfileUI) A.ProfileUI.close();
+    // 先离开战斗，再关闭设置等局内页面。
     S.phase = 'menu';
+    if (A.ProfileUI) A.ProfileUI.close();
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
+    A.GameAudio && A.GameAudio.play('click');
     S.dragging = null;
+    S.shopPressed = null;
+    S.shopFeedback = null;
     S.drag = null;
     S.inspect = null;
     S.inspectT = 0;
@@ -156,18 +184,31 @@
   }
 
   function update(dt) {
-    if (S.inspectT > 0) S.inspectT -= dt;
     if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
+    if (S.menuSlide) {
+      S.menuSlide.elapsed += dt;
+      if (S.menuSlide.elapsed >= S.menuSlide.duration) {
+        if (S.selectedLevel !== S.menuSlide.to) A.GameAudio && A.GameAudio.play('select');
+        S.selectedLevel = S.menuSlide.to;
+        S.menuSlide = null;
+      }
+    }
+    if (S.shopFeedback && S.shopFeedback.life > 0) S.shopFeedback.life -= dt;
     if (S.phase === 'menu' && S.menuStartDelay > 0) {
       S.menuStartDelay -= dt;
       if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
     }
-    // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
-    var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
-    for (var si = 0; si < steps; si++) {
-      A.Battle.update(dt);
-      if (S.phase !== 'playing') break;
+    // 首次引导只更新提示/UI/音乐，不调用 Battle，波次与攻击保持冻结。
+    if (A.Tutorial && A.Tutorial.isActive()) A.Tutorial.update(dt);
+    else {
+      // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
+      var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
+      for (var si = 0; si < steps; si++) {
+        A.Battle.update(dt);
+        if (S.phase !== 'playing') break;
+      }
     }
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
   }
 
   function drawBackdrop() {
@@ -181,7 +222,7 @@
   function drawBattle() {
     var D = A.Render.draw;
     Scene.drawBackground();
-    Scene.drawBase();
+    Scene.drawFieldGuides();
 
     var i;
     Scene.drawSpawnHint();
@@ -200,6 +241,8 @@
       if (actors[i].isEnemy) Scene.drawEnemy(actors[i].actor);
       else Scene.drawUnit(actors[i].actor);
     }
+    // 守护物位于战场前景，命中和血量反馈覆盖到合照本体。
+    Scene.drawBase();
     Scene.drawProjectiles();
     Scene.drawEffects();
     Scene.drawFloats();
@@ -260,6 +303,7 @@
 
     // 战斗内设置面板叠在暂停层之上
     if (A.ProfileUI) A.ProfileUI.draw();
+    if (A.Tutorial) A.Tutorial.draw();
 
     if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
     A.Render.endFrame();

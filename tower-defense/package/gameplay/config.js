@@ -35,7 +35,14 @@
     // 清波奖励
     WAVE_GOLD_BONUS: 6,
 
-    // ── 四英雄（卡池随机可重复）──
+    // ── 五英雄（未购买商店卡同名同星两张合成；旧基础数值为 1 星）──
+    HERO_MAX_STAR: 3,
+    HERO_STAR_SCALES: [1, 1.6, 2.6],
+    HERO_STAR_COST_SCALES: [1, 2, 4],
+    HERO_STAR_SPEED_SCALES: [1, 1.15, 1.30],
+    HERO_STAR_RANGE_SCALES: [1, 1.10, 1.20],
+    // 解锁所需的可进入关卡；以存档 completedLevel + 1 判断，不以当前选关判断。
+    HERO_UNLOCK_LEVELS: { war: 1, arch: 1, tank: 2, mage: 2, healer: 3 },
     // atk: 攻击力  hp: 生命  interval: 攻击间隔(=攻速)  range: 攻击半径
     // moveSpeed: 移动速度（0=驻守）  splash: 群体攻击范围  taunt: 嘲讽范围
     HEROES: [
@@ -132,9 +139,9 @@
     waveGap: 6.0,
     firstWaveDelay: 5.0,
 
-    // 十个独立关卡，各自包含下方十波；名称与倍率为首轮可调数值。
+    // 十个独立关卡：首关五波，其余十波；名称与倍率为首轮可调数值。
     LEVELS: [
-      { name: '客厅初战', hpScale: 1.00, atkScale: 1.00 },
+      { name: '新手引导', hpScale: 1.00, atkScale: 1.00 },
       { name: '沙发防线', hpScale: 1.08, atkScale: 1.05 },
       { name: '窗边警报', hpScale: 1.16, atkScale: 1.10 },
       { name: '地毯守卫', hpScale: 1.24, atkScale: 1.15 },
@@ -161,6 +168,22 @@
       { groups: [['boss', 1], ['elite', 3], ['normal', 8]] },
     ],
   };
+
+  // 旧绘制读取等级字段时也使用新星级数值；不再提供金币升级规则。
+  C.HERO_MAX_LEVEL = C.HERO_MAX_STAR;
+  C.HERO_LEVEL_SCALES = C.HERO_STAR_SCALES;
+
+  // 静态 WAVES 保留十波母表；战斗与绘制必须使用按关卡查询接口。
+  var firstLevelWaves = C.WAVES.slice(0, 5);
+  C.wavesForLevel = function (level) {
+    return level === 1 ? firstLevelWaves : C.WAVES;
+  };
+  C.heroUnlockLevel = function (id) {
+    return C.HERO_UNLOCK_LEVELS[id] || 0;
+  };
+  for (var hi = 0; hi < C.HEROES.length; hi++) {
+    C.HEROES[hi].unlockLevel = C.heroUnlockLevel(C.HEROES[hi].id);
+  }
 
   C.ENEMY_STOP_PAD = 6;
   C.ENEMY_GUARD_PAD = 46;

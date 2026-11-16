@@ -97,6 +97,9 @@ async function shot(name) {
 const SETUP = `(function () {
   var A = window.AIGCUtils, S = A.State, u = A.Layout.ui;
   S.reset();
+  if (${showAllCards}) S.shop = ['tank', 'war', 'arch', 'mage'].map(function (id) {
+    return { cardId: id, sold: false, born: 0 };
+  });
   S.phase = 'playing';
   S.waveState = 'prep';
   S.waveTimer = 9999;
@@ -187,6 +190,15 @@ async function main() {
 
   const pos = await evaluate(SETUP)
   console.log('unit at', pos)
+  const renderCheck = await evaluate(`(function () {
+    var A = window.AIGCUtils, errors = [], old = console.error;
+    console.error = function () { errors.push(Array.prototype.join.call(arguments, ' ')); };
+    A.Game.render.__logged = false;
+    A.Game.render();
+    console.error = old;
+    return { errors: errors, units: A.State.units.length, phase: A.State.phase };
+  })()`)
+  if (renderCheck.errors.length) throw new Error(renderCheck.errors.join('\n'))
 
   if (requestedState) {
     var previewTime = await evaluate(`(function () {

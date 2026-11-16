@@ -1,4 +1,4 @@
-/* gameplay/render/scene.js — 战场绘制（背景、基地、单位、敌人、投射物、特效） */
+/* gameplay/render/scene.js — 战场绘制（背景、合照守护物、单位、敌人、投射物、特效） */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
@@ -6,6 +6,14 @@
   var L = A.Layout;
   var D = A.Render.draw;
   var Assets = A.Assets;
+  var SMOKE_FRAMES = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
+  // 正视立绘的可见边界（纹理像素）；统一卡牌、详情与拖拽中的角色视觉大小。
+  var CARD_ART = {
+    tank: { key: 'shield-dog-front', crop: [69, 62, 332, 380] },
+    war: { key: 'melee-cat-front', crop: [37, 28, 407, 434] },
+    arch: { key: 'archer-cat-front', crop: [82, 73, 308, 365] },
+    mage: { key: 'mage-dog-front', crop: [52, 20, 371, 460] },
+  };
 
   var COL = {
     bgTop: D.color('#101a33'),
@@ -34,50 +42,112 @@
       { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha });
   }
 
+
+  function heroArt(def, cx, cy, size, alpha, view, facing) {
+    var card = CARD_ART[def.id];
+    var artKey = view === 'battle'
+      ? (def.id === 'war' ? 'melee-cat-back' : def.id === 'mage' ? 'mage-dog-back' : null)
+      : (card && card.key);
+    var art = artKey && Assets.entry(artKey);
+    if (art) {
+      var crop = view === 'battle' ? [0, 0, art.w, art.h] : card.crop;
+      var w = size * crop[2] / crop[3];
+      D.texture(art.tex, art.w, art.h, crop[0], crop[1], crop[2], crop[3],
+        cx - w / 2, cy - size / 2, w, size,
+        { r: 1, g: 1, b: 1, a: alpha === undefined ? 1 : alpha },
+        { flipX: facing < 0 });
+      return;
+    }
+    icon(def.icon, cx, cy, size, alpha);
+  }
+
+  // 背视姿势图只用于战场；卡牌继续使用角色正面图。
+  function battlePose(un, cx, cy, size, alpha) {
+    var id = un.def.id;
+    var state = un.anim === 'hurt' ? 1 : un.anim === 'die' ? 2 : 0;
+    var key = id === 'war' ? 'melee-cat-poses' : id === 'mage' ? 'mage-dog-poses' : null;
+    var art = key && Assets.entry(key);
+    if (art) {
+      var cell = art.w / 3;
+      D.texture(art.tex, art.w, art.h, cell * state, 0, cell, art.h,
+        cx - size / 2, cy - size / 2, size, size,
+        { r: 1, g: 1, b: 1, a: alpha }, { flipX: un.facing < 0 });
+      return true;
+    }
+    if (id === 'arch' && state === 1) {
+      art = Assets.entry('archer-cat-hurt');
+      if (art) {
+        var w = size * art.w / art.h;
+        D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
+          cx - w / 2, cy - size / 2, w, size,
+          { r: 1, g: 1, b: 1, a: alpha }, { flipX: un.facing < 0 });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 治疗角色暂无参考图与专属 Rig：复用心形占位，叠绿色医疗十字便于识别。
+  function drawHealerPlaceholder(cx, cy, size, alpha) {
+    icon('ui-heart', cx, cy, size, alpha);
+    var mark = size * 0.30;
+    var mx = cx + size * 0.24, my = cy + size * 0.20;
+    D.roundRect(mx - mark / 2, my - mark / 2, mark, mark, 3, D.color('#153c2c', alpha));
+    D.rect(mx - mark * 0.12, my - mark * 0.34, mark * 0.24, mark * 0.68, D.color('#6ff0a8', alpha));
+    D.rect(mx - mark * 0.34, my - mark * 0.12, mark * 0.68, mark * 0.24, D.color('#6ff0a8', alpha));
+  }
+
   function drawBackground() {
     var u = L.ui;
-    // 客厅背景铺满全屏（与首页同一张），避免换场景时跳色
-    var bg = Assets.entry('menu-bg');
+    // 环境层覆盖整个画布，按中心裁切保持原图比例；不受交互安全区约束。
+    var bg = Assets.entry('in-game-background');
     if (bg) {
-      D.texture(bg.tex, bg.w, bg.h, 0, 0, bg.w, bg.h, 0, 0, u.w, u.h);
+      var targetRatio = u.w / u.h;
+      var sourceRatio = bg.w / bg.h;
+      var sx = 0, sy = 0, sw = bg.w, sh = bg.h;
+      if (sourceRatio > targetRatio) {
+        sw = bg.h * targetRatio;
+        sx = (bg.w - sw) / 2;
+      } else {
+        sh = bg.w / targetRatio;
+        sy = (bg.h - sh) / 2;
+      }
+      D.texture(bg.tex, bg.w, bg.h, sx, sy, sw, sh, 0, 0, u.w, u.h);
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
     }
-    // 战场压暗，让敌人和英雄从客厅背景里浮出来
-    var f = u.field;
-    D.vGradient(0, 0, u.w, u.h, D.color('#141018', 0.58), D.color('#0d0b10', 0.72), 18);
-    // 三条通道
-    for (var i = 0; i < u.lanes.length; i++) {
-      D.rect(u.lanes[i] - f.w * 0.15, f.y, f.w * 0.30, f.h, D.color('#3a2c22', 0.16));
-    }
-    for (var k = 1; k < u.lanes.length; k++) {
-      var x = (u.lanes[k - 1] + u.lanes[k]) / 2;
-      D.rect(x - 0.5, f.y, 1, f.h, D.color('#6b5442', 0.28));
-    }
-    D.strokeRect(f.x, f.y, f.w, f.h, 1, D.color('#a8845e', 0.35));
-    // 顶部生成区指示
-    D.hGradient(f.x + 1, f.y + 1, f.w - 2, 34, D.color('#5a2b44', 0.55), D.color('#0d1526', 0), 8);
   }
 
   function drawBase(dt) {
     var u = L.ui;
     var b = u.base;
-    D.roundRect(b.x + 1, b.y, b.w - 2, b.h, 12, COL.baseTop);
-    D.roundRect(b.x + 1, b.y + 4, b.w - 2, b.h - 4, 12, D.color('#223054'));
-    // 城墙垛口
-    var n = 14;
-    var cw = (b.w - 10) / n;
-    for (var i = 0; i < n; i++) {
-      D.rect(b.x + 5 + i * cw + cw * 0.15, b.y - 6, cw * 0.7, 10, D.color('#35496f'));
-    }
     var ratio = Math.max(0, S.baseHp) / C.BASE_HP;
-    var bx = b.x + 14, bw = b.w - 28;
-    D.roundRect(bx, b.y + b.h * 0.42, bw, 10, 5, COL.hpBack);
+    // 与战斗中的受击锚点共用 Layout.ui.base，避免敌人攻击血条。
+    var photo = Assets.entry('guardian-photo');
+    var fw = Math.min(112, b.w * 0.29), fh = fw;
+    var fx = b.x + (b.w - fw) / 2, fy = b.y - fh * 0.92;
+    if (photo) {
+      D.texture(photo.tex, photo.w, photo.h, 0, 0, photo.w, photo.h,
+        fx, fy, fw, fh);
+    }
+    if (ratio <= 0.5) {
+      D.roundRect(fx + fw * 0.67, fy + fh * 0.20, 2, fh * 0.40, 1, D.color('#fff8ed', 0.9));
+      D.roundRect(fx + fw * 0.55, fy + fh * 0.60, fw * 0.12, 2, 1, D.color('#fff8ed', 0.9));
+    }
+    if (S.goalHitT > 0) {
+      var flash = Math.min(0.55, S.goalHitT * 1.9);
+      D.roundRect(fx + fw * 0.14, fy + fh * 0.16, fw * 0.72, fh * 0.69,
+        12, D.color('#ff6b68', flash));
+    }
+    var bx = b.x + b.w * 0.16, bw = b.w * 0.68;
+    var barY = b.y + b.h * 0.69;
+    D.roundRect(bx - 4, barY - 4, bw + 8, 18, 9, D.color('#784436', 0.95));
+    D.roundRect(bx, barY, bw, 10, 5, COL.hpBack);
     var hpCol = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
-    D.roundRect(bx + 1, b.y + b.h * 0.42 + 1, Math.max(0, (bw - 2) * ratio), 8, 4, hpCol);
-    D.text(String(Math.ceil(Math.max(0, S.baseHp))), bx + bw - 4, b.y + b.h * 0.42 - 17, 18, COL.textMain, 2);
-    D.text('基地', bx + 2, b.y + b.h * 0.42 - 17, 18, COL.textDim, 0);
-    // 基地范围提示
+    D.roundRect(bx + 1, barY + 1, Math.max(0, (bw - 2) * ratio), 8, 4, hpCol);
+    D.text('合照', bx, barY - 21, 18, COL.textMain, 0);
+    D.text(String(Math.ceil(Math.max(0, S.baseHp))), bx + bw - 2, barY - 21, 18, COL.textMain, 2);
+    // 守护物受击范围提示
     if (S.shake > 0.05) {
       var a = S.shake * 1.6;
       D.roundRect(b.x, b.y, b.w, b.h, 12, D.color('#ff5a6e', Math.min(0.35, a)));
@@ -85,8 +155,19 @@
   }
 
   function hpBar(x, y, w, ratio, col) {
+    D.roundRect(x - 1, y - 1, w + 2, 6, 3, D.color('#5d382d', 0.88));
     D.roundRect(x, y, w, 4, 2, COL.hpBack);
     if (ratio > 0) D.roundRect(x, y, Math.max(1.5, w * ratio), 4, 2, col);
+  }
+
+  // 2×2 透明特效图集：箭矢、魔法弹、爪印命中、烟雾。
+  function fxArt(cellX, cellY, cx, cy, w, h, alpha, rot) {
+    var atlas = Assets.entry('battle-fx-atlas');
+    if (!atlas) return false;
+    var cw = atlas.w / 2, ch = atlas.h / 2;
+    D.sprite(atlas.tex, atlas.w, atlas.h, cellX * cw, cellY * ch, cw, ch,
+      cx, cy, Math.max(w, h), { w: w, h: h, rot: rot || 0, alpha: alpha });
+    return true;
   }
 
   function drawEnemy(e) {
@@ -173,47 +254,39 @@
     });
   }
 
-  // GIF 已离线拆为透明 PNG 帧表。按固定节奏取格，飞行距离变化也不会拉伸动画速度。
+  // GIF 已离线拆为透明 PNG 帧表。按固定节奏取格，飞行距离变化不会拉伸动画速度。
   function mageFlightVfx(p, rot, scale, alpha) {
     var spec = A.MageFlight;
     var tex = Assets.entry('mage-flight');
     if (!spec || !tex) return;
     var index = Math.floor((p.animT || 0) * 1000 / spec.frameMs) % spec.frames;
-    var col = index % spec.cols;
-    var row = Math.floor(index / spec.cols);
     var cell = spec.cell;
     var size = 76 * scale;
-    D.sprite(tex.tex, tex.w, tex.h, col * cell, row * cell, cell, cell, p.x, p.y, size, {
-      rot: rot, w: size, h: size, tint: { r: 1, g: 1, b: 1, a: alpha },
-    });
+    D.sprite(tex.tex, tex.w, tex.h, (index % spec.cols) * cell,
+      Math.floor(index / spec.cols) * cell, cell, cell, p.x, p.y, size, {
+        rot: rot, w: size, h: size, tint: { r: 1, g: 1, b: 1, a: alpha },
+      });
   }
 
-  // 命中帧表用固定“落地点”锚定。爆发可以向上扩散，但每一帧都从同一个地面原点生长。
+  // 固定落地点锚定帧表；最后一格从出现起渐隐，避免残烟突然消失。
   function mageImpactVfx(e, t, scale, alpha) {
     var spec = A.MageImpact;
     var tex = Assets.entry('mage-impact');
     if (!spec || !tex) return;
-    var index = 0;
     var timeline = spec.timeline || [];
-    for (var step = 1; step < timeline.length; step++) {
-      if (t >= timeline[step]) index = step;
-    }
-    var col = index % spec.cols;
-    var row = Math.floor(index / spec.cols);
+    var index = 0;
+    for (var step = 1; step < timeline.length; step++) if (t >= timeline[step]) index = step;
     var cell = spec.cell;
     var size = (spec.drawSize || 108) * scale;
     var anchor = spec.anchor || [cell * 0.5, cell * 0.5];
     var cy = e.y - (anchor[1] - cell * 0.5) * size / cell;
-    var lastFrame = timeline.length - 1;
-    var fade = 1;
-    if (index === lastFrame) {
-      var finalStart = timeline[lastFrame];
-      var finalDuration = Math.max(0.001, (spec.duration || e.max) - finalStart);
-      fade = Math.max(0, 1 - (t - finalStart) / finalDuration);
-    }
-    D.sprite(tex.tex, tex.w, tex.h, col * cell, row * cell, cell, cell, e.x, cy, size, {
-      w: size, h: size, tint: { r: 1, g: 1, b: 1, a: alpha * fade },
-    });
+    var finalStart = timeline[timeline.length - 1] || 0;
+    var finalDuration = Math.max(0.001, (spec.duration || e.max) - finalStart);
+    var fade = index === timeline.length - 1 ? Math.max(0, 1 - (t - finalStart) / finalDuration) : 1;
+    D.sprite(tex.tex, tex.w, tex.h, (index % spec.cols) * cell,
+      Math.floor(index / spec.cols) * cell, cell, cell, e.x, cy, size, {
+        w: size, h: size, tint: { r: 1, g: 1, b: 1, a: alpha * fade },
+      });
   }
 
   // 加法混合光斑：rgb 预先乘 alpha，这样加法混合下淡出才不会“越淡越亮”
@@ -241,80 +314,37 @@
 
   function vfxTune(kind) {
     return kind === 'mage'
-      ? { hue: 266, saturation: 0.76, brightness: 1, alpha: 0.92, blendMode: 1, layers: 2, particles: 18, particleStyle: 0, lightStyle: 0, pulseSpeed: 1, glowScale: 1, scale: 0.6, particleSize: 1, particleSpeed: 1, spread: 1, shape: 0, travel: 1, rotation: 0, drift: 0 }
-      : { hue: 96, saturation: 0.76, brightness: 1, alpha: 0.88, blendMode: 1, layers: 2, particles: 4, particleStyle: 1, lightStyle: 0, pulseSpeed: 1, glowScale: 1, scale: 1, particleSize: 1, particleSpeed: 1, spread: 1, shape: 0, travel: 1, rotation: 0, drift: 0 };
-  }
-
-  function vfxColor(kind, offset, light, fallback) {
-    return fallback;
-  }
-
-  // 统一处理软光、脉冲与光环：层数由外向内叠加，避免为每种效果复制混合逻辑。
-  function tunedLight(x, y, size, color, alpha, config, time, ground) {
-    var pulse = config.lightStyle === 1 ? 0.84 + Math.sin(time * Math.PI * 4 * config.pulseSpeed) * 0.16 : 1;
-    for (var i = 0; i < config.layers; i++) {
-      var layer = 1 - i * 0.19;
-      var layerSize = size * pulse * (1 - i * 0.14) * config.glowScale;
-      if (ground) additiveGroundGlow(x, y, layerSize, layerSize * 0.42, color, alpha * layer * config.alpha);
-      else additiveGlow(x, y, layerSize, color, alpha * layer * config.alpha, 0);
-    }
-    if (config.lightStyle === 2) D.ring(x, y, size * 0.30 * config.glowScale, 1.2, D.color(color, alpha * config.alpha));
-  }
-
-  function tunedParticle(style, x, y, size, color, alpha) {
-    if (style === 1) { drawHealMote(x, y, size, color, alpha); return; }
-    if (style === 2) { D.ring(x, y, size * 0.72, 1.1, D.color(color, alpha)); return; }
-    D.circle(x, y, size * 0.42, D.color(color, alpha));
-  }
-
-  function healCastOrigin(unit) {
-    var rig = A.Rigs && A.Rigs[unit.rigId || unit.def.id];
-    var origin = rig && rig.castOrigin || [0, -unit.def.radius * 0.7];
-    return { x: unit.x + origin[0], y: unit.y + origin[1] };
-  }
-
-  function drawHealMote(x, y, size, color, alpha) {
-    D.roundRect(x - size * 0.12, y - size * 0.42, size * 0.24, size * 0.84, size * 0.12,
-      D.color(color, alpha));
-    D.roundRect(x - size * 0.42, y - size * 0.12, size * 0.84, size * 0.24, size * 0.12,
-      D.color(color, alpha));
+      ? { alpha: 0.92, scale: 0.6, layers: 2, particles: 18 }
+      : { alpha: 0.88, scale: 1, layers: 2, particles: 4 };
   }
 
   function drawHealEffect(e, t, source, target) {
     var config = vfxTune('healer');
-    var from = healCastOrigin(source);
+    var from = { x: source.x, y: source.y - source.def.radius * 0.7 };
     var tx = target.x, ty = target.y + target.def.radius * 0.22;
-    var travelDuration = 0.28 / config.travel;
-    var travel = clamp01(t / travelDuration);
-    var arrive = clamp01((t - 0.14 / config.travel) / travelDuration);
+    var travel = clamp01(t / 0.28);
     var fade = 1 - t;
-    var core = vfxColor('healer', 0, 0.70, '#a8ef8f');
-    var accent = vfxColor('healer', 52, 0.80, '#ffe4f1');
-    var count = config.particles;
-    A.Render.setAdditive(config.blendMode === 1);
-    tunedLight(from.x, from.y, 15 + t * 8, core, (1 - travel) * 0.46, config, t, false);
-    for (var i = 0; i < count; i++) {
+    A.Render.setAdditive(true);
+    for (var i = 0; i < config.particles; i++) {
       var p = clamp01(travel * 1.35 - i * 0.16);
-      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7) * config.spread;
-      var x = from.x + (tx - from.x) * p + arc;
-      var y = from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9 + config.drift * p * 18;
-      tunedLight(x, y, 7 + (i % 2) * 2, i === 0 ? accent : core, fade * 0.32, config, t + i * 0.08, false);
+      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7);
+      additiveGlow(from.x + (tx - from.x) * p + arc,
+        from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9,
+        7 + (i % 2) * 2, i === 0 ? '#ffe4f1' : '#a8ef8f', fade * 0.28 * config.alpha, 0);
     }
-    tunedLight(tx, ty + 4, 18 + arrive * 24, core, arrive * fade * 0.45, config, t, true);
+    additiveGroundGlow(tx, ty + 4, 18 + travel * 24, 9 + travel * 12,
+      '#a8ef8f', travel * fade * 0.45 * config.alpha);
     A.Render.setAdditive(false);
-    for (var k = 0; k < count; k++) {
-      var kp = clamp01(travel * 1.35 - k * 0.16);
-      var kArc = Math.sin(kp * Math.PI) * (k % 2 ? 7 : -7) * config.spread;
-      tunedParticle(config.particleStyle, from.x + (tx - from.x) * kp + kArc,
-        from.y + (ty - from.y) * kp - Math.sin(kp * Math.PI) * 9 + config.drift * kp * 18,
-        (3.2 + (k % 2)) * config.particleSize, k === 0 ? accent : core, fade * 0.88 * config.alpha);
-    }
-    var riseCount = count ? Math.min(3, Math.ceil(count * 0.75)) : 0;
-    for (var j = 0; j < riseCount; j++) {
-      var rise = clamp01((t - 0.18 - j * 0.06) / 0.24);
-      if (rise <= 0) continue;
-      tunedParticle(config.particleStyle, tx + (j - 1) * 7, ty - 4 - rise * 15,
-        3 * config.particleSize, core, (1 - rise) * fade * config.alpha);
+    for (var j = 0; j < config.particles; j++) {
+      var q = clamp01(travel * 1.35 - j * 0.16);
+      var qArc = Math.sin(q * Math.PI) * (j % 2 ? 7 : -7);
+      var x = from.x + (tx - from.x) * q + qArc;
+      var y = from.y + (ty - from.y) * q - Math.sin(q * Math.PI) * 9;
+      var size = 3.2 + (j % 2);
+      D.roundRect(x - size * 0.12, y - size * 0.42, size * 0.24, size * 0.84,
+        size * 0.12, D.color(j === 0 ? '#ffe4f1' : '#a8ef8f', fade * config.alpha));
+      D.roundRect(x - size * 0.42, y - size * 0.12, size * 0.84, size * 0.24,
+        size * 0.12, D.color(j === 0 ? '#ffe4f1' : '#a8ef8f', fade * config.alpha));
     }
   }
 
@@ -331,7 +361,10 @@
     var shadowY = spriteY + size * 0.42;
 
     drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
-    if (rig) {
+    // 星级不改变立绘或动作，治疗猫统一沿用同一背面形象。
+    var levelIdle = A.HeroForms && d.cls === 'healer' && !un.dead &&
+      A.HeroForms.drawBattleIdle(d.id, 2, un.x, spriteY + size * 0.10, size * 0.68, 0.3 + 0.7 * spawn);
+    if (rig && !levelIdle) {
       A.Anim.draw(rig, un, un.x, spriteY, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
@@ -340,9 +373,15 @@
         additiveGlow(un.x, un.y, r * 2.4, '#ffffff', un.hitFlash * 2.2, 0);
         A.Render.setAdditive(false);
       }
-    } else {
+    } else if (!levelIdle) {
       var alpha = 0.25 + 0.75 * spawn;
-      icon(d.icon, un.x, un.y, size, alpha);
+
+      var poseSize = r * 3.4 * (0.8 + 0.2 * spawn);
+      if (d.cls === 'healer') drawHealerPlaceholder(un.x, un.y, size, alpha);
+      else if (!battlePose(un, un.x, un.y - r * 0.12, poseSize, alpha)) {
+        heroArt(d, un.x, un.y - r * 0.12, poseSize, alpha, 'battle', un.facing);
+      }
+
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
@@ -350,6 +389,7 @@
     var ratio = Math.max(0, un.hp / un.maxHp);
     var col = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
     hpBar(un.x - w / 2, un.y - r - 10, w, ratio, col);
+    D.text((un.star || 1) + '星', un.x + w / 2 + 3, un.y - r - 18, 18, COL.gold, 0);
   }
 
   function drawProjectiles() {
@@ -400,8 +440,11 @@
         var rr = (e.r || 8) + ((e.r2 || e.r * 1.8) - (e.r || 8)) * t;
         D.ring(e.x, e.y, rr, 2.2 * (1 - t) + 0.6, D.color(e.color, (1 - t) * 0.8));
       } else if (e.type === 'pop') {
-        D.circle(e.x, e.y, e.r * (1 + t * 0.8), D.color(e.color, (1 - t) * 0.55));
-        D.ring(e.x, e.y, e.r * (1 + t * 1.6), 2, D.color(e.color, (1 - t) * 0.7));
+        var popSize = e.r * (2.6 + t * 1.4);
+        if (!fxArt(0, 1, e.x, e.y, popSize, popSize, 1 - t, 0)) {
+          D.circle(e.x, e.y, e.r * (1 + t * 0.8), D.color(e.color, (1 - t) * 0.55));
+          D.ring(e.x, e.y, e.r * (1 + t * 1.6), 2, D.color(e.color, (1 - t) * 0.7));
+        }
       } else if (e.type === 'slash') {
         drawSlashTrail(e, t);
       } else if (e.type === 'spark') {
@@ -425,8 +468,8 @@
         if (!source || !target) continue;
         drawHealEffect(e, t, source, target);
       } else if (e.type === 'mage-biscuit-impact') {
-        var mageConfig = vfxTune('mage');
-        mageImpactVfx(e, t, mageConfig.scale, mageConfig.alpha);
+        var impactConfig = vfxTune('mage');
+        mageImpactVfx(e, t, impactConfig.scale, impactConfig.alpha);
       } else if (e.type === 'smoke') {
         var smokeIndex = smokeFrame(t);
         var sp = Assets.sprite(smokeFrames[smokeIndex]);
@@ -456,7 +499,7 @@
     var a = (1 - t) * 0.95;
     var c = D.color(e.color, 1);
     var size = 40 - t * 10;
-    A.Render.setAdditive(config.blendMode === 1);
+    A.Render.setAdditive(true);
     D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, px, py, size, {
       rot: rot,
       w: size,
@@ -479,17 +522,49 @@
     if (S.phase !== 'playing') return;
     if (S.waveState === 'prep') {
       var t = Math.max(0, S.waveTimer);
-      var label = S.waveIndex < C.WAVES.length
-        ? '第 ' + (S.waveIndex + 1) + ' 波 ' + t.toFixed(1) + 's'
+      var label = S.waveIndex < S.getWaves().length
+        ? '第 ' + (S.waveIndex + 1) + ' 波准备 ' + t.toFixed(1)
         : '';
       if (label) {
-        D.roundRect(u.field.x + u.field.w / 2 - 78, u.field.y + 10, 156, 32, 16, D.color('#0b1324', 0.85));
-        D.text(label, u.field.x + u.field.w / 2, u.field.y + 17, 18, COL.gold, 1);
+        D.roundRect(u.field.x + u.field.w / 2 - 80, u.field.y + 10, 160, 32, 16,
+          D.color('#a96638', 0.94));
+        D.roundRect(u.field.x + u.field.w / 2 - 78, u.field.y + 12, 156, 28, 14,
+          D.color('#ffe7c2', 0.97));
+        D.text(label, u.field.x + u.field.w / 2, u.field.y + 17, 18,
+          D.color('#704026'), 1);
       }
     } else if (S.waveState === 'spawning') {
       var a = 0.35 + Math.sin(S.time * 6) * 0.15;
       D.rect(u.field.x + 2, u.field.y + 1, u.field.w - 4, 3, D.color('#ff5a6e', a));
     }
+  }
+
+  function drawFieldGuides() {
+    if (S.phase !== 'playing') return;
+    var u = L.ui;
+    var field = u.field;
+    var drag = S.dragging || (A.Input && A.Input.getDrag && A.Input.getDrag());
+    if (S.waveState === 'prep' || S.waveState === 'spawning') {
+      var pulse = 0.52 + 0.18 * Math.sin(S.time * 5);
+      for (var i = 0; i < u.lanes.length; i++) {
+        var x = u.lanes[i], y = field.y + 55;
+        D.circle(x, y, 13, D.color('#fff0cf', 0.62 * pulse));
+        D.ring(x, y, 13, 2, D.color('#ab6438', pulse));
+        // 三路入口的向下箭头；仅提示敌人方向，不改变生成点。
+        D.roundRect(x - 2, y - 7, 4, 10, 2, D.color('#a95136', pulse));
+        D.roundRect(x - 7, y + 2, 14, 3, 1.5, D.color('#a95136', pulse));
+        D.roundRect(x - 4, y + 5, 8, 3, 1.5, D.color('#a95136', pulse));
+      }
+    }
+    if (!drag || !drag.active || !drag.def || drag.y >= u.tray.y) return;
+    var top = Math.max(field.y - 24, u.interactiveRect.y);
+    var bottom = Math.min(u.base.y + 10, u.tray.y - 4,
+      u.interactiveRect.y + u.interactiveRect.h);
+    var h = bottom - top;
+    if (h <= 0) return;
+    // 部署是连续坐标，不绘制虚假的格子。
+    D.roundRect(field.x, top, field.w, h, 8, D.color('#73e5a0', 0.13));
+    D.strokeRect(field.x, top, field.w, h, 2, D.color('#eaffbd', 0.8));
   }
 
   function drawDragGhost() {
@@ -507,6 +582,8 @@
       var ghostY = ghostRig ? drag.y - def.radius * 0.15 : drag.y;
       if (ghostRig) {
         A.Anim.draw(ghostRig, unit, drag.x, ghostY, ghostSize, { alpha: 0.7 });
+      } else if (def.cls === 'healer') {
+        drawHealerPlaceholder(drag.x, ghostY, ghostSize, 0.7);
       } else {
         icon(def.icon, drag.x, ghostY, ghostSize, 0.7);
       }
@@ -516,17 +593,10 @@
     }
     var overField = drag.y < u.tray.y;
     var x = drag.x, y = drag.y;
-    if (!overField) {
-      // 手指还在商店里：卡片跟手，不显示落地预览
-      D.roundRect(x - 52, y - 34, 104, 68, 12, D.color('#0d1220', 0.55));
-      icon(def.icon, x - 20, y, 40, 0.96);
-      D.text(def.name, x + 4, y - 20, 18, D.color('#ffffff', 0.95), 0);
-      D.text(def.cost + ' 金币', x + 4, y + 2, 18, D.color('#ffd166', 0.95), 0);
-      return;
-    }
-    var live = S.liveUnits();
-    var ok = A.Battle.canAfford(def) && live < S.heroCap &&
-      y > u.field.y - 30 && y < u.base.y;
+    // 卡池内的浮起卡由 Hud 复用商店卡片绘制；这里只负责战场落点预览。
+    if (!overField) return;
+    var reason = A.Battle.deployBlockReason(def, x, y);
+    var ok = !reason && y < u.tray.y - 4;
     var col = ok ? '#6ff0a8' : '#ff6b7f';
 
     // 攻击半径（盾位无攻击，改画嘲讽半径）
@@ -543,18 +613,31 @@
       D.circle(x, y, def.splash, D.color('#a583f0', 0.08));
       D.ring(x, y, def.splash, 1.2, D.color('#b79cff', 0.45));
     }
-    D.circle(x, y, def.radius + 4, D.color(col, 0.22));
-    D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
-    var previewRig = A.Rigs && A.Rigs[def.id];
-    if (previewRig) {
-      var previewSize = def.radius * 3.05 * (previewRig.scale || 1);
-      A.Anim.draw(previewRig, { anim: 'idle', animT: 0, hitFlash: 0 },
-        x, y - def.radius * 0.15, previewSize, { alpha: 0.94 });
+    // 落点预览复用正式角色待机美术，避免再次露出旧图集的职业符号。
+    var rig = A.Rigs && A.Rigs[def.id];
+    var previewSize = rig ? def.radius * 3.05 * (rig.scale || 1) : def.radius * 2.35;
+    var spriteY = rig ? y - def.radius * 0.15 : y;
+    var shadowY = spriteY + previewSize * 0.42;
+    var previewAlpha = ok ? 0.88 : 0.56;
+    drawGroundShadow(x, shadowY, def.radius * 0.70, ok ? 0.32 : 0.20);
+    D.roundRect(x - 18, shadowY + 3, 36, 4, 2, D.color(col, 0.88));
+    if (rig && Assets.tex('game')) {
+      A.Anim.draw(rig, { anim: 'idle', animT: S.time, hitFlash: 0 },
+        x, spriteY, previewSize, { alpha: previewAlpha });
+    } else if (def.cls === 'healer') {
+      if (!A.HeroForms || !A.HeroForms.drawBattleIdle(def.id, 2,
+        x, spriteY + previewSize * 0.10, previewSize * 0.68, previewAlpha)) {
+        drawHealerPlaceholder(x, spriteY, previewSize, previewAlpha);
+      }
     } else {
-      icon(def.icon, x, y, def.radius * 2.2, 0.94);
+      var still = { def: def, anim: 'idle', facing: 1 };
+      if (!battlePose(still, x, spriteY, previewSize, previewAlpha)) {
+        heroArt(def, x, spriteY, previewSize, previewAlpha);
+      }
     }
+
     if (!ok) {
-      D.text(live >= S.heroCap ? '席位已满' : '金币不足', x, y + def.radius + 12, 18,
+      D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' : '请拖到战场', x, y + def.radius + 12, 18,
         D.color('#ff9aa8', 0.95), 1);
     }
   }
@@ -564,6 +647,7 @@
   A.Scene = {
     COL: COL,
     icon: icon,
+    heroArt: heroArt,
     ic: spriteIcon,
     frame: frame,
     additiveGlow: additiveGlow,
@@ -576,6 +660,7 @@
     drawEffects: drawEffects,
     drawFloats: drawFloats,
     drawSpawnHint: drawSpawnHint,
+    drawFieldGuides: drawFieldGuides,
     drawDragGhost: drawDragGhost,
   };
 })();

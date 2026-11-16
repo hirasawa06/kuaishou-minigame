@@ -1,0 +1,90 @@
+[
+  {
+    "hero": "tank",
+    "level": 1,
+    "bounds": [
+      28,
+      119,
+      448,
+      535
+    ],
+    "opaque_pixels": 116127
+  },
+  {
+    "hero": "war",
+    "level": 1,
+    "bounds": [
+      1,
+      119,
+      433,
+      534
+    ],
+    "opaque_pixels": 113183
+  },
+  {
+    "hero": "arch",
+    "level": 1,
+    "bounds": [
+      1,
+      119,
+      393,
+      534
+    ],
+    "opaque_pixels": 106450
+  },
+  {
+    "hero": "mage",
+    "level": 1,
+    "bounds": [
+      1,
+      84,
+      436,
+      535
+    ],
+    "opaque_pixels": 140665
+  },
+  {
+    "hero": "tank",
+    "level": 3,
+    "bounds": [
+      10,
+      45,
+      481,
+      491
+    ],
+    "opaque_pixels": 134729
+  },
+  {
+    "hero": "war",
+    "level": 3,
+    "bounds": [
+      1,
+      8,
+      496,
+      487
+    ],
+    "opaque_pixels": 146279
+  },
+  {
+    "hero": "arch",
+    "level": 3,
+    "bounds": [
+      1,
+      44,
+      433,
+      488
+    ],
+    "opaque_pixels": 120191
+  },
+  {
+    "hero": "mage",
+    "level": 3,
+    "bounds": [
+      1,
+      3,
+      499,
+      489
+    ],
+    "opaque_pixels": 167100
+  }
+]

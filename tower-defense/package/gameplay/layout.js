@@ -55,7 +55,7 @@
     var hudH = adaptationError ? Math.max(1, Math.floor(contentH * 0.16)) : 52;
     var trayH = adaptationError
       ? Math.max(1, contentH - hudH - Math.max(1, Math.floor(contentH * 0.43)))
-      : Math.round(Math.max(176, Math.min(232, contentH * 0.27)));
+      : Math.round(Math.max(272, Math.min(304, contentH * 0.38)));
     if (!adaptationError) {
       var maxTrayH = Math.max(138, contentH - hudH - 180);
       trayH = Math.min(trayH, maxTrayH);
@@ -131,7 +131,7 @@
 
     // ── 商店托盘：金币条 + 两块功能按钮 + 4 格英雄卡池 ──
     var shopTop = tray.y + Math.max(8, Math.round(trayH * 0.045));
-    var headH = Math.max(26, Math.round(trayH * 0.14));
+    var headH = Math.max(36, Math.round(trayH * 0.14));
     var goldBar = {
       x: metrics.safeLeft + pad,
       y: shopTop,
@@ -184,6 +184,41 @@
         h: s.cellH,
       };
     };
+    L.shopCardParts = function (i, drawnRect) {
+      var r = drawnRect || L.shopRect(i);
+      var inset = Math.max(4, Math.min(7, Math.round(r.h * 0.08)));
+      var portraitW = Math.min(48, r.h - inset * 2, Math.round(r.w * 0.29));
+      var portrait = { x: r.x + inset, y: r.y + inset,
+        w: portraitW, h: r.h - inset * 2 };
+      var costR = Math.max(10, Math.min(14, Math.round(r.h * 0.18)));
+      var cost = { x: r.x + r.w - inset - costR,
+        y: r.y + inset + costR, r: costR };
+      var lockSize = Math.max(16, Math.min(24, Math.round(r.h * 0.31)));
+      var lock = { x: r.x + r.w - inset - lockSize,
+        y: r.y + r.h - inset - lockSize, w: lockSize, h: lockSize };
+      return { rect: r, inset: inset, portrait: portrait,
+        textX: portrait.x + portrait.w + 7, cost: cost, lock: lock };
+    };
+    L.shopLockRect = function (i) {
+      var parts = L.shopCardParts(i);
+      var r = parts.rect;
+      var size = Math.min(32, r.h - parts.inset * 2);
+      return { x: r.x + r.w - parts.inset - size,
+        y: r.y + r.h - parts.inset - size,
+        w: size, h: size };
+    };
+    L.shopDragRect = function (i, x, y, startX, startY) {
+      var base = L.shopRect(i);
+      // 保留按下点在原卡片内的相对位置；拖动时同一点始终对齐触点。
+      var gripX = Math.max(0, Math.min(base.w, startX - base.x));
+      var gripY = Math.max(0, Math.min(base.h, startY - base.y));
+      var w = base.w, h = base.h;
+      return {
+        x: Math.max(metrics.safeLeft + 4, Math.min(x - gripX, metrics.safeRight - w - 4)),
+        y: Math.max(contentTop + 4, Math.min(y - gripY, contentBottom - h - 9)),
+        w: w, h: h,
+      };
+    };
     ui.lanes = [
       field.x + field.w * 0.2,
       field.x + field.w * 0.5,
@@ -210,19 +245,26 @@
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
     };
-    // 暂停面板：继续 / 设置 / 重新开始 / 返回主页，四行竖排。
-    // 面板整体居中，按钮高度按 contentH 缩放，短屏也不会挤出安全区。
-    var pauseBtnW = Math.round(Math.min(240, safeW - pad * 4));
-    var pauseBtnH = Math.round(Math.max(44, Math.min(52, contentH * 0.062)));
-    var pauseGap = Math.round(Math.max(10, Math.min(16, contentH * 0.018)));
-    var pauseTitleY = contentTop + Math.round(contentH * 0.2);
-    var pauseTop = pauseTitleY + 96;
+    // 暂停面板按标题与四枚按钮的实际高度收拢，避免整图拉伸和底部按钮贴框。
+    var pauseCompact = contentH < 540;
+    var pausePanelW = Math.min(340, safeW - pad * 2);
+    var pauseBtnW = Math.min(260, pausePanelW - 36);
+    var pauseBtnH = pauseCompact ? 40 : 48;
+    var pauseGap = pauseCompact ? 8 : 12;
+    var pauseHeaderH = pauseCompact ? 84 : 110;
+    var pauseHeaderGap = pauseCompact ? 18 : 26;
+    var pauseBottomPad = pauseCompact ? 20 : 26;
     var pauseList = ['resume', 'settings', 'restart', 'home'];
-    var pauseH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
-    if (pauseTop + pauseH > contentBottom - 12) {
-      pauseTop = Math.max(contentTop + 90, contentBottom - 12 - pauseH);
-    }
-    var pauseX = Math.round(metrics.safeLeft + (safeW - pauseBtnW) / 2);
+    var pauseButtonsH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
+    var pausePanelH = pauseHeaderH + pauseHeaderGap + pauseButtonsH + pauseBottomPad;
+    pausePanelH = Math.min(pausePanelH, Math.max(1, contentH - 16));
+    var pausePanel = {
+      x: metrics.safeLeft + (safeW - pausePanelW) / 2,
+      y: contentTop + (contentH - pausePanelH) / 2,
+      w: pausePanelW, h: pausePanelH,
+    };
+    var pauseTop = pausePanel.y + pauseHeaderH + pauseHeaderGap;
+    var pauseX = pausePanel.x + (pausePanelW - pauseBtnW) / 2;
     var pauseRects = {};
     for (var pi = 0; pi < pauseList.length; pi++) {
       pauseRects[pauseList[pi]] = {
@@ -233,22 +275,48 @@
       };
     }
     ui.pausePanel = {
-      titleY: pauseTitleY,
-      subY: pauseTitleY + 62,
-      w: pauseBtnW,
-      h: pauseBtnH,
-      gap: pauseGap,
+      panel: pausePanel, compact: pauseCompact, headerH: pauseHeaderH,
       btn: function (kind) { return pauseRects[kind]; },
     };
     ui.sellZone = { x: metrics.safeLeft + pad, y: contentBottom - 44,
       w: safeW - pad * 2, h: 44 };
-    var resultGap = 8;
-    var resultW = Math.min(240, safeW - pad * 2);
-    var resultTop = contentBottom - 12 - 3 * 44 - 2 * resultGap;
-    ui.resultNext = { x: metrics.safeLeft + (safeW - resultW) / 2, y: resultTop, w: resultW, h: 44 };
-    ui.btnY.result = resultTop + 44 + resultGap;
-    ui.resultHome = { x: ui.resultNext.x, y: resultTop + 2 * (44 + resultGap), w: resultW, h: 44 };
-    ui.resultReplay = { x: ui.resultNext.x, y: ui.btnY.result, w: resultW, h: 44 };
+    // 结算页使用一张完整的安全区内面板；标题、解锁、战绩、三个按钮顺序排布。
+    var resultPanelH = Math.min(620, Math.max(1, contentH - 16));
+    var resultPanelW = Math.min(340, safeW - pad * 2);
+    var resultPanel = {
+      x: metrics.safeLeft + (safeW - resultPanelW) / 2,
+      y: contentTop + (contentH - resultPanelH) / 2,
+      w: resultPanelW, h: resultPanelH,
+    };
+    var resultCompact = resultPanelH < 500;
+    var resultHeaderH = resultCompact ? 82 : 116;
+    var resultBtnH = resultCompact ? 40 : 44;
+    var resultGap = resultCompact ? 6 : 8;
+    var resultW = Math.min(240, resultPanelW - 36);
+    var resultTop = resultPanel.y + resultPanel.h - (resultCompact ? 10 : 16) -
+      resultBtnH * 3 - resultGap * 2;
+    var resultBtnX = resultPanel.x + (resultPanelW - resultW) / 2;
+    ui.resultNext = { x: resultBtnX, y: resultTop, w: resultW, h: resultBtnH };
+    ui.resultReplay = { x: resultBtnX, y: resultTop + resultBtnH + resultGap,
+      w: resultW, h: resultBtnH };
+    ui.resultHome = { x: resultBtnX, y: resultTop + (resultBtnH + resultGap) * 2,
+      w: resultW, h: resultBtnH };
+    ui.btnY.result = ui.resultReplay.y;
+    var resultInfoTop = resultPanel.y + resultHeaderH + 8;
+    var resultInfoH = Math.max(1, resultTop - 8 - resultInfoTop);
+    var resultNoticeH = resultCompact ? 56 : 78;
+    var resultStatsGap = Math.max(18, Math.min(28,
+      (resultInfoH - resultNoticeH - 8) / 5));
+    var resultGroupH = resultNoticeH + 8 + 5 * resultStatsGap;
+    var resultNoticeY = resultInfoTop + Math.max(0, (resultInfoH - resultGroupH) / 2);
+    ui.result = {
+      panel: resultPanel, compact: resultCompact, headerH: resultHeaderH,
+      infoTop: resultInfoTop, infoH: resultInfoH,
+      notice: { x: resultPanel.x + 12, y: resultNoticeY,
+        w: resultPanel.w - 24, h: resultNoticeH },
+      statsY: resultNoticeY + resultNoticeH + 8,
+      statsGap: resultStatsGap,
+    };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
@@ -260,17 +328,22 @@
     ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
       h: 845 * figmaScale, scale: figmaScale };
     ui.menu = {};
-    ui.menu.avatar = figmaRect(11.44, 45.77, 80.56, 82.4);
-    ui.menu.stamina = figmaRect(93.84, 63.17, 141.9, 45.78);
-    ui.menu.settings = figmaRect(308.98, 45.77, 73.24, 82.4);
-    ui.menu.rank = figmaRect(10.99, 137.32, 82.4, 84.68);
-    ui.menu.banner = figmaRect(8.24, 244.89, 373.06, 64.09);
-    ui.menu.card = figmaRect(8.24, 308.98, 373.06, 286.09);
+    // 顶部四个方牌同尺寸、同列线和同排距；体力胶囊以头像的垂直中心对齐。
+    var navSize = 78, navMargin = 11.5, navRowGap = 12;
+    var navTop = 45.77, navLeft = navMargin, navRight = 390 - navMargin - navSize;
+    var navBottom = navTop + navSize + navRowGap;
+    ui.menu.avatar = figmaRect(navLeft, navTop, navSize, navSize);
+    ui.menu.settings = figmaRect(navRight, navTop, navSize, navSize);
+    ui.menu.rank = figmaRect(navLeft, navBottom, navSize, navSize);
+    ui.menu.collection = figmaRect(navRight, navBottom, navSize, navSize);
+    ui.menu.stamina = figmaRect(navLeft + navSize + 10,
+      navTop + (navSize - 44) / 2, 142, 44);
+    ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
     ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
-    ui.menu.levelStatus = { x: ui.menu.card.x + 56, y: ui.menu.card.y + ui.menu.card.h - 44,
-      w: ui.menu.card.w - 112, h: 36 };
+    ui.menu.levelStatus = { x: ui.menu.card.x + 48, y: ui.menu.card.y + ui.menu.card.h - 82,
+      w: ui.menu.card.w - 96, h: 78 };
     var panelW = Math.min(300, safeW - pad * 2);
     var panelH = Math.min(210, contentH * 0.45);
     ui.menu.panel = { x: metrics.safeLeft + (safeW - panelW) / 2,
@@ -282,33 +355,37 @@
     // 所有弹窗与全屏页都从同一份可交互区域派生：标题栏、按钮、行高都由 contentH 缩放。
     var sheetW = Math.round(Math.min(340, safeW - pad * 2 - 8));
     var sheetX = Math.round(metrics.safeLeft + (safeW - sheetW) / 2);
-    var sheetTop = contentTop + Math.round(contentH * 0.14);
-    var sheetMaxBottom = contentBottom - 12;
-
-    // 设置弹窗：标题 + 两条开关 + 分享按钮 + 版本号
-    var setH = Math.round(Math.min(372, sheetMaxBottom - sheetTop));
-    var setY = Math.round(sheetTop + Math.max(0, (sheetMaxBottom - sheetTop - setH) * 0.35));
-    var rowH = Math.round(Math.max(68, Math.min(78, setH * 0.21)));
-    var setHead = Math.round(rowH * 0.92);
-    var setBtnH = Math.round(Math.max(40, Math.min(50, setH * 0.14)));
-    var setInnerY = setY + setHead + Math.round(setH * 0.075);
-    var setRowGap = Math.round(Math.max(8, setH * 0.03));
-    var musicRow = { x: sheetX + 14, y: setInnerY, w: sheetW - 28, h: rowH };
-    var sfxRow = { x: musicRow.x, y: musicRow.y + rowH + setRowGap, w: musicRow.w, h: rowH };
+    // 设置弹窗按内部内容定高；其他资料页继续沿用 rowH 的原尺寸体系。
+    var rowH = Math.round(Math.max(68, Math.min(78, contentH * 0.14)));
+    var setCompact = contentH < 500;
+    var setHead = setCompact ? 64 : 80;
+    var setRowH = setCompact ? 56 : 68;
+    var setTopGap = setCompact ? 12 : 18;
+    var setRowGap = setCompact ? 8 : 12;
+    var setShareGap = setCompact ? 12 : 20;
+    var setBtnH = setCompact ? 42 : 48;
+    var setVersionGap = setCompact ? 10 : 16;
+    var setBottomPad = setCompact ? 14 : 18;
+    var setH = setHead + setTopGap + setRowH * 2 + setRowGap +
+      setShareGap + setBtnH + setVersionGap + 18 + setBottomPad;
+    var setY = Math.round(contentTop + (contentH - setH) / 2);
+    var setInnerY = setY + setHead + setTopGap;
+    var musicRow = { x: sheetX + 14, y: setInnerY, w: sheetW - 28, h: setRowH };
+    var sfxRow = { x: musicRow.x, y: musicRow.y + setRowH + setRowGap, w: musicRow.w, h: setRowH };
     var shareBtn = {
-      x: sheetX + 22,
-      y: sfxRow.y + rowH + Math.round(setH * 0.06),
-      w: sheetW - 44,
+      x: musicRow.x,
+      y: sfxRow.y + setRowH + setShareGap,
+      w: musicRow.w,
       h: setBtnH,
     };
     ui.settings = {
       sheet: { x: sheetX, y: setY, w: sheetW, h: setH },
-      head: setHead,
+      head: setHead, compact: setCompact,
       musicRow: musicRow,
       sfxRow: sfxRow,
       shareBtn: shareBtn,
-      close: { x: sheetX + sheetW - 38, y: setY + 6, w: 32, h: 32 },
-      versionY: shareBtn.y + shareBtn.h + 16,
+      close: { x: sheetX + sheetW - 44, y: setY + (setHead - 32) / 2, w: 32, h: 32 },
+      versionY: shareBtn.y + shareBtn.h + setVersionGap,
     };
 
     // 名片：整页卡片，标题带 + 头像 + 昵称 + ID + 两个入口
@@ -506,6 +583,31 @@
       subY: invSubY,
       copy: { x: sheetX + 22, y: invCopyY, w: sheetW - 44, h: invCopyH },
       noteY: invCopyY + invCopyH + 12,
+    };
+
+    // 英雄收藏：同一立绘，仅星章与数值不同。
+    var collectionX = metrics.safeLeft + pad;
+    var collectionW = safeW - pad * 2;
+    var collectionTop = contentTop + 98;
+    var collectionGap = 10;
+    var collectionCellW = (collectionW - collectionGap) / 2;
+    var collectionCellH = Math.min(150, (contentBottom - 14 - collectionTop - collectionGap * 2) / 3);
+    ui.collection = {
+      back: { x: collectionX, y: contentTop + 8, w: 44, h: 44 },
+      titleY: contentTop + 60,
+      rect: function (i) { return { x: collectionX + (i % 2) * (collectionCellW + collectionGap),
+        y: collectionTop + Math.floor(i / 2) * (collectionCellH + collectionGap),
+        w: collectionCellW, h: collectionCellH }; },
+      detailNameY: contentTop + 66,
+      forms: function (i) { var fw = collectionW / 3; return {
+        x: collectionX + fw * i + 3, y: contentTop + 112,
+        w: fw - 6, h: Math.min(340, contentH - 138) }; }
+    };
+    var tutorialW = safeW - pad * 2;
+    ui.tutorial = {
+      caption: { x: metrics.safeLeft + pad, y: contentTop + 4, w: tutorialW, h: 96 },
+      start: { x: metrics.safeLeft + (safeW - 200) / 2,
+        y: Math.min(contentBottom - 48, Math.max(field.y + 104, base.y - 54)), w: 200, h: 48 }
     };
 
     ui.btnRect = function (kind) {

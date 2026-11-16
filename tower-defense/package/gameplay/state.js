@@ -30,15 +30,18 @@
     effects: [],
     floats: [],
     toast: null,
-    shop: [],          // 4 张随机英雄卡：{ cardId, sold }
+    shop: [],          // 4 格：{ cardId, star: 1..3, sold, locked, born }
+    unlockNotice: [],  // 本局首次突破进度新解锁的英雄 id，保留至 reset
     refreshCost: C.REFRESH_COST,
     heroCap: C.UNIT_CAP_START,
     capCost: C.CAP_COST,
     drag: null,
     dragging: null,
     inspect: null,
+    upgradeUnit: null, // 兼容旧角色详情选中字段；不再允许直接金币升级
     inspectT: 0,
     shake: 0,
+    goalHitT: 0,
     hitstop: 0,
     cardsPlaced: 0,
     assetErrors: [],
@@ -48,12 +51,18 @@
     menuSoundEnabled: true,
     menuPressed: null,
     menuFeedback: null,
+
+    shopPressed: null,
+    shopFeedback: null,
+
     battleSpeed: 1,
     selectedLevel: 1,
     currentLevel: 1,
     levelHpScale: 1,
     levelAtkScale: 1,
     menuSwipe: null,
+    menuSlide: null,   // 首页选关吸附动画；切换完成后才更新 selectedLevel
+
     menuStartDelay: 0,
   };
 
@@ -75,25 +84,146 @@
   // 兼容旧调用名
   S.cardById = S.heroById;
 
-  // 卡池随机可重复：每次独立抽 4 张
-  S.rollShop = function () {
-    S.shop = [];
-    for (var i = 0; i < C.cardCount; i++) {
-      var h = C.HEROES[randInt(C.HEROES.length)];
-      S.shop.push({ cardId: h.id, sold: false, born: S.time });
+  S.wavesForLevel = function (level) {
+    return C.wavesForLevel(level === undefined ? S.currentLevel : level);
+  };
+  S.getWaves = S.wavesForLevel;
+
+  S.isHeroUnlocked = function (id) {
+    if (!S.heroById(id)) return false;
+    if (A.Profile && typeof A.Profile.isHeroUnlocked === 'function') {
+      return A.Profile.isHeroUnlocked(id);
+    }
+    return C.heroUnlockLevel(id) === 1;
+  };
+
+  // 可选引导模块：仅从实际成功的业务路径调用，未接入时完全无影响。
+  S.notifyAction = function (action, detail) {
+    if (A.Tutorial && typeof A.Tutorial.onAction === 'function') {
+      A.Tutorial.onAction(action, detail);
     }
   };
 
-  // 花金币刷新卡池，价格逐次上浮
+  function validStar(star) {
+    return typeof star === 'number' && isFinite(star) &&
+      Math.floor(star) === star && star >= 1 && star <= C.HERO_MAX_STAR;
+  }
+
+  function copyDef(value) {
+    if (!value || typeof value !== 'object') return value;
+    var out = Array.isArray(value) ? [] : {};
+    for (var key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) out[key] = copyDef(value[key]);
+    }
+    return out;
+  }
+
+  // 属性与购买价格统一从配置母版派生，收藏预览不要求已解锁。
+  S.heroAtStar = function (id, star) {
+    var base = S.heroById(id);
+    if (!base || !validStar(star)) return null;
+    var def = copyDef(base);
+    var scale = C.HERO_STAR_SCALES[star - 1];
+    def.hp = base.hp * scale;
+    def.atk = base.atk * scale;
+    if (base.heal !== undefined) def.heal = base.heal * scale;
+    var speed = C.HERO_STAR_SPEED_SCALES[star - 1];
+    var reach = C.HERO_STAR_RANGE_SCALES[star - 1];
+    def.interval = base.interval / speed;
+    def.range = (base.range || 0) * reach;
+    def.taunt = (base.taunt || 0) * reach;
+    def.splash = (base.splash || 0) * reach;
+    if (base.aggro !== undefined) def.aggro = base.aggro * reach;
+    def.cost = base.cost * C.HERO_STAR_COST_SCALES[star - 1];
+    def.star = star;
+    return def;
+  };
+
+  S.shopCost = function (slot) {
+    if (!slot || slot.sold || !validStar(slot.star)) return 0;
+    var base = S.heroById(slot.cardId);
+    return base ? base.cost * C.HERO_STAR_COST_SCALES[slot.star - 1] : 0;
+  };
+
+  function shopSlot(index) {
+    if (typeof index !== 'number' || Math.floor(index) !== index ||
+        index < 0 || index >= C.cardCount) return null;
+    var slot = S.shop[index];
+    return slot && !slot.sold && validStar(slot.star) &&
+      S.isHeroUnlocked(slot.cardId) ? slot : null;
+  }
+
+  function lockedSlot(slot) {
+    return !!(slot && !slot.sold && slot.locked === true &&
+      validStar(slot.star) && S.isHeroUnlocked(slot.cardId));
+  }
+
+  S.mergeShopCards = function (sourceIndex, targetIndex) {
+    if (S.phase !== 'playing' || sourceIndex === targetIndex) return false;
+    var source = shopSlot(sourceIndex), target = shopSlot(targetIndex);
+    if (!source || !target || source === target || source.cardId !== target.cardId ||
+        source.star !== target.star || target.star >= C.HERO_MAX_STAR) return false;
+    var fromStar = target.star;
+    target.star++;
+    target.born = S.time;
+    target.age = 0;
+    target.locked = target.locked === true;
+    source.cardId = null;
+    source.sold = true;
+    source.locked = false;
+    S.notifyAction('merge', { sourceIndex: sourceIndex, targetIndex: targetIndex,
+      cardId: target.cardId, fromStar: fromStar, star: target.star, cost: 0 });
+    return true;
+  };
+
+  S.toggleShopLock = function (index) {
+    if (S.phase !== 'playing') return false;
+    var slot = shopSlot(index);
+    if (!slot) return false;
+    slot.locked = !slot.locked;
+    S.notifyAction('lock', { index: index, cardId: slot.cardId,
+      star: slot.star, locked: slot.locked });
+    return true;
+  };
+
+  // 手动刷新才补空位；锁定的任意星级卡保留原槽和原对象，不消耗抽卡随机数。
+  S.rollShop = function () {
+    var unlocked = [];
+    for (var hi = 0; hi < C.HEROES.length; hi++) {
+      if (S.isHeroUnlocked(C.HEROES[hi].id)) unlocked.push(C.HEROES[hi]);
+    }
+    for (var i = 0; i < C.cardCount; i++) {
+      if (lockedSlot(S.shop[i])) continue;
+      if (!unlocked.length) {
+        S.shop[i] = { cardId: null, star: 1, sold: true, locked: false, born: S.time };
+        continue;
+      }
+      var h = unlocked[randInt(unlocked.length)];
+      S.shop[i] = { cardId: h.id, star: 1, sold: false, locked: false, born: S.time };
+    }
+    S.shop.length = C.cardCount;
+  };
+
+  // 花金币刷新卡池，价格逐次上浮；全部锁定不扣金币，也不涨刷新费。
   S.refreshShop = function () {
+    var allLocked = true;
+    for (var i = 0; i < C.cardCount; i++) {
+      if (!lockedSlot(S.shop[i])) { allLocked = false; break; }
+    }
+    if (allLocked) {
+      S.toastMsg('卡池已全部锁定', 1.0);
+      return false;
+    }
     if (S.gold < S.refreshCost) {
       S.toastMsg('金币不足', 0.9);
       return false;
     }
-    S.gold -= S.refreshCost;
+    var paid = S.refreshCost;
+    S.gold -= paid;
     S.refreshCost = Math.min(C.REFRESH_COST_MAX, S.refreshCost + C.REFRESH_COST_STEP);
     S.rollShop();
-    S.addFloat(S.shopAnchorX || 0, S.shopAnchorY || 0, '刷新 -' + (S.refreshCost - C.REFRESH_COST_STEP), '#ffd166');
+    S.addFloat(S.shopAnchorX || 0, S.shopAnchorY || 0, '刷新 -' + paid, '#ffd166');
+    S.notifyAction('refresh', { cost: paid });
     return true;
   };
 
@@ -114,6 +244,7 @@
     S.heroCap = Math.min(C.UNIT_CAP_MAX, S.heroCap + C.UNIT_CAP_STEP);
     S.capCost += C.CAP_COST_STEP;
     S.toastMsg('上场席位 +' + C.UNIT_CAP_STEP + '，当前 ' + S.heroCap, 1.2);
+    S.notifyAction('cap', { heroCap: S.heroCap });
     return true;
   };
 
@@ -171,8 +302,10 @@
     S.floats.length = 0;
     S.toast = null;
     S.inspect = null;
+    S.upgradeUnit = null;
     S.inspectT = 0;
     S.shake = 0;
+    S.goalHitT = 0;
     S.hitstop = 0;
     S.drag = null;
     S.dragging = null;
@@ -182,7 +315,11 @@
     S.menuPanel = null;
     S.menuPressed = null;
     S.menuFeedback = null;
+    S.shopPressed = null;
+    S.shopFeedback = null;
     S.menuStartDelay = 0;
+    S.unlockNotice = [];
+    S.shop.length = 0; // 新局不继承上一局的锁卡。
     S.rollShop();
   };
 

@@ -79,6 +79,8 @@ require("./gameplay/anim/defs.js"); // 单位动画表
 require("./gameplay/play/battle.js"); // 核心玩法
 require("./gameplay/input.js"); // 触摸输入
 require("./gameplay/render/scene.js"); // 战场绘制
+require("./gameplay/hero-forms.js"); // 角色三等级形象
+require("./gameplay/tutorial.js"); // 首关操作引导
 require("./gameplay/ui.js"); // 设置 / 名片 / 排行榜 / 邀请
 require("./gameplay/render/hud.js"); // HUD 与界面
 require("./gameplay/render/safe-area-debug.js"); // H5 安全区调试层
