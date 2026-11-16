@@ -184,9 +184,40 @@
         h: s.cellH,
       };
     };
+    L.shopCardParts = function (i, drawnRect) {
+      var r = drawnRect || L.shopRect(i);
+      var inset = Math.max(4, Math.min(7, Math.round(r.h * 0.08)));
+      var portraitW = Math.min(48, r.h - inset * 2, Math.round(r.w * 0.29));
+      var portrait = { x: r.x + inset, y: r.y + inset,
+        w: portraitW, h: r.h - inset * 2 };
+      var costR = Math.max(10, Math.min(14, Math.round(r.h * 0.18)));
+      var cost = { x: r.x + r.w - inset - costR,
+        y: r.y + inset + costR, r: costR };
+      var lockSize = Math.max(16, Math.min(24, Math.round(r.h * 0.31)));
+      var lock = { x: r.x + r.w - inset - lockSize,
+        y: r.y + r.h - inset - lockSize, w: lockSize, h: lockSize };
+      return { rect: r, inset: inset, portrait: portrait,
+        textX: portrait.x + portrait.w + 7, cost: cost, lock: lock };
+    };
     L.shopLockRect = function (i) {
-      var r = L.shopRect(i);
-      return { x: r.x + r.w - 46, y: r.y + 2, w: 44, h: 44 };
+      var parts = L.shopCardParts(i);
+      var r = parts.rect;
+      var size = Math.min(32, r.h - parts.inset * 2);
+      return { x: r.x + r.w - parts.inset - size,
+        y: r.y + r.h - parts.inset - size,
+        w: size, h: size };
+    };
+    L.shopDragRect = function (i, x, y, startX, startY) {
+      var base = L.shopRect(i);
+      // 保留按下点在原卡片内的相对位置；拖动时同一点始终对齐触点。
+      var gripX = Math.max(0, Math.min(base.w, startX - base.x));
+      var gripY = Math.max(0, Math.min(base.h, startY - base.y));
+      var w = base.w, h = base.h;
+      return {
+        x: Math.max(metrics.safeLeft + 4, Math.min(x - gripX, metrics.safeRight - w - 4)),
+        y: Math.max(contentTop + 4, Math.min(y - gripY, contentBottom - h - 9)),
+        w: w, h: h,
+      };
     };
     ui.lanes = [
       field.x + field.w * 0.2,
@@ -214,19 +245,26 @@
       paused: Math.min(contentBottom - 78, contentTop + contentH * 0.60),
       result: Math.min(contentBottom - 78, contentTop + contentH * 0.64),
     };
-    // 暂停面板：继续 / 设置 / 重新开始 / 返回主页，四行竖排。
-    // 面板整体居中，按钮高度按 contentH 缩放，短屏也不会挤出安全区。
-    var pauseBtnW = Math.round(Math.min(240, safeW - pad * 4));
-    var pauseBtnH = Math.round(Math.max(44, Math.min(52, contentH * 0.062)));
-    var pauseGap = Math.round(Math.max(10, Math.min(16, contentH * 0.018)));
-    var pauseTitleY = contentTop + Math.round(contentH * 0.2);
-    var pauseTop = pauseTitleY + 96;
+    // 暂停面板按标题与四枚按钮的实际高度收拢，避免整图拉伸和底部按钮贴框。
+    var pauseCompact = contentH < 540;
+    var pausePanelW = Math.min(340, safeW - pad * 2);
+    var pauseBtnW = Math.min(260, pausePanelW - 36);
+    var pauseBtnH = pauseCompact ? 40 : 48;
+    var pauseGap = pauseCompact ? 8 : 12;
+    var pauseHeaderH = pauseCompact ? 84 : 110;
+    var pauseHeaderGap = pauseCompact ? 18 : 26;
+    var pauseBottomPad = pauseCompact ? 20 : 26;
     var pauseList = ['resume', 'settings', 'restart', 'home'];
-    var pauseH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
-    if (pauseTop + pauseH > contentBottom - 12) {
-      pauseTop = Math.max(contentTop + 90, contentBottom - 12 - pauseH);
-    }
-    var pauseX = Math.round(metrics.safeLeft + (safeW - pauseBtnW) / 2);
+    var pauseButtonsH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
+    var pausePanelH = pauseHeaderH + pauseHeaderGap + pauseButtonsH + pauseBottomPad;
+    pausePanelH = Math.min(pausePanelH, Math.max(1, contentH - 16));
+    var pausePanel = {
+      x: metrics.safeLeft + (safeW - pausePanelW) / 2,
+      y: contentTop + (contentH - pausePanelH) / 2,
+      w: pausePanelW, h: pausePanelH,
+    };
+    var pauseTop = pausePanel.y + pauseHeaderH + pauseHeaderGap;
+    var pauseX = pausePanel.x + (pausePanelW - pauseBtnW) / 2;
     var pauseRects = {};
     for (var pi = 0; pi < pauseList.length; pi++) {
       pauseRects[pauseList[pi]] = {
@@ -237,32 +275,47 @@
       };
     }
     ui.pausePanel = {
-      titleY: pauseTitleY,
-      subY: pauseTitleY + 62,
-      w: pauseBtnW,
-      h: pauseBtnH,
-      gap: pauseGap,
+      panel: pausePanel, compact: pauseCompact, headerH: pauseHeaderH,
       btn: function (kind) { return pauseRects[kind]; },
     };
     ui.sellZone = { x: metrics.safeLeft + pad, y: contentBottom - 44,
       w: safeW - pad * 2, h: 44 };
-    var resultGap = 8;
-    var resultW = Math.min(240, safeW - pad * 2);
-    var resultTop = contentBottom - 12 - 3 * 44 - 2 * resultGap;
-    ui.resultNext = { x: metrics.safeLeft + (safeW - resultW) / 2, y: resultTop, w: resultW, h: 44 };
-    ui.btnY.result = resultTop + 44 + resultGap;
-    ui.resultHome = { x: ui.resultNext.x, y: resultTop + 2 * (44 + resultGap), w: resultW, h: 44 };
-    ui.resultReplay = { x: ui.resultNext.x, y: ui.btnY.result, w: resultW, h: 44 };
-    var resultInfoH = Math.max(1, resultTop - contentTop - 12);
-    var resultTitleY = contentTop + Math.min(38, resultInfoH * 0.05);
-    var noticeH = Math.min(84, resultInfoH * 0.24);
+    // 结算页使用一张完整的安全区内面板；标题、解锁、战绩、三个按钮顺序排布。
+    var resultPanelH = Math.min(620, Math.max(1, contentH - 16));
+    var resultPanelW = Math.min(340, safeW - pad * 2);
+    var resultPanel = {
+      x: metrics.safeLeft + (safeW - resultPanelW) / 2,
+      y: contentTop + (contentH - resultPanelH) / 2,
+      w: resultPanelW, h: resultPanelH,
+    };
+    var resultCompact = resultPanelH < 500;
+    var resultHeaderH = resultCompact ? 82 : 116;
+    var resultBtnH = resultCompact ? 40 : 44;
+    var resultGap = resultCompact ? 6 : 8;
+    var resultW = Math.min(240, resultPanelW - 36);
+    var resultTop = resultPanel.y + resultPanel.h - (resultCompact ? 10 : 16) -
+      resultBtnH * 3 - resultGap * 2;
+    var resultBtnX = resultPanel.x + (resultPanelW - resultW) / 2;
+    ui.resultNext = { x: resultBtnX, y: resultTop, w: resultW, h: resultBtnH };
+    ui.resultReplay = { x: resultBtnX, y: resultTop + resultBtnH + resultGap,
+      w: resultW, h: resultBtnH };
+    ui.resultHome = { x: resultBtnX, y: resultTop + (resultBtnH + resultGap) * 2,
+      w: resultW, h: resultBtnH };
+    ui.btnY.result = ui.resultReplay.y;
+    var resultInfoTop = resultPanel.y + resultHeaderH + 8;
+    var resultInfoH = Math.max(1, resultTop - 8 - resultInfoTop);
+    var resultNoticeH = resultCompact ? 56 : 78;
+    var resultStatsGap = Math.max(18, Math.min(28,
+      (resultInfoH - resultNoticeH - 8) / 5));
+    var resultGroupH = resultNoticeH + 8 + 5 * resultStatsGap;
+    var resultNoticeY = resultInfoTop + Math.max(0, (resultInfoH - resultGroupH) / 2);
     ui.result = {
-      titleY: resultTitleY,
-      subY: resultTitleY + 52,
-      notice: { x: metrics.safeLeft + pad, y: resultTitleY + 86,
-        w: safeW - pad * 2, h: noticeH },
-      statsY: resultTitleY + 94 + noticeH,
-      statsGap: Math.max(18, Math.min(30, (resultTop - resultTitleY - 102 - noticeH) / 5))
+      panel: resultPanel, compact: resultCompact, headerH: resultHeaderH,
+      infoTop: resultInfoTop, infoH: resultInfoH,
+      notice: { x: resultPanel.x + 12, y: resultNoticeY,
+        w: resultPanel.w - 24, h: resultNoticeH },
+      statsY: resultNoticeY + resultNoticeH + 8,
+      statsGap: resultStatsGap,
     };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
@@ -302,33 +355,37 @@
     // 所有弹窗与全屏页都从同一份可交互区域派生：标题栏、按钮、行高都由 contentH 缩放。
     var sheetW = Math.round(Math.min(340, safeW - pad * 2 - 8));
     var sheetX = Math.round(metrics.safeLeft + (safeW - sheetW) / 2);
-    var sheetTop = contentTop + Math.round(contentH * 0.14);
-    var sheetMaxBottom = contentBottom - 12;
-
-    // 设置弹窗：标题 + 两条开关 + 分享按钮 + 版本号
-    var setH = Math.round(Math.min(372, sheetMaxBottom - sheetTop));
-    var setY = Math.round(sheetTop + Math.max(0, (sheetMaxBottom - sheetTop - setH) * 0.35));
-    var rowH = Math.round(Math.max(68, Math.min(78, setH * 0.21)));
-    var setHead = Math.round(rowH * 0.92);
-    var setBtnH = Math.round(Math.max(40, Math.min(50, setH * 0.14)));
-    var setInnerY = setY + setHead + Math.round(setH * 0.075);
-    var setRowGap = Math.round(Math.max(8, setH * 0.03));
-    var musicRow = { x: sheetX + 14, y: setInnerY, w: sheetW - 28, h: rowH };
-    var sfxRow = { x: musicRow.x, y: musicRow.y + rowH + setRowGap, w: musicRow.w, h: rowH };
+    // 设置弹窗按内部内容定高；其他资料页继续沿用 rowH 的原尺寸体系。
+    var rowH = Math.round(Math.max(68, Math.min(78, contentH * 0.14)));
+    var setCompact = contentH < 500;
+    var setHead = setCompact ? 64 : 80;
+    var setRowH = setCompact ? 56 : 68;
+    var setTopGap = setCompact ? 12 : 18;
+    var setRowGap = setCompact ? 8 : 12;
+    var setShareGap = setCompact ? 12 : 20;
+    var setBtnH = setCompact ? 42 : 48;
+    var setVersionGap = setCompact ? 10 : 16;
+    var setBottomPad = setCompact ? 14 : 18;
+    var setH = setHead + setTopGap + setRowH * 2 + setRowGap +
+      setShareGap + setBtnH + setVersionGap + 18 + setBottomPad;
+    var setY = Math.round(contentTop + (contentH - setH) / 2);
+    var setInnerY = setY + setHead + setTopGap;
+    var musicRow = { x: sheetX + 14, y: setInnerY, w: sheetW - 28, h: setRowH };
+    var sfxRow = { x: musicRow.x, y: musicRow.y + setRowH + setRowGap, w: musicRow.w, h: setRowH };
     var shareBtn = {
-      x: sheetX + 22,
-      y: sfxRow.y + rowH + Math.round(setH * 0.06),
-      w: sheetW - 44,
+      x: musicRow.x,
+      y: sfxRow.y + setRowH + setShareGap,
+      w: musicRow.w,
       h: setBtnH,
     };
     ui.settings = {
       sheet: { x: sheetX, y: setY, w: sheetW, h: setH },
-      head: setHead,
+      head: setHead, compact: setCompact,
       musicRow: musicRow,
       sfxRow: sfxRow,
       shareBtn: shareBtn,
-      close: { x: sheetX + sheetW - 38, y: setY + 6, w: 32, h: 32 },
-      versionY: shareBtn.y + shareBtn.h + 16,
+      close: { x: sheetX + sheetW - 44, y: setY + (setHead - 32) / 2, w: 32, h: 32 },
+      versionY: shareBtn.y + shareBtn.h + setVersionGap,
     };
 
     // 名片：整页卡片，标题带 + 头像 + 昵称 + ID + 两个入口

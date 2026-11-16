@@ -19,6 +19,22 @@
     GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: r });
   };
 
+  // 商店卡片与教学提示共用的暖色圆角底板；所有层均限制在传入矩形内。
+  draw.creamPanel = function (rect, alpha, radius) {
+    if (!rect || rect.w <= 8 || rect.h <= 8) return;
+    var a = alpha === undefined ? 1 : alpha;
+    var r = Math.min(radius || 13, rect.h * 0.2);
+    draw.roundRect(rect.x, rect.y, rect.w, rect.h, r, draw.color('#9b542c', a));
+    draw.roundRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 4,
+      Math.max(1, r - 2), draw.color('#e8ac69', a));
+    draw.roundRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8,
+      Math.max(1, r - 4), draw.color('#fff0da', a));
+    if (rect.w > 38 && rect.h > 25) {
+      draw.roundRect(rect.x + r, rect.y + 4, rect.w - r * 2, 2, 1,
+        draw.color('#ffffff', 0.55 * a));
+    }
+  };
+
   draw.circle = function (cx, cy, radius, col) {
     if (radius <= 0) return;
     GL.push(cx - radius, cy - radius, radius * 2, radius * 2, col,

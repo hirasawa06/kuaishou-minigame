@@ -155,7 +155,7 @@
 
   function lockedSlot(slot) {
     return !!(slot && !slot.sold && slot.locked === true &&
-      validStar(slot.star) && slot.star >= 2 && S.isHeroUnlocked(slot.cardId));
+      validStar(slot.star) && S.isHeroUnlocked(slot.cardId));
   }
 
   S.mergeShopCards = function (sourceIndex, targetIndex) {
@@ -179,14 +179,14 @@
   S.toggleShopLock = function (index) {
     if (S.phase !== 'playing') return false;
     var slot = shopSlot(index);
-    if (!slot || slot.star < 2) return false;
+    if (!slot) return false;
     slot.locked = !slot.locked;
     S.notifyAction('lock', { index: index, cardId: slot.cardId,
       star: slot.star, locked: slot.locked });
     return true;
   };
 
-  // 手动刷新才补空位；锁定的 2/3 星保留原槽和原对象，不消耗抽卡随机数。
+  // 手动刷新才补空位；锁定的任意星级卡保留原槽和原对象，不消耗抽卡随机数。
   S.rollShop = function () {
     var unlocked = [];
     for (var hi = 0; hi < C.HEROES.length; hi++) {

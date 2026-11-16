@@ -161,7 +161,9 @@
       }
       var def = S.heroAtStar(slot.cardId, slot.star || 1);
       if (!def) { drawEmptyCell(rect); continue; }
-      drawHeroCell(def, rect, 1, i);
+      var lifted = S.dragging && S.dragging.active &&
+        S.dragging.kind !== 'unit' && S.dragging.index === i;
+      drawHeroCell(def, rect, lifted ? 0.45 : 1, i);
     }
 
 
@@ -182,85 +184,113 @@
   }
 
   function drawEmptyCell(rect) {
-    var art = A.Assets.entry('shop-card');
-    if (art) {
-      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
-        rect.x, rect.y, rect.w, rect.h, D.color('#ffffff', 0.72));
-    } else {
-      D.roundRect(rect.x, rect.y, rect.w, rect.h, 12, D.color('#ffe6c3'));
-    }
+    drawCardShell(rect, 0.72);
   }
 
   function drawSoldCell(rect) {
     drawEmptyCell(rect);
-    D.text('已上阵', rect.x + rect.w / 2, rect.y + rect.h / 2 - 9, 18,
+    drawCardText('已上阵', rect.x + rect.w / 2,
+      rect.y + (rect.h - 18) / 2, rect.w - 20,
       D.color('#815d48'), 1);
   }
 
-  // 统一立绘；二星银蓝、三星金边星章，锁按钮独立占右侧44px。
-  function drawHeroCell(def, rect, alpha, index) {
+  // 卡片底板与信息徽章按同一卡片矩形绘制，立绘仍取独立透明美术素材。
+  function drawCardShell(rect, alpha) {
+    D.creamPanel(rect, alpha, 13);
+  }
+
+  function drawCardText(value, x, y, maxW, col, align) {
+    if (maxW <= 0) return;
+    var atlas = A.FontAtlas['18'];
+    var width = D.textWidth(value, atlas);
+    D.text(value, x, y, 18, col, align,
+      width > maxW ? maxW / width : 1);
+  }
+
+  // 费用在右上、锁定按钮在右下；文字仅占头像与角标之间的可用宽度。
+  function drawHeroCell(def, rect, alpha, index, isDragPreview) {
     var slot = S.shop[index], star = slot ? slot.star || 1 : 1;
     var cost = slot ? S.shopCost(slot) : def.cost;
     var afford = S.gold >= cost, usable = afford && S.liveUnits() < S.heroCap;
     var a = alpha === undefined ? 1 : alpha;
-    var clsCol = D.color(CARD_TEXT_COLOR[def.cls] || '#76533b');
+    var clsCol = D.color(CARD_TEXT_COLOR[def.cls] || '#397b4d', a);
     var drag = S.dragging;
     if (drag && drag.index === index && !drag.active) {
       rect = { x: rect.x + 2, y: rect.y + 1, w: rect.w - 4, h: rect.h - 2 };
     }
-    var art = A.Assets.entry('shop-card');
-    if (art) {
-      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h,
-        rect.x, rect.y, rect.w, rect.h, D.color('#ffffff', a));
-    } else {
-      D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#ffe6c3', a));
+    var parts = L.shopCardParts(index, rect);
+    var portrait = parts.portrait;
+    drawCardShell(rect, a);
+    D.roundRect(portrait.x, portrait.y, portrait.w, portrait.h, 8,
+      D.color('#e9c9a6', a));
+    D.roundRect(portrait.x + 2, portrait.y + 2, portrait.w - 4, portrait.h - 4, 6,
+      D.color('#f8e6d2', a));
+    var iconSize = Math.max(1, Math.min(portrait.w - 6, portrait.h - 6));
+    Scene.heroArt(def, portrait.x + portrait.w / 2,
+      portrait.y + portrait.h / 2, iconSize, a);
+    // 头像区域可点开详情，提示图标与命中区共用 portrait 几何。
+    var infoR = Math.min(7, portrait.w * 0.16);
+    D.circle(portrait.x + infoR + 2, portrait.y + infoR + 2, infoR,
+      D.color('#fff0d9', a));
+    drawCardText('i', portrait.x + infoR + 2, portrait.y + 1,
+      infoR * 2 - 2, D.color('#704026', a), 1);
+    if (star > 1) {
+      var badgeW = Math.min(portrait.w - 4, 28);
+      var badgeX = portrait.x + (portrait.w - badgeW) / 2;
+      var badgeY = portrait.y + portrait.h - 17;
+      D.roundRect(badgeX, badgeY, badgeW, 15, 7,
+        D.color(star === 3 ? '#e5b350' : '#a9c9d9', a));
+      drawCardText(star + '星', badgeX + badgeW / 2, badgeY - 1,
+        badgeW - 3, D.color('#704026', a), 1);
     }
 
-    // 立绘和两行文字都落在卡片内框内，避免压到圆角边框。
-    var iconSize = Math.max(24, rect.h - 12);
-    Scene.heroArt(def, rect.x + 7 + iconSize / 2, rect.y + rect.h / 2, iconSize, a);
-    if (star > 1) D.text(star + '星', rect.x + 7, rect.y + rect.h - 20,
-      18, D.color(star === 3 ? '#b17713' : '#426788', a), 0);
-    // 头像区域可点开详情，角标提示它与卡牌购买区是两种操作。
-    D.circle(rect.x + 11, rect.y + 10, 9, D.color('#fff0d9', a));
-    D.ring(rect.x + 11, rect.y + 10, 8, 1.2, D.color('#a66b3b', a));
-    D.text('i', rect.x + 11, rect.y + 1, 18, D.color('#704026', a), 1);
-
-    var tx = rect.x + 13 + iconSize;
-    var nameY = rect.y + 2;
-    D.text(def.name, tx, nameY, 18, D.color('#663c2b', a), 0);
-    // 职业 + 关键数值压到一行，避免溢出
+    var tx = parts.textX;
+    var nameY = rect.y + (rect.h - 38) / 2;
+    var nameW = Math.max(1, parts.cost.x - parts.cost.r - 4 - tx);
+    drawCardText(def.name, tx, nameY, nameW, D.color('#663c2b', a), 0);
     var line1 = def.cls === 'tank'
       ? def.clsName + ' · 生命 ' + def.hp
-
       : def.cls === 'healer' ? def.clsName + ' · 回血 ' + def.heal
         : def.clsName + ' · 攻 ' + def.atk;
-    D.text(line1, tx, nameY + 18, 18, clsCol, 0);
+    var statRight = parts.lock.x - 3;
+    drawCardText(line1, tx, nameY + 20, Math.max(1, statRight - tx), clsCol, 0);
 
-
-    // 费用角标
-    var cr = Math.max(12, Math.min(16, rect.h * 0.24));
-    var ccx = rect.x + rect.w - cr - 6 - (star > 1 ? 44 : 0);
-    var ccy = rect.y + cr + 4;
-    D.circle(ccx, ccy, cr, afford ? D.color('#ffcb68', a) : D.color('#b9a99a', a));
-    D.ring(ccx, ccy, cr - 0.7, 1.4, D.color('#a66b3b', a));
-    D.text(String(cost), ccx, ccy - 9, 18,
+    var cc = parts.cost;
+    D.circle(cc.x, cc.y, cc.r,
+      afford ? D.color('#ffcb68', a) : D.color('#b9a99a', a));
+    D.ring(cc.x, cc.y, cc.r - 0.8, 1.2, D.color('#a66b3b', a));
+    drawCardText(String(cost), cc.x, cc.y - 9, cc.r * 2 - 5,
       afford ? D.color('#6f3a20', a) : D.color('#695b52', a), 1);
 
-    if (!usable) D.roundRect(rect.x, rect.y, rect.w, rect.h, 10, D.color('#f0e0cf', 0.35 * a));
-    if (star > 1 && slot) {
-      var lock = L.shopLockRect(index);
-      D.roundRect(lock.x, lock.y, lock.w, lock.h, 10,
+    if (!usable) D.roundRect(rect.x + 3, rect.y + 3, rect.w - 6,
+      rect.h - 6, Math.min(10, rect.h * 0.18), D.color('#f0e0cf', 0.24 * a));
+    if (slot) {
+      var lock = parts.lock;
+      D.roundRect(lock.x, lock.y, lock.w, lock.h, Math.min(8, lock.h / 2),
         D.color(slot.locked ? '#d0e8f2' : '#f6dcc1', a));
-      D.text(slot.locked ? '已锁' : '锁', lock.x + lock.w / 2,
-        lock.y + 13, 18, D.color('#704026', a), 1);
+      drawCardText(slot.locked ? '已锁' : '锁', lock.x + lock.w / 2,
+        lock.y + (lock.h - 18) / 2, lock.w - 3, D.color('#704026', a), 1);
     }
-    if (drag && drag.active && drag.kind !== 'unit' && drag.mergeTarget === index) {
+    if (!isDragPreview && drag && drag.active && drag.kind !== 'unit' && drag.mergeTarget === index) {
       D.roundRect(rect.x, rect.y, rect.w, rect.h, 10,
         D.color(drag.mergeValid ? '#276953' : '#833b43', 0.86 * a));
       D.text(drag.mergeValid ? '松手合成 ' + (star + 1) + '星' : '无法合成',
         rect.x + rect.w / 2, rect.y + rect.h / 2 - 9, 18, D.color('#ffffff', a), 1);
     }
+  }
+
+  function drawDragGhost() {
+    var drag = S.dragging;
+    if (!drag || !drag.active || drag.kind === 'unit' || drag.y < L.ui.tray.y) {
+      Scene.drawDragGhost();
+      return;
+    }
+    if (!drag.def || !drag.slot || drag.index === undefined) return;
+    var rect = L.shopDragRect(drag.index, drag.x, drag.y, drag.startX, drag.startY);
+    // 阴影只从底边露出 5px，布局已给安全边界预留对应空间。
+    D.roundRect(rect.x + 2, rect.y + 5, rect.w - 4, rect.h, 12,
+      D.color('#5e3524', 0.38));
+    drawHeroCell(drag.def, rect, 0.98, drag.index, true);
   }
 
   function drawInspect() {
@@ -319,16 +349,6 @@
     D.roundRect(u.w / 2 - w / 2 + 2, y + 2, w - 4, 38, 19,
       D.color('#ffe7c2', 0.98 * a));
     D.text(S.toast.text, u.w / 2, y + 10, 18, D.color('#704026', a), 1);
-  }
-
-  function drawModalPanel(x, y, w, h) {
-    var art = A.Assets.entry('modal-panel');
-    if (art) {
-      D.texture(art.tex, art.w, art.h, 0, 0, art.w, art.h, x, y, w, h);
-    } else {
-      D.roundRect(x, y, w, h, 22, D.color('#fff0d9'));
-      D.strokeRect(x, y, w, h, 3, D.color('#a7663d'));
-    }
   }
 
   function drawButton(label, rectOrY, primary, fontSize, subtle) {
@@ -706,69 +726,107 @@
   }
 
   function drawPaused() {
-    var u = L.ui;
+    var u = L.ui, pause = u.pausePanel, panel = pause.panel;
     D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
-    var y = u.pausePanel.titleY;
-    var home = u.pausePanel.btn('home');
-    var pw = Math.min(u.interactiveRect.w - 20, u.pausePanel.w + 64);
-    var px = u.safeLeft + (u.interactiveRect.w - pw) / 2;
-    var py = Math.max(u.contentTop + 4, y - 43);
-    drawModalPanel(px, py, pw, home.y + home.h + 20 - py);
-    D.text('已暂停', u.w / 2, y, 48, D.color('#704026'), 1);
-    // 主操作与设置/主页入口都从 layout 取几何，绘制与命中一致
-    drawButton('继续游戏', u.pausePanel.btn('resume'), true, 28);
-    drawButton('设置', u.pausePanel.btn('settings'), false, 28);
-    drawButton('重新开始', u.pausePanel.btn('restart'), false, 28);
-    drawButton('返回主页', u.pausePanel.btn('home'), false, 28, true);
+    D.creamPanel(panel, 1, 22);
+    D.roundRect(panel.x + 7, panel.y + 7, panel.w - 14,
+      pause.headerH - 11, 17, D.color('#f5d29f'));
+    resultText('已暂停', panel.x + panel.w / 2,
+      panel.y + (pause.compact ? 24 : 31), panel.w - 40,
+      pause.compact ? 28 : 48, '#704026', 1);
+    // 四枚按钮与触摸共用 pausePanel.btn；短屏收紧字号与间距。
+    var buttonFont = pause.compact ? 18 : 28;
+    drawResultButton('继续游戏', pause.btn('resume'), true, buttonFont);
+    drawResultButton('设置', pause.btn('settings'), false, buttonFont);
+    drawResultButton('重新开始', pause.btn('restart'), false, buttonFont);
+    drawResultButton('返回主页', pause.btn('home'), false, buttonFont);
+  }
+
+  function resultText(value, x, y, maxW, size, color, align) {
+    var width = D.textWidth(value, A.FontAtlas[String(size)]);
+    D.text(value, x, y, size, D.color(color), align,
+      width > maxW ? maxW / width : 1);
+  }
+
+  function drawResultButton(label, rect, primary, fontSize) {
+    var r = rect.h / 2;
+    D.roundRect(rect.x, rect.y + 2, rect.w, rect.h - 2, r,
+      D.color(primary ? '#a95316' : '#a96e44'));
+    D.roundRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 6, r - 2,
+      D.color(primary ? '#ef8d18' : '#e4b987'));
+    D.roundRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 10, r - 4,
+      D.color(primary ? '#ffb234' : '#fff0d9'));
+    D.roundRect(rect.x + r, rect.y + 5, rect.w - 2 * r, 2, 1,
+      D.color('#ffffff', primary ? 0.65 : 0.4));
+    var size = fontSize || (primary && rect.h >= 44 ? 28 : 18);
+    resultText(label, rect.x + rect.w / 2, rect.y + (rect.h - size) / 2 - 1,
+      rect.w - 20, size, '#704026', 1);
   }
 
   function drawResult(win) {
-    var u = L.ui;
+    var u = L.ui, result = u.result, panel = result.panel;
+    var cx = panel.x + panel.w / 2;
     D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.5));
-    var y = u.result.titleY;
-    var resultBtn = u.btnRect('result');
-    var pw = Math.min(u.interactiveRect.w - 20, 330);
-    var px = u.safeLeft + (u.interactiveRect.w - pw) / 2;
-    var py = Math.max(u.contentTop + 4, y - 44);
-    drawModalPanel(px, py, pw, resultBtn.y + resultBtn.h + 20 - py);
-    D.text(win ? '胜利' : '失败', u.w / 2, y, 48,
-      win ? D.color('#a86a24') : D.color('#b04f4c'), 1);
-    D.text(win ? '合照守住了！' : '合照被毁了', u.w / 2, u.result.subY, 28,
-      D.color('#704026'), 1);
-    if (win && S.unlockNotice && S.unlockNotice.length) {
-      var notice = u.result.notice;
-      D.roundRect(notice.x, notice.y, notice.w, notice.h, 12, D.color('#fff0d9', 0.96));
-      D.text('新伙伴已解锁', notice.x + notice.w / 2, notice.y + 5, 18,
-        D.color('#a86a24'), 1);
+    D.creamPanel(panel, 1, 22);
+    D.roundRect(panel.x + 7, panel.y + 7, panel.w - 14,
+      result.headerH - 11, 17, D.color('#f5d29f'));
+    var nextUnlocked = win && S.currentLevel < C.LEVELS.length;
+    var chapter = '第 ' + S.currentLevel + ' 关' + (nextUnlocked ? ' · 下一关已解锁' : '');
+    resultText(chapter, cx, panel.y + 10, panel.w - 32, 18, '#8a6248', 1);
+    var titleSize = result.compact ? 28 : 48;
+    resultText(win ? '胜利' : '失败', cx, panel.y + (result.compact ? 29 : 31),
+      panel.w - 32, titleSize, win ? '#aa671f' : '#b04f4c', 1);
+    resultText(win ? '合照守住了！' : '合照被毁了', cx,
+      panel.y + (result.compact ? 58 : 83), panel.w - 32,
+      result.compact ? 18 : 28, '#704026', 1);
+
+    var hasNotice = win && S.unlockNotice && S.unlockNotice.length;
+    if (hasNotice) {
+      var notice = result.notice;
+      D.roundRect(notice.x, notice.y, notice.w, notice.h, 12, D.color('#dba36b'));
+      D.roundRect(notice.x + 2, notice.y + 2, notice.w - 4, notice.h - 4,
+        10, D.color('#fff2df'));
+      resultText('新伙伴已解锁', notice.x + notice.w / 2, notice.y + 5,
+        notice.w - 20, 18, '#a86a24', 1);
       var itemW = notice.w / S.unlockNotice.length;
+      var iconSize = result.compact ? 22 : 28;
+      var itemY = notice.y + (result.compact ? 39 : 51);
       for (var ni = 0; ni < S.unlockNotice.length; ni++) {
         var hero = S.heroById(S.unlockNotice[ni]);
         if (!hero) continue;
-        var cx = notice.x + itemW * (ni + 0.5);
-        if (A.HeroForms) A.HeroForms.draw(hero.id, 2, cx - 34, notice.y + 47, 32);
-        else icon(hero.icon, cx - 34, notice.y + 47, 32);
-        D.text(hero.name, cx - 12, notice.y + 33, 18, D.color('#704026'), 0);
+        var itemX = notice.x + itemW * ni + 9;
+        var artX = itemX + iconSize / 2;
+        if (A.HeroForms) A.HeroForms.draw(hero.id, 2, artX, itemY, iconSize);
+        else icon(hero.icon, artX, itemY, iconSize);
+        resultText(hero.name, itemX + iconSize + 5, itemY - 9,
+          itemW - iconSize - 20, 18, '#704026', 0);
       }
     }
+
     var totalWaves = S.getWaves().length;
     var cleared = win ? totalWaves : S.waveIndex;
     var stats = [
-      '抵达波次  ' + Math.max(1, Math.min(cleared, totalWaves)) + '/' + totalWaves,
-      '击杀数量  ' + S.kills,
-      '累计金币  ' + S.goldEarned,
-      '上阵英雄  ' + S.cardsPlaced,
-      '合照完好  ' + Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP,
+      ['抵达波次', Math.max(1, Math.min(cleared, totalWaves)) + '/' + totalWaves],
+      ['击杀数量', String(S.kills)],
+      ['累计金币', String(S.goldEarned)],
+      ['上阵英雄', String(S.cardsPlaced)],
+      ['合照完好', Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP],
     ];
+    var statsY = hasNotice ? result.statsY :
+      result.infoTop + Math.max(0, (result.infoH - stats.length * result.statsGap) / 2);
+    var left = panel.x + 27, right = panel.x + panel.w - 27;
     for (var i = 0; i < stats.length; i++) {
-      D.text(stats[i], u.w / 2, u.result.statsY + i * u.result.statsGap, 18,
-        D.color('#76513c'), 1);
+      var rowY = statsY + i * result.statsGap;
+      resultText(stats[i][0], left, rowY, panel.w * 0.48, 18, '#76513c', 0);
+      resultText(stats[i][1], right, rowY, panel.w * 0.36, 18, '#704026', 2);
     }
-    if (win && S.currentLevel < C.LEVELS.length) drawButton('下一关', u.resultNext, true, 28);
-    else if (win) D.text('全部关卡已通关', u.w / 2, u.resultNext.y + 12, 18, COL.gold, 1);
-    drawButton('再玩一次', u.resultReplay, !win, 18);
-    drawButton('返回选关', u.resultHome, false, 18);
-    D.text('第 ' + S.currentLevel + ' 关' + (win && S.currentLevel < C.LEVELS.length ? ' · 下一关已解锁' : ''),
-      u.w / 2, u.result.titleY - 22, 18, COL.textDim, 1);
+
+    if (nextUnlocked) drawResultButton('下一关', u.resultNext, true);
+    else resultText(win ? '全部关卡已通关' : '调整阵容，再试一次',
+      cx, u.resultNext.y + (u.resultNext.h - 18) / 2,
+      panel.w - 36, 18, '#8a6248', 1);
+    drawResultButton('再玩一次', u.resultReplay, !win);
+    drawResultButton('返回选关', u.resultHome, false);
   }
 
   function drawLoading() {
@@ -794,6 +852,6 @@
     drawPaused: drawPaused,
     drawResult: drawResult,
     drawLoading: drawLoading,
-    drawDragGhost: Scene.drawDragGhost,
+    drawDragGhost: drawDragGhost,
   };
 })();

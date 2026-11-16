@@ -77,7 +77,7 @@
   }
 
   function onCardPortrait(d, x, y) {
-    return pointIn({ x: d.rect.x, y: d.rect.y, w: Math.min(47, d.rect.w * 0.27), h: d.rect.h }, x, y);
+    return pointIn(L.shopCardParts(d.index).portrait, x, y);
   }
 
   function onDown(px, py) {
@@ -133,7 +133,7 @@
     }
     var def = S.heroAtStar(hit.slot.cardId, hit.slot.star || 1);
     if (!def) return;
-    if ((hit.slot.star || 1) >= 2 && hitControl(L.shopLockRect(hit.index), px, py, 0)) {
+    if (hitControl(L.shopLockRect(hit.index), px, py, 0)) {
       drag = { kind: 'lock', index: hit.index, slot: hit.slot, startX: px, startY: py, x: px, y: py };
       return;
     }

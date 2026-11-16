@@ -78,7 +78,7 @@
 
 ## L8 商店控件首轮接入
 
-- 空白角色卡源图：[shop-card-source.png](shop-card-source.png)，运行时透明素材：[shop-card.png](../package/res/Image/shop-card.png)；空白橙色按钮源图：[shop-button-source.png](shop-button-source.png)，运行时透明素材：[shop-button.png](../package/res/Image/shop-button.png)。素材均不烘焙角色、文字或价格。
+- 空白角色卡源图：[shop-card-source.png](shop-card-source.png)，旧运行时卡片底图归档为 [shop-card.png](legacy-package-assets/shop-card.png)；当前商店卡片底板、头像槽和信息角标由 WebGL 几何绘制。空白橙色按钮源图：[shop-button-source.png](shop-button-source.png)，运行时透明素材：[shop-button.png](../package/res/Image/shop-button.png)。这些素材均不烘焙角色、文字或价格。
 - 四张卡片复用同一底图与 L4 角色图集，名称、职业/属性、价格、售罄和不可购买状态由现有商店数据实时绘制。刷新与扩建按钮复用同一底图，金额、满级、金币不足由现有状态决定。
 - 按下按钮时绘制缩至 94%，松手后短暂回弹；卡片按下时整体略缩。显示变化不改变命中区，所有命中仍来自 `Layout.ui`。按钮高度下限调整为 36px，现有 4px 命中余量合计提供约 44px 触摸高度；滑出原按钮再松手不会误触另一个按钮。
 - 底部旧说明文字从商店底边移除，避免压在手势安全区与木纹上；操作说明待 L9 引导层设计。
@@ -86,7 +86,9 @@
 
 ## L9 顶层反馈首轮接入
 
-- 空白竖版弹窗源图：[modal-panel-source.png](modal-panel-source.png)，运行时透明素材：[modal-panel.png](../package/res/Image/modal-panel.png)。暂停与胜负结算共用底板，文字、统计与按钮继续实时绘制；全屏棕色半透明遮罩仅作视觉层，按钮仍在安全区中。
+当前暂停和结算弹窗已改为 WebGL 几何底板；下方记录的是首轮接入时的历史状态。旧弹窗图已归档到 `legacy-package-assets/`，见 `pause-panel-v1.md` 与 `result-panel-v1.md`。
+
+- 空白竖版弹窗源图：[modal-panel-source.png](modal-panel-source.png)，旧运行时素材已归档为 [modal-panel.png](legacy-package-assets/modal-panel.png)。首轮暂停与胜负结算共用底板，文字、统计与按钮实时绘制；全屏棕色半透明遮罩仅作视觉层，按钮仍在安全区中。
 - 暂停预览：[top-layer-pause-preview.png](top-layer-pause-preview.png)；结算预览：[top-layer-result-preview.png](top-layer-result-preview.png)。继续、设置、重开、返回主页和再玩一次保留原逻辑与布局命中。旧深色弹窗/按钮改为奶油色面板和橙色主操作。
 - 角色详情改为暖色信息卡，宽度适配交互区域，描述按字形宽度最多拆成两行；预览：[top-layer-inspect-preview.png](top-layer-inspect-preview.png)。短屏与更长描述仍需设备检查。
 - 战场提示、预备波次和拖拽卡影改为暖色反馈。开局尚未部署角色且没有临时提示时，战场内显示“点击卡牌自动上场 / 拖动卡牌指定位置”，不占底部安全区。旧字体图集缺少 `s` 字形，预备提示改为“第 n 波准备 x.x”，详情不再显示缺字的单位后缀。

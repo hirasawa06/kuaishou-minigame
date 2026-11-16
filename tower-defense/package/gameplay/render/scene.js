@@ -566,15 +566,8 @@
     }
     var overField = drag.y < u.tray.y;
     var x = drag.x, y = drag.y;
-    if (!overField) {
-      // 手指还在商店里：卡片跟手，不显示落地预览
-      D.roundRect(x - 52, y - 34, 104, 68, 12, D.color('#a96638', 0.9));
-      D.roundRect(x - 49, y - 31, 98, 62, 10, D.color('#fff0d9', 0.96));
-      heroArt(def, x - 20, y, 40, 0.96);
-      D.text(def.name, x + 4, y - 20, 18, D.color('#704026', 0.95), 0);
-      D.text(def.cost + ' 金币', x + 4, y + 2, 18, D.color('#9b5b30', 0.95), 0);
-      return;
-    }
+    // 卡池内的浮起卡由 Hud 复用商店卡片绘制；这里只负责战场落点预览。
+    if (!overField) return;
     var reason = A.Battle.deployBlockReason(def, x, y);
     var ok = !reason && y < u.tray.y - 4;
     var col = ok ? '#6ff0a8' : '#ff6b7f';
@@ -593,11 +586,28 @@
       D.circle(x, y, def.splash, D.color('#a583f0', 0.08));
       D.ring(x, y, def.splash, 1.2, D.color('#b79cff', 0.45));
     }
-    D.circle(x, y, def.radius + 4, D.color(col, 0.22));
-    D.ring(x, y, def.radius + 3, 1.6, D.color(col, 0.85));
-
-    if (def.cls === 'healer') drawHealerPlaceholder(x, y, def.radius * 2.2, 0.94);
-    else icon(def.icon, x, y, def.radius * 2.2, 0.94);
+    // 落点预览复用正式角色待机美术，避免再次露出旧图集的职业符号。
+    var rig = A.Rigs && A.Rigs[def.id];
+    var previewSize = rig ? def.radius * 3.05 * (rig.scale || 1) : def.radius * 2.35;
+    var spriteY = rig ? y - def.radius * 0.15 : y;
+    var shadowY = spriteY + previewSize * 0.42;
+    var previewAlpha = ok ? 0.88 : 0.56;
+    drawGroundShadow(x, shadowY, def.radius * 0.70, ok ? 0.32 : 0.20);
+    D.roundRect(x - 18, shadowY + 3, 36, 4, 2, D.color(col, 0.88));
+    if (rig && Assets.tex('game')) {
+      A.Anim.draw(rig, { anim: 'idle', animT: S.time, hitFlash: 0 },
+        x, spriteY, previewSize, { alpha: previewAlpha });
+    } else if (def.cls === 'healer') {
+      if (!A.HeroForms || !A.HeroForms.drawBattleIdle(def.id, 2,
+        x, spriteY + previewSize * 0.10, previewSize * 0.68, previewAlpha)) {
+        drawHealerPlaceholder(x, spriteY, previewSize, previewAlpha);
+      }
+    } else {
+      var still = { def: def, anim: 'idle', facing: 1 };
+      if (!battlePose(still, x, spriteY, previewSize, previewAlpha)) {
+        heroArt(def, x, spriteY, previewSize, previewAlpha);
+      }
+    }
 
     if (!ok) {
       D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' : '请拖到战场', x, y + def.radius + 12, 18,

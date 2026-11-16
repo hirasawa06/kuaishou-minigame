@@ -7,7 +7,7 @@
     cap: ['扩建上场人口', '点击下方扩建按钮，增加席位'],
     refresh: ['刷新卡池', '点击刷新，准备两张相同射手卡'],
     merge: ['合成二星射手', '拖一张一星射手到另一张一星射手上'],
-    lock: ['保留二星卡', '点击二星射手右上角的锁按钮'],
+    lock: ['保留二星卡', '点击二星射手右下角的锁按钮'],
     refreshLocked: ['验证锁卡保留', '再次点击刷新，锁定的二星射手不会消失'],
     deploy2: ['买下二星射手', '点击锁定的二星射手上阵'],
     sell: ['学会出售驻守角色', '拖动原来的一星射手到底部出售区并松手'],
@@ -133,9 +133,22 @@
         rects.push(T.stage === 'lock' ? L.shopLockRect(slots[i]) : L.shopRect(slots[i]));
       }
     }
-    var drag = S.dragging;
-    if (drag && drag.active) rects.push({ x: drag.x - 56, y: drag.y - 60, w: 112, h: 112 });
     return rects;
+  }
+  // 拖卡尚未进入战场时提示目标方向；进入战场后交给落点预览显示有效范围。
+  function drawBattleDropGuide() {
+    var D = A.Render.draw, u = L.ui;
+    var x = u.placeLeft, y = u.placeTop;
+    var w = u.placeRight - x, h = u.placeBottom - y;
+    if (w <= 0 || h <= 0) return;
+    var cx = x + w / 2;
+    var cy = y + h * 0.58;
+    var pulse = 0.74 + Math.sin(T.time * 5) * 0.12;
+    D.roundRect(x, y, w, h, 10, D.color('#73e5a0', 0.10));
+    D.strokeRect(x, y, w, h, 2, D.color('#eaffbd', pulse));
+    D.roundRect(cx - 76, cy - 15, 152, 30, 15,
+      D.color('#fff0d9', 0.96));
+    D.text('拖到战场上阵', cx, cy - 9, 18, D.color('#704026'), 1);
   }
   // 多目标镂空：按水平条带合并亮区，不叠加暗层，不依赖DOM或Canvas2D。
   function spotlight(rects) {
@@ -168,33 +181,58 @@
   }
   function draw() {
     if (!T.active || S.phase !== 'playing') return;
-    spotlight(targetRects());
+    var drag = S.dragging, dragging = !!(drag && drag.active);
+    // 拖动期间不盖暗幕也不追着手指开亮孔，避免遮住浮起卡和战场。
+    if (!dragging) spotlight(targetRects());
+    if (dragging && (T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'deploy2') &&
+      drag.kind !== 'unit' && drag.y >= L.ui.tray.y) drawBattleDropGuide();
     var D = A.Render.draw, u = L.ui, source = u.tutorial.caption, copy = COPY[T.stage];
-    var title = wrapped(copy[0], source.w - 24), body = wrapped(copy[1], source.w - 24);
-    var footer = wrapped('引导赠币 +' + T.gift + ' · 完成操作才继续', source.w - 24);
-    var rect = { x: source.x, y: source.y, w: source.w, h: 16 + (title.length + body.length + footer.length) * 20 };
+    var innerW = source.w - 32;
+    var deploying = T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'deploy2';
+    var bodyText = dragging && deploying ? '拖到战场，松手上阵' : copy[1];
+    var title = wrapped(copy[0], innerW), body = wrapped(bodyText, innerW);
+    var footer = wrapped('引导赠币 +' + T.gift + ' · 完成操作才继续', innerW);
+    var rect = { x: source.x, y: source.y, w: source.w,
+      h: 26 + (title.length + body.length + footer.length) * 20 };
     // 字幕固定在战场上部；出售目标靠近时移到战场底部，商店不被遮挡。
     if (T.stage === 'sell' && live(T.unit) && T.unit.y - 56 < rect.y + rect.h && T.unit.y + 30 > rect.y) {
       rect.y = Math.max(u.contentTop + 4, u.tray.y - rect.h - 6);
     }
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 16, D.color('#14253b', 0.97));
-    var textY = rect.y + 8;
+    D.creamPanel(rect, 0.98, 16);
+    var titleBandH = title.length * 20 + 7;
+    D.roundRect(rect.x + 7, rect.y + 7, rect.w - 14, titleBandH, 10,
+      D.color('#f5cd94', 0.96));
+    var textY = rect.y + 9;
     function drawLines(items, color) {
       for (var li = 0; li < items.length; li++) {
         D.text(items[li], rect.x + rect.w / 2, textY, 18, D.color(color), 1); textY += 20;
       }
     }
-    drawLines(title, '#ffe17c'); drawLines(body, '#ffffff'); drawLines(footer, '#aac6dd');
-    if (T.stage === 'cap') highlight(u.capBtn);
-    else if (T.stage === 'refresh' || T.stage === 'refreshLocked') highlight(u.refreshBtn);
-    else if (T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'merge' || T.stage === 'deploy2' || T.stage === 'lock') {
+    drawLines(title, '#704026');
+    textY += 6;
+    drawLines(body, '#683c29');
+    textY += 3;
+    D.roundRect(rect.x + 18, textY - 2, rect.w - 36, 1.5, 0.75,
+      D.color('#d7a675', 0.75));
+    textY += 3;
+    drawLines(footer, '#8a6248');
+    if (T.stage === 'cap') { if (!dragging) highlight(u.capBtn); }
+    else if (T.stage === 'refresh' || T.stage === 'refreshLocked') {
+      if (!dragging) highlight(u.refreshBtn);
+    } else if (T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'merge' || T.stage === 'deploy2' || T.stage === 'lock') {
+      if (dragging && T.stage !== 'merge') {
+        return;
+      }
       var slots = archerSlots(T.stage === 'deploy2' || T.stage === 'lock' ? 2 : 1);
-      for (var i = 0; i < slots.length; i++) highlight(T.stage === 'lock' ? L.shopLockRect(slots[i]) : L.shopRect(slots[i]));
+      for (var i = 0; i < slots.length; i++) {
+        if (dragging && slots[i] === drag.index) continue;
+        highlight(T.stage === 'lock' ? L.shopLockRect(slots[i]) : L.shopRect(slots[i]));
+      }
     } else if (T.stage === 'sell') {
-      if (T.unit) highlight({ x: T.unit.x - 28, y: T.unit.y - 48, w: 56, h: 76 });
+      if (!dragging && T.unit) highlight({ x: T.unit.x - 28, y: T.unit.y - 48, w: 56, h: 76 });
       D.roundRect(u.sellZone.x, u.sellZone.y, u.sellZone.w, u.sellZone.h, 12, D.color('#765024', 0.97));
       D.text('拖到这里松手出售', u.sellZone.x + u.sellZone.w / 2, u.sellZone.y + 12, 18, D.color('#ffe17c'), 1);
-      highlight(u.sellZone);
+      if (!dragging) highlight(u.sellZone);
     } else if (T.stage === 'start') {
       var b = u.tutorial.start;
       D.roundRect(b.x, b.y, b.w, b.h, 24, D.color('#f0a02a'));

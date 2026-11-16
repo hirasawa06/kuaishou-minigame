@@ -123,9 +123,7 @@
     manifest.push(['battle-fx-atlas', 'res/Image/battle-fx-atlas.png']);
     manifest.push(['hud-panel', 'res/Image/hud-panel.png']);
     manifest.push(['shop-tray', 'res/Image/shop-tray.png']);
-    manifest.push(['shop-card', 'res/Image/shop-card.png']);
     manifest.push(['shop-button', 'res/Image/shop-button.png']);
-    manifest.push(['modal-panel', 'res/Image/modal-panel.png']);
 
     pending = manifest.length;
     for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);

@@ -114,8 +114,8 @@
   }
 
   function switchRects(rect) {
-    var w = Math.round(Math.min(62, rect.h * 1.24));
-    var h = Math.round(Math.min(34, rect.h * 0.66));
+    var w = Math.round(Math.min(62, rect.h * 0.95));
+    var h = Math.round(Math.min(32, rect.h * 0.48));
     return {
       track: { x: rect.x + rect.w - w - 12, y: rect.y + (rect.h - h) / 2, w: w, h: h },
       w: w, h: h,
@@ -123,22 +123,32 @@
   }
 
   function toggleRow(rect, label, sub, on) {
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 14, col(COLOR.row));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col(COLOR.rowEdge));
+    D.roundRect(rect.x, rect.y, rect.w, rect.h, 14, col('#dba36b'));
+    D.roundRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 4, 12,
+      col('#fff2df'));
     var pad = 14;
-    D.text(label, rect.x + pad, rect.y + Math.max(6, rect.h * 0.2), 28, col(COLOR.brownDeep), 0);
-    if (sub) {
-      D.text(sub, rect.x + pad, rect.y + Math.max(30, rect.h * 0.56), 18,
-        col(COLOR.textDim), 0);
-    }
     var sw = switchRects(rect);
     var t = sw.track;
-    D.roundRect(t.x, t.y, t.w, t.h, t.h / 2, col(on ? COLOR.green : COLOR.off));
-    D.strokeRect(t.x, t.y, t.w, t.h, 1, col(on ? COLOR.greenEdge : '#dccdb6'));
+    var textW = t.x - rect.x - pad - 8;
+    fittedText(label, rect.x + pad, rect.y + 6, 28, textW, COLOR.brownDeep, 0);
+    if (sub) {
+      fittedText(sub, rect.x + pad, rect.y + (rect.h < 60 ? 35 : 39), 18,
+        textW, COLOR.textDim, 0);
+    }
+    D.roundRect(t.x, t.y, t.w, t.h, t.h / 2,
+      col(on ? COLOR.greenEdge : '#c6b39d'));
+    D.roundRect(t.x + 2, t.y + 2, t.w - 4, t.h - 4, (t.h - 4) / 2,
+      col(on ? COLOR.green : COLOR.off));
     var knobD = t.h - 6;
     var kx = on ? t.x + t.w - knobD - 3 : t.x + 3;
     D.circle(kx + knobD / 2, t.y + t.h / 2, knobD / 2, col(COLOR.greenKnob));
     D.circle(kx + knobD / 2, t.y + t.h / 2 - 1, knobD / 2 - 2.5, col('#ffffff', on ? 0.5 : 0.7));
+  }
+
+  function fittedText(value, x, y, size, maxW, color, align) {
+    var width = D.textWidth(value, A.FontAtlas[String(size)]);
+    D.text(value, x, y, size, col(color), align,
+      width > maxW ? maxW / width : 1);
   }
 
   // 头像：外圈奶油底 + 选中时橙色描边与右下角勾选
@@ -184,17 +194,31 @@
     var u = L.ui;
     var g = u.settings;
     dimBackground();
-    paper(g.sheet, 26, '设置', g.head);
+    D.creamPanel(g.sheet, 1, 22);
+    D.roundRect(g.sheet.x + 7, g.sheet.y + 7,
+      g.sheet.w - 14, g.head - 11, 17, col('#f5d29f'));
+    fittedText('设置', g.sheet.x + g.sheet.w / 2,
+      g.sheet.y + (g.compact ? 19 : 27), g.compact ? 28 : 48,
+      g.sheet.w - 90, COLOR.brownDeep, 1);
     closeButton(g.close);
 
     toggleRow(g.musicRow, '音乐', '跟随游戏播放背景音乐', P.data.music);
     toggleRow(g.sfxRow, '音效', '技能、点击与胜利提示音', P.data.sfx);
 
-    ghostRow(g.shareBtn, '分享给好友', { chevron: true, size: 28 });
-    icon('ui-share', g.shareBtn.x + 26, g.shareBtn.y + g.shareBtn.h / 2, 22, 0.85);
+    D.roundRect(g.shareBtn.x, g.shareBtn.y, g.shareBtn.w, g.shareBtn.h,
+      g.shareBtn.h / 2, col('#a96e44'));
+    D.roundRect(g.shareBtn.x + 2, g.shareBtn.y + 2,
+      g.shareBtn.w - 4, g.shareBtn.h - 4, (g.shareBtn.h - 4) / 2,
+      col('#fff0d9'));
+    icon('ui-share', g.shareBtn.x + 25, g.shareBtn.y + g.shareBtn.h / 2, 20, 0.85);
+    fittedText('分享给好友', g.shareBtn.x + g.shareBtn.w / 2,
+      g.shareBtn.y + (g.shareBtn.h - 28) / 2, 28,
+      g.shareBtn.w - 88, COLOR.brownDeep, 1);
+    icon('ui-chevron', g.shareBtn.x + g.shareBtn.w - 22,
+      g.shareBtn.y + g.shareBtn.h / 2, 17);
 
-    D.text('版本号 ' + VERSION, g.sheet.x + g.sheet.w / 2, g.versionY, 18,
-      col(COLOR.textDim), 1);
+    fittedText('版本 ' + VERSION, g.sheet.x + g.sheet.w / 2, g.versionY,
+      18, g.sheet.w - 36, COLOR.textDim, 1);
   }
 
   // ── 我的名片 ────────────────────────────────────────────────
