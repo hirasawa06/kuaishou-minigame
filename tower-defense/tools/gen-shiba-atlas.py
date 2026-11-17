@@ -214,6 +214,13 @@ def healer_frame(name):
     x0, x1 = col * width // frame["columns"], (col + 1) * width // frame["columns"]
     rgba = np.asarray(sheet.crop((x0, 0, x1, height))).copy()
     # 原图透明背景边缘有不足 80 alpha 的残点；不参与裁切，避免角色被缩小。
+    # 新治疗帧的低透明像素属于法杖光晕，按动作规格保留。
+    if frame.get("preserveAlpha", False):
+        # 不按 alpha 阈值裁掉光晕，完整缩放后增加透明安全区。
+        content = fit_cell(Image.fromarray(rgba), CELL - 2 * PAD - 12)[0]
+        padded = Image.new("RGBA", (content.width + 12, content.height + 12))
+        padded.alpha_composite(content, (6, 6))
+        return padded
     rgba[rgba[:, :, 3] < 80] = (0, 0, 0, 0)
     return fit_visible(Image.fromarray(rgba, "RGBA"))
 
@@ -565,6 +572,7 @@ def write_character_animations():
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],
+            "frameTransforms": spec.get("frameTransforms", {}),
         }
     src = os.path.join(DATA_DIR, "character-animations.js")
     with open(src, "w", encoding="utf-8") as f:

@@ -93,10 +93,14 @@
     for (var i = 0; i < rig.parts.length; i++) {
       var part = rig.parts[i];
       var m = mods[i] || {};
-      var icon = atlas.icons[m.icon || part.icon];
+      var iconName = m.icon || part.icon;
+      var icon = atlas.icons[iconName];
       if (!icon) continue;
-      var dw = size * (m.sx || 1);
-      var dh = size * (m.sy || 1);
+      // 帧留白补偿随图标切换，不参与动作插值；动画支点仍沿用角色尺寸。
+      var pose = rig.frameTransforms && rig.frameTransforms[iconName] || {};
+      var frameSize = size * (pose.scale || 1);
+      var dw = frameSize * (m.sx || 1);
+      var dh = frameSize * (m.sy || 1);
       var rot = (m.rot || 0) * Math.PI / 180;
       // 支点：分件锚点相对单元格中心的位置，旋转时保持不动
       var offX = (part.pivot ? part.pivot[0] * size : size / 2) - size / 2;
@@ -112,8 +116,9 @@
       };
       D.sprite(tex, atlas.texW, atlas.texH,
         icon[0], icon[1], icon[2], icon[3],
-        cx + (m.dx || 0) + shiftX, cy + (m.dy || 0) + shiftY,
-        size, { w: dw, h: dh, rot: rot, tint: col });
+        cx + (m.dx || 0) + shiftX + size * (pose.x || 0),
+        cy + (m.dy || 0) + shiftY + size * (pose.y || 0),
+        frameSize, { w: dw, h: dh, rot: rot, tint: col });
     }
   }
 

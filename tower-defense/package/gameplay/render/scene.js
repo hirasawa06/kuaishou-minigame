@@ -318,33 +318,58 @@
       : { alpha: 0.88, scale: 1, layers: 2, particles: 4 };
   }
 
-  function drawHealEffect(e, t, source, target) {
-    var config = vfxTune('healer');
-    var from = { x: source.x, y: source.y - source.def.radius * 0.7 };
-    var tx = target.x, ty = target.y + target.def.radius * 0.22;
-    var travel = clamp01(t / 0.28);
-    var fade = 1 - t;
-    A.Render.setAdditive(true);
-    for (var i = 0; i < config.particles; i++) {
-      var p = clamp01(travel * 1.35 - i * 0.16);
-      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7);
-      additiveGlow(from.x + (tx - from.x) * p + arc,
-        from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9,
-        7 + (i % 2) * 2, i === 0 ? '#ffe4f1' : '#a8ef8f', fade * 0.28 * config.alpha, 0);
+  // ── 治疗地面层：0.5 秒淡入淡出，所有角色之前绘制 ──────────
+  function healTexture(key, x, y, width, alpha, anchor) {
+    var image = Assets.entry(key);
+    if (!image) return;
+    var height = width * image.h / image.w;
+    var origin = anchor || [0.5, 0.5];
+    D.texture(image.tex, image.w, image.h, 0, 0, image.w, image.h,
+      x - width * origin[0], y - height * origin[1], width, height,
+      { r: 1, g: 1, b: 1, a: alpha });
+  }
+
+  function drawHealLayer(e, target, foreground) {
+    var t = clamp01(1 - e.life / e.max);
+    var alpha = Math.sin(Math.PI * t);
+    if (t === 0 || t === 1) alpha = 0;
+    var r = target.def.radius;
+    var rig = A.Rigs && A.Rigs[target.rigId || target.def.id];
+    var spawn = target.spawnT > 0 ? 1 - target.spawnT / 0.3 : 1;
+    var size = rig ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
+      : r * 2.35 * (0.8 + 0.2 * spawn);
+    var pivot = rig && rig.parts[0].pivot || [0.5, 0.92];
+    var footX = target.x + (pivot[0] - 0.5) * size;
+    var footY = target.y - (rig ? r * 0.15 : 0) + (pivot[1] - 0.5) * size;
+    var width = r * 3.2;
+    // 光环在角色下方，十字在角色上方；共用位置和透明度时间线。
+    if (!foreground) {
+      // 光环可见圆心并非图片中心；直接将素材圆心锚到角色脚底支点。
+      healTexture('heal-aura', footX, footY, width, alpha, [0.525, 0.68]);
+      return;
     }
-    additiveGroundGlow(tx, ty + 4, 18 + travel * 24, 9 + travel * 12,
-      '#a8ef8f', travel * fade * 0.45 * config.alpha);
-    A.Render.setAdditive(false);
-    for (var j = 0; j < config.particles; j++) {
-      var q = clamp01(travel * 1.35 - j * 0.16);
-      var qArc = Math.sin(q * Math.PI) * (j % 2 ? 7 : -7);
-      var x = from.x + (tx - from.x) * q + qArc;
-      var y = from.y + (ty - from.y) * q - Math.sin(q * Math.PI) * 9;
-      var size = 3.2 + (j % 2);
-      D.roundRect(x - size * 0.12, y - size * 0.42, size * 0.24, size * 0.84,
-        size * 0.12, D.color(j === 0 ? '#ffe4f1' : '#a8ef8f', fade * config.alpha));
-      D.roundRect(x - size * 0.42, y - size * 0.12, size * 0.84, size * 0.24,
-        size * 0.12, D.color(j === 0 ? '#ffe4f1' : '#a8ef8f', fade * config.alpha));
+    // 参考图：左下大十字、右上小十字，沿身体两侧轻微上浮。
+    healTexture('heal-cross', target.x - size * 0.38,
+      footY - size * 0.40 - t * 4, size * 0.24, alpha);
+    healTexture('heal-cross', target.x + size * 0.43,
+      footY - size * 0.66 - t * 4, size * 0.14, alpha);
+  }
+
+  function drawGroundEffects() {
+    drawHealEffects(false);
+  }
+
+  function drawHealEffects(foreground) {
+    for (var i = 0; i < S.effects.length; i++) {
+      var e = S.effects[i];
+      if (e.type !== 'heal') continue;
+      for (var j = 0; j < S.units.length; j++) {
+        var target = S.units[j];
+        if (target.uid === e.targetUid && !target.dead && target.hp > 0) {
+          drawHealLayer(e, target, foreground);
+          break;
+        }
+      }
     }
   }
 
@@ -432,6 +457,7 @@
   }
 
   function drawEffects() {
+    drawHealEffects(true);
     var i, e, t;
     for (i = 0; i < S.effects.length; i++) {
       e = S.effects[i];
@@ -458,15 +484,7 @@
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
       } else if (e.type === 'heal') {
-        var source = null, target = null;
-        for (var hi = 0; hi < S.units.length; hi++) {
-          var hu = S.units[hi];
-          if (hu.dead || hu.hp <= 0) continue;
-          if (hu.uid === e.sourceUid) source = hu;
-          if (hu.uid === e.targetUid) target = hu;
-        }
-        if (!source || !target) continue;
-        drawHealEffect(e, t, source, target);
+        continue; // 治疗光环与十字由各自层级统一绘制。
       } else if (e.type === 'mage-biscuit-impact') {
         var impactConfig = vfxTune('mage');
         mageImpactVfx(e, t, impactConfig.scale, impactConfig.alpha);
@@ -658,6 +676,7 @@
     actorDepthY: actorDepthY,
     drawProjectiles: drawProjectiles,
     drawEffects: drawEffects,
+    drawGroundEffects: drawGroundEffects,
     drawFloats: drawFloats,
     drawSpawnHint: drawSpawnHint,
     drawFieldGuides: drawFieldGuides,

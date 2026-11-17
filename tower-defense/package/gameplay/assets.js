@@ -89,6 +89,9 @@
     // 法师飞行与落地均使用离线生成的透明 PNG 帧表，运行时无需解码 GIF。
     if (A.MageFlight && A.MageFlight.src) manifest.push(['mage-flight', A.MageFlight.src]);
     if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
+    // 治疗特效分层素材。
+    manifest.push(['heal-aura', 'res/Image/heal-aura.png']);
+    manifest.push(['heal-cross', 'res/Image/heal-cross.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
     manifest.push(['avatars', 'res/Menu/avatars.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
