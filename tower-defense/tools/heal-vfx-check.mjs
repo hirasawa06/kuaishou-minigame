@@ -9,8 +9,8 @@ assert.equal(healerSpec.frames.idle.file, '奶糖喵动作.png', '待机保持�
 assert.equal(healerSpec.frames.hurt.file, '奶糖喵动作.png', '受击保持原素材');
 const calls = [];
 const target = { uid: 2, x: 100, y: 150, hp: 10, def: { radius: 20 } };
-const state = { units: [target], effects: [{ type: 'heal', targetUid: 2, life: 0.25, max: 0.5 }] };
-const draw = { color: () => ({}), texture: (...args) => calls.push(args) };
+const state = { units: [target], enemies: [], effects: [{ type: 'heal', targetUid: 2, life: 0.25, max: 0.5 }] };
+const draw = { color: () => ({}), softEllipse: () => {}, texture: (...args) => calls.push(args) };
 const A = { Config: {}, State: state, Layout: {}, Render: { draw },
   Assets: { entry: key => ({ tex: key, w: 100, h: 100 }) } };
 vm.runInNewContext(fs.readFileSync(new URL('render/scene.js', root), 'utf8'), { window: { AIGCUtils: A } });

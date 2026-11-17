@@ -212,7 +212,6 @@
         tilt = 6 * (1 - k) - 4 * k * (1 - k);
       }
     }
-    drawGroundShadow(e.x, e.y + rr * 0.84, rr * 0.70, 0.48 * spawn);
     if (rig) {
       A.Anim.draw(rig, e, e.x, e.y - r * 0.15, r * 3.05 * (rig.scale || 1) * scale, {
         alpha: 0.3 + 0.7 * spawn,
@@ -232,19 +231,46 @@
   // 用角色真正落在地面的绘制点决定前后层级，而不是按“宠物 / 怪物”分组。
   // 数值和各自阴影中心一致：北侧（较小 y）先画，南侧（较大 y）后画。
   function actorDepthY(actor, isEnemy) {
+    return actorGround(actor, isEnemy).y;
+  }
+
+  // ── 待机双脚接触点：120px 格，排除尾巴和武器 ────────────
+  var groundFeet = {
+    arch: [[40, 99], [78, 99]], tank: [[40, 116], [87, 116]],
+    war: [[34, 106], [80, 103]], mage: [[38, 107], [73, 110]],
+    healer: [[48, 90], [76, 90]], small: [[39, 115], [81, 115]],
+    normal: [[38, 115], [82, 115]], elite: [[33, 106], [85, 106]],
+    boss: [[38, 109], [87, 109]],
+  };
+
+  function actorGround(actor, isEnemy) {
     var r = actor.def.radius;
-    if (isEnemy) {
-      var spawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.35 : 1;
-      var scale = 0.7 + 0.3 * spawn;
-      return actor.y + r * scale * 0.84;
-    }
-    var unitSpawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.3 : 1;
+    var duration = isEnemy ? 0.35 : 0.3;
+    var spawn = actor.spawnT > 0 ? Math.max(0, 1 - actor.spawnT / duration) : 1;
     var rig = A.Rigs && A.Rigs[actor.rigId || actor.def.id];
-    var size = rig
-      ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * unitSpawn)
-      : r * 2.35 * (0.8 + 0.2 * unitSpawn);
+    var scale = isEnemy ? 0.7 + 0.3 * spawn : 0.86 + 0.14 * spawn;
+    var size = rig ? r * 3.05 * (rig.scale || 1) * scale : r * 2.35 * (0.8 + 0.2 * spawn);
+    var feet = groundFeet[actor.def.id] || [[60, 106], [60, 106]];
+    var point = [(feet[0][0] + feet[1][0]) / 240, (feet[0][1] + feet[1][1]) / 240];
+    var back = A.HeroForms && A.Assets.entry && A.Assets.entry('hero-levels-back');
+    if (actor.def.id === 'healer' && back && back.w === 1000 && back.h === 600) {
+      point = [0.5 + 0.68 * (91.5 / 200 - 0.5), 0.6 + 0.68 * (161.5 / 200 - 0.5)];
+    }
     var spriteY = rig ? actor.y - r * 0.15 : actor.y;
-    return spriteY + size * 0.42;
+    return { x: actor.x + size * (point[0] - 0.5),
+      y: spriteY + size * (point[1] - 0.5), size: size, spawn: spawn };
+  }
+
+  function drawActorShadows() {
+    var groups = [S.units, S.enemies];
+    for (var g = 0; g < groups.length; g++) {
+      for (var i = 0; i < groups[g].length; i++) {
+        var actor = groups[g][i];
+        if (actor.dead) continue;
+        var ground = actorGround(actor, g === 1);
+        drawGroundShadow(ground.x, ground.y, ground.size * 0.40, ground.spawn);
+      }
+    }
   }
 
   // 图集帧绘制：优先用 frame 名字直接查 A.SpriteAtlas
@@ -263,17 +289,16 @@
     return sp;
   }
 
-  // 地面阴影复用柔边光斑纹理，正常混合下染成近黑色并压成椭圆。
-  // 它不是角色光环，边缘会随贴图 alpha 自然羽化。
+  // 地面阴影独立绘制柔边椭圆，正常混合下使用深红棕色。
+  // 两层同心，外围由着色器径向渐隐，不依赖光斑纹理。
   function drawGroundShadow(cx, cy, radius, alpha) {
-    var sp = glowTex();
-    if (!sp) return;
-    var width = radius * 2;
-    D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, cx, cy, width, {
-      w: width,
-      h: radius * 0.56,
-      tint: { r: 0.02, g: 0.02, b: 0.03, a: alpha },
-    });
+    // 圆心保持在双脚中点；扩大外围，避免整个深色区被身体遮住。
+    var layers = [[2.5, 1.5, 0.38], [1.4, 0.7, 0.46]];
+    for (var i = 0; i < layers.length; i++) {
+      var layer = layers[i];
+      D.softEllipse(cx, cy, radius * layer[0], radius * layer[1],
+        { r: 0.18, g: 0.055, b: 0.045, a: alpha * layer[2] });
+    }
   }
 
   // GIF 已离线拆为透明 PNG 帧表。按固定节奏取格，飞行距离变化不会拉伸动画速度。
@@ -378,6 +403,7 @@
   }
 
   function drawGroundEffects() {
+    drawActorShadows();
     drawHealEffects(false);
   }
 
@@ -407,7 +433,6 @@
     var spriteY = rig ? un.y - r * 0.15 : un.y;
     var shadowY = spriteY + size * 0.42;
 
-    drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     // 星级不改变立绘或动作，治疗猫统一沿用同一背面形象。
     var levelIdle = A.HeroForms && d.cls === 'healer' && !un.dead &&
       A.HeroForms.drawBattleIdle(d.id, 2, un.x, spriteY + size * 0.10, size * 0.68, 0.3 + 0.7 * spawn);

@@ -8,6 +8,13 @@
   draw.white = WHITE;
   draw.color = function (hex, a) { return GL.color(hex, a); };
 
+  // ── 正上方光源的地面软影 ────────────────────────────────
+  draw.softEllipse = function (cx, cy, w, h, col) {
+    if (w <= 0 || h <= 0) return;
+    GL.push(cx - w / 2, cy - h / 2, w, h, col,
+      { mode: 4, hw: w / 2, hh: h / 2, r: 0 });
+  };
+
   draw.rect = function (x, y, w, h, col) {
     if (w <= 0 || h <= 0) return;
     GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: 0 });
