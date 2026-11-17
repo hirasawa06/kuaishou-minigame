@@ -541,7 +541,7 @@
     if (S.waveState === 'prep') {
       var t = Math.max(0, S.waveTimer);
       var label = S.waveIndex < S.getWaves().length
-        ? '第 ' + (S.waveIndex + 1) + ' 波准备 ' + t.toFixed(1)
+        ? '第 ' + (S.waveIndex + 1) + ' 波准备 ' + Math.ceil(t)
         : '';
       if (label) {
         D.roundRect(u.field.x + u.field.w / 2 - 80, u.field.y + 10, 160, 32, 16,
@@ -616,6 +616,8 @@
     var reason = A.Battle.deployBlockReason(def, x, y);
     var ok = !reason && y < u.tray.y - 4;
     var col = ok ? '#6ff0a8' : '#ff6b7f';
+    var point = ok && A.Battle.findDeployPoint(def, x, y);
+    if (point) { x = point.x; y = point.y; }
 
     // 攻击半径（盾位无攻击，改画嘲讽半径）
     if (def.cls === 'tank' && def.taunt) {
@@ -655,7 +657,8 @@
     }
 
     if (!ok) {
-      D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' : '请拖到战场', x, y + def.radius + 12, 18,
+      D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' :
+        reason === 'occupied' ? '附近位置已占用' : '请拖到战场', x, y + def.radius + 12, 18,
         D.color('#ff9aa8', 0.95), 1);
     }
   }

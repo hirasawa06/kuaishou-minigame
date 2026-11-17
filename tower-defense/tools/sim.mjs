@@ -168,6 +168,7 @@ const FILES = [
   'kwaiOpenApi/kwai-media.js',
   'gameplay/data/font-atlas.js',
   'gameplay/data/sprites.js',
+  'gameplay/data/avatars.js',
   'gameplay/config.js',
   'gameplay/layout.js',
   'gameplay/state.js',
@@ -179,6 +180,7 @@ const FILES = [
   'gameplay/play/battle.js',
   'gameplay/input.js',
   'gameplay/render/scene.js',
+  'gameplay/ui.js',
   'gameplay/render/hud.js',
   'gameplay/game.js',
 ]

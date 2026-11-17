@@ -14,6 +14,11 @@
     cardCount: 4,
     laneCount: 3,
 
+    // ── 体力（真实时间毫秒；不受战斗倍速或离线影响）──
+    STAMINA_MAX: 30,
+    STAMINA_COST: 5,
+    STAMINA_RECOVERY_MS: 180000,
+
     // ── 经济 ──
     GOLD_START: 30,
     BASE_HP: 100,
@@ -47,7 +52,7 @@
     // moveSpeed: 移动速度（0=驻守）  splash: 群体攻击范围  taunt: 嘲讽范围
     HEROES: [
       {
-        id: 'tank', name: '柴不破', cls: 'tank', clsName: '盾',
+        id: 'tank', name: '柴不破', cls: 'tank', clsName: '守卫',
         icon: 'tank-back-idle', cost: 8,
         // 体型扩大后的承伤补偿：生命与整体尺寸同为上一版的 1.2 倍。
         hp: 1080, atk: 0, interval: 1.0,
@@ -58,7 +63,7 @@
         desc: '嘲讽周围敌人，只会格挡，不造成伤害',
       },
       {
-        id: 'war', name: '锤锤喵', cls: 'warrior', clsName: '战',
+        id: 'war', name: '锤锤喵', cls: 'warrior', clsName: '战士',
         icon: 'war-front-idle', cost: 6,
         // 体型扩大后的承伤与输出补偿。
         hp: 504, atk: 50.4, interval: 0.8,
@@ -94,7 +99,7 @@
         desc: '中距离范围伤害，全场血量最少',
       },
       {
-        id: 'healer', name: '奶糖喵', cls: 'healer', clsName: '治疗',
+        id: 'healer', name: '奶糖喵', cls: 'healer', clsName: '回复',
         icon: 'healer-back-idle', cost: 8,
         hp: 288, atk: 0, interval: 2.0,
         range: 168, radius: 20.4, moveSpeed: 0,

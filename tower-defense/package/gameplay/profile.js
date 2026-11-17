@@ -1,9 +1,4 @@
-/* gameplay/profile.js — 个人资料、设置开关与虚拟地区排行榜
- *
- * 单机版本没有服务端，排行榜使用「按地区 id 稳定播种」的虚拟榜单：
- * 同一地区每次打开的顺序、关卡数和昵称都一致，不读取定位、不对应真实玩家。
- * 玩家自己的名次按最高通关关卡计算，固定贴在榜单下方。
- */
+/* gameplay/profile.js — 个人资料、声音设置、关卡进度与持久体力 */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
@@ -13,15 +8,15 @@
 
   // 头像与地区在美术脚本/本地配置里各有一份，这里只保存索引
   var AVATARS = [
-    { id: 'av-cat-orange', name: '暖阳小橘' },
-    { id: 'av-bear-cream', name: '奶油团子' },
-    { id: 'av-rabbit-pink', name: '桃气兔兔' },
-    { id: 'av-cat-gray', name: '青灰小满' },
-    { id: 'av-dog-brown', name: '可可豆豆' },
-    { id: 'av-fox-red', name: '赤焰阿福' },
-    { id: 'av-cat-blue', name: '蓝莓团子' },
-    { id: 'av-dog-yellow', name: '勇敢小橘' },
-    { id: 'av-cat-green', name: '抹茶布丁' },
+    { id: 'av-tank', name: '柴不破' },
+    { id: 'av-war', name: '锤锤喵' },
+    { id: 'av-arch', name: '镭射喵' },
+    { id: 'av-mage', name: '哈利边牧' },
+    { id: 'av-healer', name: '奶糖喵' },
+    { id: 'av-lamp', name: '台灯怪' },
+    { id: 'av-bedside', name: '床头柜怪' },
+    { id: 'av-sofa', name: '沙发精英' },
+    { id: 'av-boss', name: '首领' },
   ];
 
   // 虚拟地区：地区身份统一为中国，切换的是地区内的虚拟小镇
@@ -39,19 +34,6 @@
   var NICK_MIN = 2;
   var NICK_MAX = 8;
 
-  var VIRTUAL_NAMES = [
-    '奶油气泡', '柚柚不困', '南瓜灯灯', '毛豆先生', '星星糖', '小熊软糖',
-    '橘子汽水', '阿柴同学', '米粒团团', '茶茶子', '呼噜呼噜', '汤圆儿',
-    '树莓奶昔', '小笼包', '布丁汪汪', '爪爪印', '年糕团子', '豆腐脑',
-    '麦麦', '糖霜面包', '锅巴脆脆', '栗子球', '小棕帽', '咕噜喵',
-  ];
-
-  var VIRTUAL_TOP = [
-    { name: '月亮团子', avatar: 7 },
-    { name: '奶油队长', avatar: 1 },
-    { name: '熊猫阿布', avatar: 3 },
-  ];
-
   var S = {};
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -59,27 +41,6 @@
 
   function nowId() {
     return ID_BASE;
-  }
-
-  // 稳定哈希：同一字符串永远得到同一个 32 位种子
-  function hash(str) {
-    var h = 2166136261;
-    for (var i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = (h * 16777619) >>> 0;
-    }
-    return h >>> 0;
-  }
-
-  function mulberry(seed) {
-    var a = seed >>> 0;
-    return function () {
-      a = (a + 0x6D2B79F5) >>> 0;
-      var t = a;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
   }
 
   function readStore() {
@@ -113,6 +74,73 @@
     return false;
   }
 
+  function validTimestamp(value) {
+    return typeof value === 'number' && isFinite(value) && value >= 0 && value <= 8640000000000000;
+  }
+
+  function staminaNow(value) {
+    // 恢复使用可持久的 Unix 时间，不使用仅适合单次运行的帧时钟。
+    if (validTimestamp(value)) return Math.floor(value);
+    var current = Date.now();
+    return validTimestamp(current) ? Math.floor(current) : 0;
+  }
+
+  // 满时不更新存档时间；下一次扣费重新开始计时，避免每帧写入。
+  // 未满保留连续恢复间隔的余数，时钟倒退则等待原时间线追平。
+  function refreshStamina(now) {
+    var d = S.data;
+    var beforeValue = d.stamina;
+    var beforeAt = d.lastRecoveryAt;
+    if (typeof d.stamina !== 'number' || !isFinite(d.stamina)) {
+      d.stamina = C.STAMINA_MAX;
+      d.lastRecoveryAt = now;
+    } else {
+      d.stamina = clamp(Math.floor(d.stamina), 0, C.STAMINA_MAX);
+      if (!validTimestamp(d.lastRecoveryAt)) d.lastRecoveryAt = now;
+      else d.lastRecoveryAt = Math.floor(d.lastRecoveryAt);
+    }
+    if (d.stamina < C.STAMINA_MAX && now >= d.lastRecoveryAt) {
+      var recovered = Math.floor((now - d.lastRecoveryAt) / C.STAMINA_RECOVERY_MS);
+      if (recovered > 0) {
+        d.stamina = Math.min(C.STAMINA_MAX, d.stamina + recovered);
+        // 恢复满后丢弃剩余时间，不能作为下一次扣费的储备。
+        d.lastRecoveryAt = d.stamina === C.STAMINA_MAX ? now :
+          d.lastRecoveryAt + recovered * C.STAMINA_RECOVERY_MS;
+      }
+    }
+    return d.stamina !== beforeValue || d.lastRecoveryAt !== beforeAt;
+  }
+
+  S.getStaminaSnapshot = function (now) {
+    now = staminaNow(now);
+    if (refreshStamina(now)) S.save();
+    var d = S.data;
+    return {
+      value: d.stamina,
+      max: C.STAMINA_MAX,
+      nextRecoveryMs: d.stamina === C.STAMINA_MAX ? 0 :
+        Math.max(0, d.lastRecoveryAt + C.STAMINA_RECOVERY_MS - now),
+    };
+  };
+
+  // 默认每局扣配置费用；非法费用不扣费，失败也会保存已发生的恢复。
+  S.consumeStamina = function (cost, now) {
+    if (cost === undefined) cost = C.STAMINA_COST;
+    if (typeof cost !== 'number' || !isFinite(cost) || cost <= 0 ||
+        Math.floor(cost) !== cost || cost > C.STAMINA_MAX) return false;
+    now = staminaNow(now);
+    var changed = refreshStamina(now);
+    var d = S.data;
+    if (d.stamina < cost) {
+      if (changed) S.save();
+      return false;
+    }
+    if (d.stamina === C.STAMINA_MAX) d.lastRecoveryAt = Math.max(now, d.lastRecoveryAt);
+    d.stamina -= cost;
+    S.save();
+    return true;
+  };
+
   function defaults() {
     return {
       nickname: NICK_DEFAULT,
@@ -129,6 +157,8 @@
       tutorialStarComplete: false,
       clears: 0,
       games: 0,
+      stamina: C.STAMINA_MAX,
+      lastRecoveryAt: staminaNow(), // Unix 毫秒；满体力不积攒额外恢复额度
       bestAt: 0,        // 首次达到 bestWave 的本地时间戳
     };
   }
@@ -160,6 +190,10 @@
       if (typeof stored.tutorialStarComplete === 'boolean') base.tutorialStarComplete = stored.tutorialStarComplete;
       if (typeof stored.clears === 'number') base.clears = stored.clears;
       if (typeof stored.games === 'number') base.games = stored.games;
+      if (typeof stored.stamina === 'number' && isFinite(stored.stamina)) {
+        base.stamina = clamp(Math.floor(stored.stamina), 0, C.STAMINA_MAX);
+        if (validTimestamp(stored.lastRecoveryAt)) base.lastRecoveryAt = Math.floor(stored.lastRecoveryAt);
+      }
       if (typeof stored.bestAt === 'number') base.bestAt = stored.bestAt;
       if (stored.progressVersion !== 2) {
         base.completedLevel = 0;
@@ -176,7 +210,9 @@
     base.town = clamp(base.town | 0, 0, REGIONS[base.region].towns.length - 1);
     if (!base.id) base.id = nowId();
     S.data = base;
-    if (stored && stored.progressVersion !== 2) writeStore(base);
+    var staminaChanged = refreshStamina(staminaNow());
+    if (!stored || stored.progressVersion !== 2 || staminaChanged ||
+        stored.stamina !== base.stamina || stored.lastRecoveryAt !== base.lastRecoveryAt) writeStore(base);
     return base;
   }
 
@@ -303,73 +339,6 @@
       d.bestAt = Date.now();
     }
     S.save();
-  };
-
-  // ── 虚拟榜单 ────────────────────────────────────────────────
-  // 每个地区用固定种子生成固定名次，不随时间/设备变化；
-  // 名次分数按地区档位 + 递减噪声生成，保证降序且区间稳定。
-  S.buildRanking = function () {
-    var region = S.regionDef();
-    var seed = hash(region.seed + '|' + S.regionLabel());
-    var rnd = mulberry(seed);
-    var list = [];
-    var seen = {};
-    var topWave = 40;
-    var i;
-    for (i = 0; i < VIRTUAL_TOP.length; i++) {
-      var t = VIRTUAL_TOP[i];
-      var wave = topWave - i * 2 - Math.floor(rnd() * 2);
-      list.push({
-        name: t.name, avatar: t.avatar, wave: wave,
-        mine: false,
-        tie: 0,
-      });
-      seen[t.name] = true;
-    }
-    var pool = VIRTUAL_NAMES.slice();
-    // 用地区种子稳定洗牌，避免不同地区出现完全相同的顺序
-    for (i = pool.length - 1; i > 0; i--) {
-      var j = Math.floor(rnd() * (i + 1));
-      var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
-    }
-    var waveCursor = topWave - VIRTUAL_TOP.length * 2;
-    for (i = 0; i < pool.length; i++) {
-      var name = pool[i];
-      if (seen[name]) continue;
-      waveCursor -= 1 + Math.floor(rnd() * 3);
-      if (waveCursor < 6) break;
-      list.push({
-        name: name,
-        avatar: Math.floor(rnd() * AVATARS.length),
-        wave: waveCursor,
-        mine: false,
-        tie: 0,
-      });
-      seen[name] = true;
-      if (list.length >= 15) break;
-    }
-    list.sort(function (a, b) { return b.wave - a.wave; });
-    for (i = 0; i < list.length; i++) list[i].rank = i + 1;
-
-    var d = S.data;
-    var mineWave = d.bestWave || 0;
-    var myRank = 0;
-    if (mineWave > 0) {
-      for (i = 0; i < list.length; i++) {
-        if (mineWave >= list[i].wave) { myRank = i + 1; break; }
-      }
-      if (!myRank) myRank = list.length + 1;
-    }
-    return {
-      region: region,
-      town: S.regionLabel(),
-      list: list,
-      mineWave: mineWave,
-      myRank: myRank,
-      onBoard: mineWave > 0,
-      nickname: d.nickname,
-      avatar: d.avatarIndex,
-    };
   };
 
   // 模块加载即读取本地存档，后续布局与界面直接使用 S.data

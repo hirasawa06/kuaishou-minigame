@@ -81,6 +81,11 @@
       S.toastMsg('请先通过第 ' + (level - 1) + ' 关', 1.4);
       return false;
     }
+    if (A.Profile && !A.Profile.consumeStamina()) {
+      S.menuStartDelay = 0;
+      S.toastMsg('体力不足，请稍后再试', 1.8);
+      return false;
+    }
     S.currentLevel = level;
     S.levelHpScale = C.LEVELS[level - 1].hpScale;
     S.levelAtkScale = C.LEVELS[level - 1].atkScale;
@@ -94,6 +99,7 @@
     syncViewport();
     S.toastMsg('守护主人与猫狗的合照', 1.8);
     A.GameAudio && A.GameAudio.play('start');
+    return true;
   }
 
   function nextLevel() {
@@ -101,8 +107,7 @@
     var next = S.currentLevel + 1;
     if (!A.Profile.isLevelUnlocked(next)) return false;
     S.selectedLevel = next;
-    start();
-    return true;
+    return start();
   }
 
   function toggleSpeed() {
@@ -142,7 +147,7 @@
   // 由「重新开始」调用：保留当前布局，重置对局数据
   function restart() {
     S.selectedLevel = S.currentLevel;
-    start();
+    return start();
   }
 
   // 返回主页：清空本局临时状态，回到首页；未结束的一局不计入存档
@@ -184,6 +189,12 @@
   }
 
   function update(dt) {
+    // 战斗与教程各自计时；首页、暂停和结算也必须让临时提示到期。
+    var tutorialActive = A.Tutorial && A.Tutorial.isActive();
+    if (S.phase !== 'playing' && !tutorialActive && S.toast) {
+      S.toast.life = Math.max(0, S.toast.life - dt);
+      if (S.toast.life <= 0) S.toast = null;
+    }
     if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
     if (S.menuSlide) {
       S.menuSlide.elapsed += dt;

@@ -24,10 +24,8 @@
   // 导航图标与按钮底板分离：底板/文字按布局实时绘制，图集只保留透明图标。
   var MENU_ICON_CROPS = {
     settings: [160, 48, 315, 332],
-    rank: [700, 48, 475, 335],
     collection: [125, 439, 400, 370],
-    avatar: [727, 420, 435, 400],
-    stamina: [182, 873, 287, 354],
+    bolt: [182, 873, 287, 354],
   };
   var menuTextMetrics = {};
 
@@ -247,13 +245,18 @@
     var tx = parts.textX;
     var nameY = rect.y + (rect.h - 38) / 2;
     var nameW = Math.max(1, parts.cost.x - parts.cost.r - 4 - tx);
-    drawCardText(def.name, tx, nameY, nameW, D.color('#663c2b', a), 0);
     var line1 = def.cls === 'tank'
-      ? def.clsName + ' · 生命 ' + def.hp
-      : def.cls === 'healer' ? def.clsName + ' · 回血 ' + def.heal
-        : def.clsName + ' · 攻 ' + def.atk;
+      ? def.clsName + '·生命' + Math.round(def.hp)
+      : def.cls === 'healer' ? def.clsName + '·回血' + Math.round(def.heal)
+        : def.clsName + '·攻击' + Math.round(def.atk);
     var statRight = parts.lock.x - 3;
-    drawCardText(line1, tx, nameY + 20, Math.max(1, statRight - tx), clsCol, 0);
+    var statW = Math.max(1, statRight - tx);
+    // 两行使用相同字号与缩放，分隔点两侧不再占用空格。
+    var atlas = A.FontAtlas['18'];
+    var textScale = Math.min(1, nameW / Math.max(1, D.textWidth(def.name, atlas)),
+      statW / Math.max(1, D.textWidth(line1, atlas)));
+    D.text(def.name, tx, nameY, 18, D.color('#663c2b', a), 0, textScale);
+    D.text(line1, tx, nameY + 20, 18, clsCol, 0, textScale);
 
     var cc = parts.cost;
     D.circle(cc.x, cc.y, cc.r,
@@ -319,9 +322,9 @@
     }
     D.text(line, x + 14, y + 70, 18, D.color('#76513c', a), 0);
     if (line2) D.text(line2, x + 14, y + 91, 18, D.color('#76513c', a), 0);
-    D.text('生命 ' + def.hp + ' · 攻击 ' + def.atk,
+    D.text('生命 ' + Math.round(def.hp) + ' · 攻击 ' + Math.round(def.atk),
       x + 14, y + 119, 18, D.color('#8b634a', a), 0);
-    D.text('射程 ' + (def.range || 0) + ' · 攻速 ' + def.interval,
+    D.text('射程 ' + Math.round(def.range || 0) + ' · 间隔 ' + Math.round(def.interval * 1000) + '毫秒',
       x + 14, y + 143, 18, D.color('#8b634a', a), 0);
 
   }
@@ -378,7 +381,7 @@
       size, D.color('#633b25'), 1);
   }
 
-  // ── 首页（参考图：客厅 + 头像 + 体力 + 设置 / 排行榜 + 章节卡 + 开始） ──
+  // ── 首页（客厅 + 头像 + 只读体力 + 设置 / 收藏 + 章节卡 + 开始） ──
   function menuIcon(key, x, y, w, h) {
     var art = A.Assets.entry('home-menu-icons');
     var crop = MENU_ICON_CROPS[key];
@@ -500,22 +503,34 @@
       menuPlate(r, true);
       var barUnit = h / 44;
       var boltW = 19 * barUnit, boltH = 25 * barUnit;
-      var gap = 5 * barUnit, labelW = 48 * barUnit;
-      var valueW = D.textWidth('30/30', A.FontAtlas['18']);
-      var compact = target.w < 89 * (target.h / 44) + valueW;
-      var groupW = boltW + gap + valueW + (compact ? 0 : labelW + gap);
+      var gap = 5 * barUnit;
+      // 快照负责按时间恢复，绘制不保存数据，也不提供点击入口。
+      var stamina = A.Profile.getStaminaSnapshot();
+      var value = stamina.value + '/' + stamina.max;
+      var valueW = D.textWidth(value, A.FontAtlas['18']);
+      var valueScale = Math.min(barUnit, Math.max(0.1,
+        (w - boltW - gap - 20 * barUnit) / Math.max(1, valueW)));
+      var groupW = boltW + gap + valueW * valueScale;
       var groupX = r.x + (w - groupW) / 2;
-      var boltBox = { x: groupX, y: r.y + (h - boltH) / 2,
-        w: boltW, h: boltH };
-      menuIconInBox('stamina', boltBox);
-      if (!compact) {
-        var labelX = groupX + boltW + gap;
-        D.roundRect(labelX, r.y + (h - 28 * barUnit) / 2,
-          labelW, 28 * barUnit, 14 * barUnit, D.color('#794322'));
-        menuText('体力', labelX + labelW / 2, r.y + h / 2, D.color('#fff1d9'));
-      }
-      menuText('30/30', groupX + groupW - valueW / 2,
-        r.y + h / 2, D.color('#704026'));
+      var seconds = Math.ceil(stamina.nextRecoveryMs / 1000);
+      var timer = stamina.value >= stamina.max ? '已满' :
+        Math.floor(seconds / 60) + ':' + ('0' + (seconds % 60)).slice(-2) + ' +1';
+      var timerWidth = D.textWidth(timer, A.FontAtlas['18']);
+      var timerScale = barUnit * 0.62;
+      var timerGap = 7 * barUnit;
+      var availableW = Math.max(1, w - 18 * barUnit - boltW - gap - timerGap);
+      var textW = valueW * valueScale + timerWidth * timerScale;
+      var fit = Math.min(1, availableW / Math.max(1, textW));
+      valueScale *= fit;
+      timerScale *= fit;
+      var rowW = boltW + gap + valueW * valueScale + timerGap + timerWidth * timerScale;
+      var rowX = r.x + (w - rowW) / 2;
+      menuIconInBox('bolt', { x: rowX, y: r.y + (h - boltH) / 2, w: boltW, h: boltH });
+      var valueX = rowX + boltW + gap;
+      menuText(value, valueX + valueW * valueScale / 2,
+        r.y + h / 2, D.color('#704026'), 18, valueScale);
+      menuText(timer, valueX + valueW * valueScale + timerGap + timerWidth * timerScale / 2,
+        r.y + h / 2, D.color('#916b50'), 18, timerScale);
       return;
     }
     menuPlate(r, false);
@@ -524,11 +539,11 @@
       D.roundRect(r.x + 5 * unit, r.y + 5 * unit, w - 10 * unit, h - 13 * unit,
         14 * unit,
         D.color('#dcc1d1'));
-      menuIconInBox('avatar', { x: r.x + 7 * unit, y: r.y + 6 * unit,
-        w: w - 14 * unit, h: h - 15 * unit });
+      A.ProfileUI.avatar(A.Profile.data.avatarIndex,
+        r.x + w / 2, r.y + (h - 3 * unit) / 2, Math.min(w - 14 * unit, h - 15 * unit));
       return;
     }
-    var label = key === 'settings' ? '设置' : key === 'rank' ? '排行榜' : '收藏';
+    var label = key === 'settings' ? '设置' : '收藏';
     var showLabel = w >= 64;
     var labelCenterY = r.y + h - 22;
     var iconY = r.y + (showLabel ? 9 * unit : 8 * unit);
@@ -565,7 +580,9 @@
       D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
     }
 
-    var keys = ['avatar', 'stamina', 'settings', 'rank', 'collection', 'start'];
+    // 体力为只读状态条，不参与按压或回弹反馈。
+    drawMenuControl('stamina', m.stamina, 1);
+    var keys = ['avatar', 'settings', 'collection', 'start'];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
       var target = m[key];
@@ -686,27 +703,6 @@
     if (S.toast) {
       D.text(S.toast.text, m.card.x + m.card.w / 2, m.card.y + 12, 18, D.color('#fff0d4'), 1);
     }
-    if (S.menuPanel) drawMenuPanel(m);
-  }
-
-  function drawMenuPanel(m) {
-    var p = m.panel;
-    D.rect(0, 0, L.ui.w, L.ui.h, D.color('#321d15', 0.55));
-    D.roundRect(p.x, p.y, p.w, p.h, 22, D.color('#fff1d9'));
-    D.strokeRect(p.x, p.y, p.w, p.h, 3, D.color('#bd7c39'));
-    var title = S.menuPanel === 'settings' ? '设置' :
-      S.menuPanel === 'rank' ? '排行榜' : S.menuPanel === 'stamina' ? '体力' : '头像';
-    D.text(title, p.x + p.w / 2, p.y + 24, 28, D.color('#6b4222'), 1);
-    var detail = S.menuPanel === 'settings' ?
-      (S.menuSoundEnabled ? '音效：开启' : '音效：关闭') :
-      S.menuPanel === 'rank' ? '单机版暂无排行榜' :
-      S.menuPanel === 'stamina' ? '体力 30/30' : '客厅守护队';
-    D.text(detail, p.x + p.w / 2, p.y + p.h * 0.48, 18, D.color('#6b4222'), 1);
-    D.roundRect(m.panelAction.x, m.panelAction.y, m.panelAction.w, m.panelAction.h,
-      18, D.color('#f4aa3d'));
-    D.text(S.menuPanel === 'settings' ? '切换音效' : '关闭',
-      m.panelAction.x + m.panelAction.w / 2, m.panelAction.y + 10, 18,
-      D.color('#5a3208'), 1);
   }
 
   function drawMenuFallback() {

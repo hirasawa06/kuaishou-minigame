@@ -50,9 +50,7 @@
     if (A.Profile.isLevelUnlocked(S.selectedLevel) && hitControl(m.start, x, y, 12)) return 'start';
     if (hitControl(m.collection, x, y, 0)) return 'collection';
     if (hitControl(m.settings, x, y, 6)) return 'settings';
-    if (hitControl(m.rank, x, y, 6)) return 'rank';
     if (hitControl(m.avatar, x, y, 6)) return 'avatar';
-    if (hitControl(m.stamina, x, y, 6)) return 'stamina';
     return null;
   }
 
@@ -86,7 +84,7 @@
     if (!down) return;
     // 弹窗 / 全屏页优先：打开时不再把触摸传给战场或商店
     if (A.ProfileUI && A.ProfileUI.isOpen()) return;
-    if (S.phase === 'menu' && !S.menuPanel && !S.menuSlide) {
+    if (S.phase === 'menu' && !S.menuSlide) {
       S.menuPressed = menuHitKey(px, py);
       if (pointIn(L.ui.menu.card, px, py, 0)) {
         S.menuSwipe = { startX: px, startY: py, x: px, y: py };
@@ -350,14 +348,9 @@
 
     if (S.phase === 'menu') {
       if (S.menuStartDelay > 0) return;
-      if (S.menuPanel) {
-        S.menuPanel = null;
-        A.GameAudio && A.GameAudio.play('click');
-        return;
-      }
       var key = menuHitKey(px, py);
       if (key) S.menuFeedback = { key: key, life: 0.18 };
-      if (key === 'settings' || key === 'rank' || key === 'avatar' || key === 'stamina') {
+      if (key === 'settings' || key === 'avatar') {
         A.GameAudio && A.GameAudio.play('click');
       }
       if (key === 'levelPrev') { A.Game.selectLevel(-1); return; }
@@ -372,9 +365,7 @@
       }
       if (key === 'collection') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('collection'); return; }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
-      if (key === 'rank') { A.ProfileUI.open('rank'); return; }
       if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
-      if (key === 'stamina') { S.menuPanel = 'stamina'; return; }
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {

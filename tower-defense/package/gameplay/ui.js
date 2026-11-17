@@ -1,4 +1,4 @@
-/* gameplay/ui.js — 设置 / 我的名片 / 选择头像 / 修改昵称 / 地区排行榜 / 邀请好友
+/* gameplay/ui.js — 设置 / 我的名片 / 选择头像 / 修改昵称 / 邀请好友
  *
  * 这些界面统一使用奶油底色 + 木棕标题栏，叠在首页之上。
  * 所有命中矩形都来自 layout.js，绘制与点击共用同一份几何。
@@ -13,7 +13,7 @@
   var icon = A.Scene.icon;
 
   var UI = {
-    stack: [],          // 'settings' / 'profile' / 'avatars' / 'nickname' / 'rank' / 'regions' / 'invite'
+    stack: [],          // 'settings' / 'profile' / 'avatars' / 'nickname' / 'invite' / 'collection' / 'heroDetail'
     draftNickname: '',
     draftAvatar: 0,
   };
@@ -236,7 +236,7 @@
     drawAvatar(P.data.avatarIndex, av.x + av.w / 2, av.y + av.h / 2, av.w * 0.82);
 
     D.text(P.data.nickname, g.card.x + g.card.w / 2, g.nameY, 28, col(COLOR.brownDeep), 1);
-    D.text(ID_PREFIX + P.data.id + ' · ' + P.regionDef().name, g.card.x + g.card.w / 2,
+    D.text(ID_PREFIX + P.data.id + ' · 中国', g.card.x + g.card.w / 2,
       g.idY, 18, col(COLOR.textDim), 1);
 
     ghostRow(g.avatarBtn, '选择头像', { chevron: true, size: 28 });
@@ -307,156 +307,6 @@
     primaryButton(g.save, '保存昵称', 28);
   }
 
-  // ── 地区排行榜 ──────────────────────────────────────────────
-  function drawRank() {
-    var u = L.ui;
-    var g = u.rank;
-    var rk = S.ranking || P.buildRanking();
-
-    // 全屏奶油渐变，不使用首页背景，让数字更清楚
-    D.vGradient(0, 0, u.w, u.h, col(COLOR.pageTop), col(COLOR.pageBottom), 18);
-    backButton(g.back);
-    D.text('地区排行榜', g.titleX, g.titleY + 4, 28, col(COLOR.brownDeep), 0);
-    D.text('看看伙伴们的闯关进度', g.titleX, g.subY, 18, col(COLOR.textDim), 0);
-
-    // 地区切换 pill + 虚拟榜单标记
-    D.roundRect(g.bar.x, g.bar.y, g.bar.w, g.bar.h, g.bar.h / 2, col(COLOR.paper));
-    D.strokeRect(g.bar.x, g.bar.y, g.bar.w, g.bar.h, 1.2, col(COLOR.rowEdge));
-    D.text(rk.region.name + ' · ' + rk.town, g.bar.x + 16, g.bar.y + (g.bar.h - 28) / 2,
-      28, col(COLOR.brownDeep), 0);
-    icon('ui-chevron', g.bar.x + g.bar.w - 20, g.bar.y + g.bar.h / 2, g.bar.h * 0.4);
-    D.roundRect(g.badge.x, g.badge.y, g.badge.w, g.badge.h, g.badge.h / 2,
-      col('#efe0c8', 0.9));
-    D.text('虚拟榜单', g.badge.x + g.badge.w / 2, g.badge.y + (g.badge.h - 18) / 2,
-      18, col(COLOR.textDim), 1);
-
-    drawPodium(g, rk);
-    drawRankRows(g, rk);
-
-    D.text('虚拟地区与示例玩家，不代表真实排名', g.x + g.w / 2, g.footY, 18,
-      col('#b3a08a'), 1);
-  }
-
-  function drawPodium(g, rk) {
-    var top = rk.list.slice(0, 3);
-    var cy = g.podiumY;
-    var ch = g.podiumH;
-    D.roundRect(g.x, cy, g.w, ch, 18, col(COLOR.paper, 0.92));
-    D.strokeRect(g.x, cy, g.w, ch, 1, col('#f1e1cb'));
-    if (!top.length) return;
-
-    // 顺序：2 / 1 / 3，中间的第一名略高
-    var order = [1, 0, 2];
-    var slotW = g.w / 3;
-    var labelH = 22;
-    for (var k = 0; k < order.length; k++) {
-      var idx = order[k];
-      var item = top[idx];
-      if (!item) continue;
-      var first = idx === 0;
-      var cx = g.x + slotW * (k + 0.5);
-      var avSize = first ? ch * 0.34 : ch * 0.28;
-      var avCy = cy + (first ? 18 : 26) + avSize / 2;
-      if (first) {
-        D.roundRect(cx - slotW * 0.36, cy + 8, slotW * 0.72, ch - 16, 14, col('#fdf0d8'));
-      }
-      D.circle(cx, avCy, avSize * 0.54, col(first ? '#f6d79a' : '#f2e5d2'));
-      drawAvatar(item.avatar, cx, avCy, avSize);
-      // 名次徽章挂在头像左上角
-      var bs = first ? 24 : 20;
-      var bx = cx - avSize * 0.5;
-      var by = avCy - avSize * 0.42;
-      D.circle(bx, by, bs / 2, col(first ? '#e9b34c' : '#c9b49b'));
-      D.text(String(item.rank), bx, by - bs * 0.32, 18, col('#ffffff'), 1);
-
-      var nameY = cy + ch - labelH * 2 - 12;
-      D.text(item.name, cx, nameY, 18, col(COLOR.brownDeep), 1);
-      D.text(String(item.wave) + ' 关', cx, nameY + labelH, 18, col(COLOR.textDim), 1);
-    }
-  }
-
-  function drawRankRows(g, rk) {
-    var start = 3;
-    var rows = Math.min(g.visibleRows, rk.list.length - start);
-    for (var i = 0; i < rows; i++) {
-      var item = rk.list[start + i];
-      var rect = g.rowRect(i);
-      D.roundRect(rect.x, rect.y, rect.w, rect.h, rect.h / 2, col(COLOR.paper));
-      D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#f2e5d3'));
-      var num = String(item.rank);
-      D.text(num.length < 2 ? '0' + num : num, rect.x + 18,
-        rect.y + (rect.h - 28) / 2, 28, col('#b79a7a'), 0);
-      drawAvatar(item.avatar, rect.x + 62, rect.y + rect.h / 2, rect.h * 0.62);
-      D.text(item.name, rect.x + 88, rect.y + (rect.h - 28) / 2, 28,
-        col(COLOR.brownDeep), 0);
-      D.text(String(item.wave) + ' 关', rect.x + rect.w - 18,
-        rect.y + (rect.h - 28) / 2, 28, col(COLOR.text), 2);
-    }
-
-    // 我的名次：固定贴底，未通关显示「尚未上榜」
-    var m = g.mine;
-    var onBoard = rk.onBoard;
-    D.roundRect(m.x, m.y, m.w, m.h, m.h / 2,
-      col(onBoard ? '#fbe7bd' : '#f5ead9'));
-    D.strokeRect(m.x, m.y, m.w, m.h, 1.4,
-      col(onBoard ? '#f0be62' : '#e6d3bb'));
-
-    // 单行排布：名次 → 头像 → 昵称 → 状态；副标题与状态分两侧收尾，
-    // 不叠加两层文字，窄屏也不会挤出卡片。
-    var cy = m.y + m.h / 2;
-    var rankLabel = onBoard ? String(rk.myRank) : '--';
-    D.text(rankLabel, m.x + 16, cy - 14, 28, col(onBoard ? '#b97512' : '#b3a08a'), 0);
-
-    var avCx = m.x + 66;
-    drawAvatar(P.data.avatarIndex, avCx, cy, m.h * 0.54);
-
-    var nameX = avCx + 26;
-    D.text(P.data.nickname, nameX, cy - 14, 28, col(COLOR.brownDeep), 0);
-    D.text('我的排名', nameX, cy + 16, 18, col(COLOR.textDim), 0);
-
-    if (!onBoard) {
-      D.text('尚未上榜', m.x + m.w - 16, cy - 20, 28, col('#b3a08a'), 2);
-    } else {
-      D.text('第 ' + rk.mineWave + ' 关', m.x + m.w - 16, cy - 20, 28,
-        col(COLOR.brownDeep), 2);
-    }
-  }
-
-  // ── 选择地区 ────────────────────────────────────────────────
-  function drawRegionPick() {
-    var u = L.ui;
-    var g = u.regionPick;
-    dimBackground();
-    paper(g.sheet, 26, '选择地区', g.head);
-    closeButton(g.close);
-    D.text('选择一个想加入的虚拟小镇', g.sheet.x + g.sheet.w / 2, g.subY, 18,
-      col(COLOR.textDim), 1);
-
-    var region = P.regionDef();
-    var towns = region.towns || [];
-    for (var i = 0; i < g.rows.length; i++) {
-      var rect = g.rows[i];
-      var current = P.data.town === i;
-      D.roundRect(rect.x, rect.y, rect.w, rect.h, 12, col(COLOR.row));
-      D.strokeRect(rect.x, rect.y, rect.w, rect.h, current ? 1.6 : 1,
-        col(current ? '#f0be62' : COLOR.rowEdge));
-      D.text(towns[i] || '', rect.x + 16, rect.y + (rect.h - 28) / 2, 28,
-        col(COLOR.brownDeep), 0);
-      if (current) {
-        D.text('当前地区', rect.x + rect.w - 30, rect.y + (rect.h - 18) / 2, 18,
-          col(COLOR.textDim), 2);
-        icon('ui-check', rect.x + rect.w - 16, rect.y + rect.h / 2, 14);
-      } else {
-        icon('ui-chevron', rect.x + rect.w - 18, rect.y + rect.h / 2, rect.h * 0.36);
-      }
-    }
-
-    D.text(P.regionDef().name + ' · 不获取定位，不对应真实地理位置',
-      g.sheet.x + g.sheet.w / 2, g.noteY, 18, col('#b8a691'), 1);
-    D.text('切换后立即查看该地区榜单', g.sheet.x + g.sheet.w / 2, g.noteY + 24, 18,
-      col('#b8a691'), 1);
-  }
-
   // ── 邀请好友 ────────────────────────────────────────────────
   function drawInvite() {
     var u = L.ui;
@@ -516,14 +366,15 @@
           lv + '星',
           '生命 ' + Math.round(starDef.hp),
           def.cls === 'healer' ? '回血 ' + Math.round(starDef.heal) : '攻击 ' + Math.round(starDef.atk),
-          def.cls === 'tank' ? '攻速 --' : (def.cls === 'healer' ? '治疗/秒 ' : '攻击/秒 ') + (1 / starDef.interval).toFixed(2),
+          def.cls === 'tank' ? '攻速 --' : (def.cls === 'healer' ? '治疗间隔 ' : '攻击间隔 ') + Math.round(starDef.interval * 1000) + '毫秒',
           (def.cls === 'healer' ? '治疗距离 ' : '攻击距离 ') + Math.round(starDef.range),
           '嘲讽范围 ' + Math.round(starDef.taunt || 0),
           '群攻范围 ' + Math.round(starDef.splash || 0),
           starDef.cost + ' 金币'
         ];
         for (var ai = 0; ai < attributes.length; ai++) {
-          D.text(attributes[ai], r.x + r.w / 2, textY + ai * 22, 18, col(ai === 0 ? edge : COLOR.text), 1);
+          fittedText(attributes[ai], r.x + r.w / 2, textY + ai * 22, 18, r.w - 10,
+            ai === 0 ? edge : COLOR.text, 1);
         }
       }
       return;
@@ -549,16 +400,14 @@
   }
 
   function open(name) {
-    if (!name || name === 'upgrade') return;
-    if (name === 'rank') UI.stack = ['rank'];
-    else if (UI.stack.indexOf(name) === -1) UI.stack.push(name);
+    if (['settings', 'profile', 'avatars', 'nickname', 'invite', 'collection', 'heroDetail'].indexOf(name) === -1) return;
+    if (UI.stack.indexOf(name) === -1) UI.stack.push(name);
     prepare(name);
   }
 
   function prepare(name) {
     if (name === 'avatars') UI.draftAvatar = P.data.avatarIndex;
     else if (name === 'nickname') UI.draftNickname = P.data.nickname;
-    else if (name === 'rank') S.ranking = P.buildRanking();
   }
 
   function back() {
@@ -712,8 +561,6 @@
       controls = [u.avatarPick.close, u.avatarPick.save];
       for (var ai = 0; ai < P.AVATARS.length; ai++) controls.push(u.avatarPick.rect(ai));
     } else if (name === 'nickname') controls = [u.nickname.close, u.nickname.field, u.nickname.save];
-    else if (name === 'rank') controls = [u.rank.back, u.rank.bar, u.rank.mine];
-    else if (name === 'regions') controls = [u.regionPick.close].concat(u.regionPick.rows);
     else if (name === 'invite') controls = [u.invite.close, u.invite.copy];
     for (var ci = 0; ci < controls.length; ci++) {
       if (pointIn(controls[ci], x, y, 0)) { play('click'); break; }
@@ -774,33 +621,6 @@
       return true;
     }
 
-    if (name === 'rank') {
-      var r = u.rank;
-      if (pointIn(r.back, x, y, 6)) { closeAll(); return true; }
-      if (pointIn(r.bar, x, y, 4)) { open('regions'); return true; }
-      if (pointIn(r.mine, x, y, 2)) { open('regions'); return true; }
-      return true;
-    }
-
-    if (name === 'regions') {
-      var rg = u.regionPick;
-      if (pointIn(rg.close, x, y, 6)) { back(); return true; }
-      var towns = (P.regionDef().towns || []);
-      for (var k = 0; k < towns.length; k++) {
-        if (pointIn(rg.rows[k], x, y, 3)) {
-          if (P.data.town === k) { back(); return true; }
-          P.setTown(k);
-          S.ranking = P.buildRanking();
-          toast('已切换到 ' + towns[k], 1.2);
-          back();
-          return true;
-        }
-      }
-      if (pointIn(rg.sheet, x, y, 0)) return true;
-      back();
-      return true;
-    }
-
     if (name === 'invite') {
       var iv = u.invite;
       if (pointIn(iv.close, x, y, 6)) {
@@ -824,8 +644,6 @@
     else if (name === 'profile') drawProfile();
     else if (name === 'avatars') drawAvatarPick();
     else if (name === 'nickname') drawNickname();
-    else if (name === 'rank') drawRank();
-    else if (name === 'regions') drawRegionPick();
     else if (name === 'invite') drawInvite();
     else if (name === 'collection') drawCollection(false);
     else if (name === 'heroDetail') drawCollection(true);

@@ -98,50 +98,10 @@
     card = S.heroAtStar(card.id, star);
     if (!base || !card || typeof x !== 'number' || !isFinite(x) ||
         typeof y !== 'number' || !isFinite(y)) return null;
-    var u = L.ui;
-    x = S.clamp(x, u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
-    y = S.clamp(y, u.placeTop, u.placeBottom);
-    // 新宠物被挤开后可能靠近前一只，因此重复扫几轮，直到所有脚底体积都分开。
-    for (var pass = 0; pass < 8; pass++) {
-      var adjusted = false;
-      for (var pi = 0; pi < S.units.length; pi++) {
-        var other = S.units[pi];
-        if (other.dead) continue;
-        var minGap = Math.max(C.UNIT_MIN_GAP,
-          card.radius + other.def.radius + C.ACTOR_BODY_GAP + 0.5);
-        var d = Math.sqrt(S.dist2(x, y, other.x, other.y));
-        if (d >= minGap) continue;
-        var nx = x - other.x, ny = y - other.y;
-        var len = Math.sqrt(nx * nx + ny * ny);
-        if (len < 0.001) {
-          // 固定方向使同一个落点每次得到同样的结果，不因随机数闪跳。
-          var ang = ((S.uid * 37 + other.uid * 53) % 360) * Math.PI / 180;
-          nx = Math.cos(ang);
-          ny = Math.sin(ang);
-          len = 1;
-        }
-        x = S.clamp(other.x + nx / len * minGap,
-          u.field.x + card.radius + 4, u.field.x + u.field.w - card.radius - 4);
-        y = S.clamp(other.y + ny / len * minGap, u.placeTop, u.placeBottom);
-        adjusted = true;
-      }
-      if (!adjusted) break;
-    }
-    // 边界已经没有可挪动空间时，不扣费、不生成重叠的宠物。
-    for (var ci = 0; ci < S.units.length; ci++) {
-      var check = S.units[ci];
-      if (check.dead) continue;
-      var required = Math.max(C.UNIT_MIN_GAP,
-        card.radius + check.def.radius + C.ACTOR_BODY_GAP);
-      if (Math.sqrt(S.dist2(x, y, check.x, check.y)) + 0.02 < required) return null;
-    }
-    // 部署不允许直接压在行进中的怪物上；避免刚落地的一帧就出现穿模。
-    for (var ei = 0; ei < S.enemies.length; ei++) {
-      var enemy = S.enemies[ei];
-      if (enemy.dead) continue;
-      var enemyGap = card.radius + enemy.def.radius + C.ACTOR_BODY_GAP;
-      if (Math.sqrt(S.dist2(x, y, enemy.x, enemy.y)) + 0.02 < enemyGap) return null;
-    }
+    var point = findDeployPoint(card, x, y);
+    if (!point) return null;
+    x = point.x;
+    y = point.y;
     var baseDef = copyDef(base);
     var unit = {
       uid: S.uid++,
@@ -221,6 +181,43 @@
   }
 
 
+  // 只检测脚底圆形占地，不把高大贴图的遮挡区域作为碰撞范围。
+  function findDeployPoint(card, x, y) {
+    var u = L.ui;
+    if (!card || !isFinite(x) || !isFinite(y)) return null;
+    var left = u.field.x + card.radius + 4;
+    var right = u.field.x + u.field.w - card.radius - 4;
+    var top = u.placeTop, bottom = u.placeBottom;
+    if (left > right || top > bottom) return null;
+    x = S.clamp(x, left, right);
+    y = S.clamp(y, top, bottom);
+    function free(px, py) {
+      var groups = [S.units, S.enemies];
+      for (var gi = 0; gi < groups.length; gi++) {
+        for (var i = 0; i < groups[gi].length; i++) {
+          var actor = groups[gi][i];
+          if (actor.dead) continue;
+          var gap = card.radius + actor.def.radius + C.ACTOR_BODY_GAP + 0.5;
+          if (gi === 0) gap = Math.max(C.UNIT_MIN_GAP, gap);
+          if (S.dist2(px, py, actor.x, actor.y) < gap * gap) return false;
+        }
+      }
+      return true;
+    }
+    if (free(x, y)) return { x: x, y: y };
+    // 在手指周围小范围吸附；先横向/北侧避让，不移动已有角色或怪物。
+    for (var radius = 8; radius <= 72; radius += 8) {
+      for (var step = 0; step < 24; step++) {
+        var angle = -Math.PI / 2 + step * Math.PI * 2 / 24;
+        var px = x + Math.cos(angle) * radius;
+        var py = y + Math.sin(angle) * radius;
+        if (px < left || px > right || py < top || py > bottom) continue;
+        if (free(px, py)) return { x: px, y: py };
+      }
+    }
+    return null;
+  }
+
   function deployBlockReason(card, x, y) {
     if (!card || typeof x !== 'number' || !isFinite(x) ||
         typeof y !== 'number' || !isFinite(y)) return 'outside';
@@ -232,6 +229,7 @@
     if (y < u.field.y - 24 || y > u.base.y + 10) return 'outside';
     if (!canAfford(card)) return 'gold';
     if (S.liveUnits() >= S.heroCap) return 'cap';
+    if (!findDeployPoint(card, x, y)) return 'occupied';
     return null;
   }
 
@@ -247,6 +245,10 @@
     if (!card) return false;
     var reason = deployBlockReason(card, x, y);
     if (reason === 'outside') return false;
+    if (reason === 'occupied') {
+      S.toastMsg('附近没有可放下的位置', 1.0);
+      return false;
+    }
     if (reason === 'gold') {
       S.toastMsg('金币不足', 0.9);
       return false;
@@ -1113,6 +1115,7 @@
   A.Battle = {
     update: update,
     tryDeploy: tryDeploy,
+    findDeployPoint: findDeployPoint,
     deployBlockReason: deployBlockReason,
     canAfford: canAfford,
     getUpgradePreview: getUpgradePreview,

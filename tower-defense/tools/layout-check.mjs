@@ -99,8 +99,12 @@ function check(name, input, expected) {
     assert(button.x >= ui.safeLeft && button.x + button.w <= ui.safeRight, `${name}: ${kind} button outside safe width`)
     assert(button.y >= ui.contentTop && button.y + button.h <= ui.contentBottom, `${name}: ${kind} button outside safe height`)
   }
-  for (const key of ['avatar', 'stamina', 'settings', 'rank', 'collection', 'start', 'panel', 'panelAction']) {
+  assert(!Object.prototype.hasOwnProperty.call(ui.menu, 'rank'), `${name}: removed rank entry still has a layout rect`)
+  // stamina is a display rect, not a button; it still must remain in the safe area.
+  for (const key of ['avatar', 'stamina', 'settings', 'collection', 'start']) {
     const rect = ui.menu[key]
+    assert(rect && [rect.x, rect.y, rect.w, rect.h].every(Number.isFinite) && rect.w > 0 && rect.h > 0,
+      `${name}: menu ${key} missing or invalid rect`)
     assert(rect.x >= ui.safeLeft - 0.01 && rect.x + rect.w <= ui.safeRight + 0.01,
       `${name}: menu ${key} outside safe width`)
     assert(rect.y >= ui.contentTop - 0.01 && rect.y + rect.h <= ui.contentBottom + 0.01,
@@ -124,22 +128,23 @@ function check(name, input, expected) {
   `${name}: settings rows or version overlap`)
   const m = ui.menu
   const close = (a, b) => Math.abs(a - b) < 0.01
-  for (const key of ['avatar', 'settings', 'rank', 'collection']) {
-    assert(close(m[key].w, m.avatar.w) && close(m[key].h, m.avatar.h) && close(m[key].w, m[key].h),
-      `${name}: ${key} square button size differs`)
+  // The avatar/stamina group no longer shares the old four-button grid.
+  for (const key of ['avatar', 'settings', 'collection']) {
+    assert(close(m[key].w, m[key].h), `${name}: ${key} is not square`)
   }
-  assert(close(m.avatar.x, m.rank.x) && close(m.settings.x, m.collection.x),
-    `${name}: menu columns misaligned`)
-  assert(close(m.avatar.y, m.settings.y) && close(m.rank.y, m.collection.y),
-    `${name}: menu rows misaligned`)
-  assert(close(m.rank.y - m.avatar.y, m.collection.y - m.settings.y),
-    `${name}: row spacing differs`)
-  assert(close(m.stamina.y + m.stamina.h / 2, m.avatar.y + m.avatar.h / 2),
-    `${name}: stamina bar not vertically centered`)
-  assert(m.stamina.x - (m.avatar.x + m.avatar.w) >= 5,
-    `${name}: stamina bar too close to avatar`)
-  assert(m.rank.y + m.rank.h < m.card.y && m.collection.y + m.collection.h < m.card.y,
-    `${name}: navigation overlaps chapter card`)
+  assert(close(m.settings.w, m.collection.w) && close(m.settings.h, m.collection.h),
+    `${name}: settings and collection button sizes differ`)
+  const topItems = ['avatar', 'stamina', 'settings', 'collection']
+  for (const [index, key] of topItems.entries()) {
+    const a = m[key]
+    assert(a.y + a.h < m.card.y, `${name}: ${key} overlaps chapter card`)
+    for (const other of topItems.slice(index + 1)) {
+      const b = m[other]
+      assert(a.x + a.w <= b.x + 0.01 || b.x + b.w <= a.x + 0.01 ||
+        a.y + a.h <= b.y + 0.01 || b.y + b.h <= a.y + 0.01,
+      `${name}: ${key} overlaps ${other}`)
+    }
+  }
   for (const [index, part] of ui.checkShopParts.entries()) {
     const r = part.rect
     const p = part.portrait

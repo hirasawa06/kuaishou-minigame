@@ -328,13 +328,12 @@
     ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
       h: 845 * figmaScale, scale: figmaScale };
     ui.menu = {};
-    // 顶部四个方牌同尺寸、同列线和同排距；体力胶囊以头像的垂直中心对齐。
+    // 顶部方牌同尺寸；收藏留在设置下方，体力仅作头像旁的只读状态条。
     var navSize = 78, navMargin = 11.5, navRowGap = 12;
     var navTop = 45.77, navLeft = navMargin, navRight = 390 - navMargin - navSize;
     var navBottom = navTop + navSize + navRowGap;
     ui.menu.avatar = figmaRect(navLeft, navTop, navSize, navSize);
     ui.menu.settings = figmaRect(navRight, navTop, navSize, navSize);
-    ui.menu.rank = figmaRect(navLeft, navBottom, navSize, navSize);
     ui.menu.collection = figmaRect(navRight, navBottom, navSize, navSize);
     ui.menu.stamina = figmaRect(navLeft + navSize + 10,
       navTop + (navSize - 44) / 2, 142, 44);
@@ -344,14 +343,8 @@
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
     ui.menu.levelStatus = { x: ui.menu.card.x + 48, y: ui.menu.card.y + ui.menu.card.h - 82,
       w: ui.menu.card.w - 96, h: 78 };
-    var panelW = Math.min(300, safeW - pad * 2);
-    var panelH = Math.min(210, contentH * 0.45);
-    ui.menu.panel = { x: metrics.safeLeft + (safeW - panelW) / 2,
-      y: contentTop + (contentH - panelH) / 2, w: panelW, h: panelH };
-    ui.menu.panelAction = { x: ui.menu.panel.x + (panelW - 126) / 2,
-      y: ui.menu.panel.y + panelH - 60, w: 126, h: 42 };
 
-    // ── 设置 / 名片 / 头像 / 昵称 / 排行榜 / 邀请 的界面几何 ──
+    // ── 设置 / 名片 / 头像 / 昵称 / 邀请 的界面几何 ──
     // 所有弹窗与全屏页都从同一份可交互区域派生：标题栏、按钮、行高都由 contentH 缩放。
     var sheetW = Math.round(Math.min(340, safeW - pad * 2 - 8));
     var sheetX = Math.round(metrics.safeLeft + (safeW - sheetW) / 2);
@@ -487,81 +480,6 @@
         w: sheetW - 44,
         h: Math.round(Math.max(40, Math.min(50, nickH * 0.15))),
       },
-    };
-
-    // 地区排行榜：全屏页（返回 + 标题 + 地区切换 + 前三天梯 + 列表 + 我的名次）
-    var rankPad = Math.round(Math.max(14, pad));
-    var rankX = metrics.safeLeft + rankPad;
-    var rankW = safeW - rankPad * 2;
-    var backSize = 40;
-    // 顶部：返回键一行，标题与副标题在下方一行，避免窄屏文字压住图标
-    var rankTitleY = contentTop + backSize + 4;
-    var rankBarY = rankTitleY + 80;
-    var rankBarH = Math.round(Math.max(36, Math.min(44, contentH * 0.055)));
-    var podiumY = rankBarY + rankBarH + 10;
-    var podiumH = Math.round(Math.max(104, Math.min(150, contentH * 0.185)));
-    var rowH2 = Math.round(Math.max(34, Math.min(44, contentH * 0.052)));
-    var listY = podiumY + podiumH + 8;
-    // 底部固定两段：我的名次卡片 + 一行说明，二者之间留 8px，说明贴着安全区底
-    // 底部：我的名次卡片 + 一行说明；说明用 18 号字，留足下沿空间
-    var footH = 26;
-    var mineH = Math.round(Math.max(52, Math.min(62, contentH * 0.076)));
-    var mineY = contentBottom - footH - 2 - mineH;
-    var listAvail = mineY - 10 - listY;
-    var visibleRows = Math.max(1, Math.min(6, Math.floor(listAvail / (rowH2 + 8))));
-    ui.rank = {
-      x: rankX,
-      w: rankW,
-      titleX: rankX,
-      back: { x: rankX, y: contentTop + 4, w: backSize, h: backSize },
-      titleY: rankTitleY,
-      subY: rankTitleY + 42,
-      barY: rankBarY,
-      barH: rankBarH,
-      bar: { x: rankX, y: rankBarY, w: Math.round(rankW * 0.62), h: rankBarH },
-      badge: {
-        x: rankX + Math.round(rankW * 0.62) + 6,
-        y: rankBarY + 5,
-        w: rankW - Math.round(rankW * 0.62) - 6,
-        h: rankBarH - 10,
-      },
-      podiumY: podiumY,
-      podiumH: podiumH,
-      rowH: rowH2,
-      listY: listY,
-      visibleRows: visibleRows,
-      mine: { x: rankX, y: mineY, w: rankW, h: mineH },
-      footY: contentBottom - 26,
-      rowRect: function (i) {
-        return { x: rankX, y: listY + i * (rowH2 + 8), w: rankW, h: rowH2 };
-      },
-    };
-
-    // 选择地区：标题 + 3 个地区行 + 说明
-    var regH = Math.round(Math.min(386, contentH * 0.64));
-    var regY = contentTop + Math.round(Math.max(16, (contentH - regH) * 0.3));
-    var regHead = Math.max(38, Math.round(rowH * 0.74));
-    var regRowH = Math.round(Math.max(44, Math.min(54, regH * 0.15)));
-    var regRowGap = 10;
-    var regTop = regY + regHead + Math.round(regH * 0.09);
-    ui.regionPick = {
-      sheet: { x: sheetX, y: regY, w: sheetW, h: regH },
-      head: regHead,
-      close: { x: sheetX + sheetW - 38, y: regY + 6, w: 32, h: 32 },
-      subY: regY + regHead + Math.round(regH * 0.03),
-      rows: (function () {
-        var out = [];
-        for (var i = 0; i < 3; i++) {
-          out.push({
-            x: sheetX + 18,
-            y: regTop + i * (regRowH + regRowGap),
-            w: sheetW - 36,
-            h: regRowH,
-          });
-        }
-        return out;
-      })(),
-      noteY: regY + regH - 60,
     };
 
     // 邀请好友：两只伙伴 + 标题 + 文案 + 复制按钮 + 说明

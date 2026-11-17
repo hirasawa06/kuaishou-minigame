@@ -5,7 +5,9 @@
  * 用法：node tools/profile-shot.mjs [--port 8099] [--out /tmp/tdprofile]
  * 前置：已用本地静态服务指向 package/。
  *
- * 覆盖：首页头像 → 我的名片 → 选择头像 → 保存；设置开关 + 邀请；排行榜 / 地区切换。
+ * 覆盖：首页头像 → 我的名片 → 选择头像 → 保存；设置开关 + 邀请；收藏。
+ * 排行榜及地区切换用例已随入口取消而删除；体力仅展示，不再覆盖体力弹窗。
+ * 本脚本会启动浏览器；仅在另行获准做 H5 检查时执行。
  */
 
 import fs from 'node:fs'
@@ -157,18 +159,11 @@ async function main() {
   console.log('back to:', await evaluate('AIGCUtils.ProfileUI.top()'))
   await tapLog('AIGCUtils.Layout.ui.settings.close')
 
-  // 排行榜
-  await tapLog('AIGCUtils.Layout.ui.menu.rank')
-  await shot('07-rank')
-  await tapLog('AIGCUtils.Layout.ui.rank.bar')
-  await shot('08-regions')
-  await tapLog('AIGCUtils.Layout.ui.regionPick.rows[1]')
-  console.log('town:', await evaluate('AIGCUtils.Profile.data.town'), 'top:', await evaluate('AIGCUtils.ProfileUI.top()'))
-  await shot('09-rank-after')
-  await tapLog('AIGCUtils.Layout.ui.rank.back')
-
-  // 未通关时「尚未上榜」文案
-  console.log('bestWave:', await evaluate('AIGCUtils.Profile.data.bestWave'))
+  // 收藏（排行榜 / 地区切换 / 尚未上榜用例已删除）
+  await tapLog('AIGCUtils.Layout.ui.menu.collection')
+  console.log('collection:', await evaluate('AIGCUtils.ProfileUI.top()'))
+  await shot('07-collection')
+  await tapLog('AIGCUtils.Layout.ui.collection.back')
   console.log('stack:', JSON.stringify(await evaluate('AIGCUtils.ProfileUI.top()')))
 
   chrome.kill()
