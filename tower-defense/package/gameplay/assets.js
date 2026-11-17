@@ -82,7 +82,11 @@
     // 字体图集
     var atlas = A.FontAtlas;
     for (var size in atlas) {
-      if (atlas.hasOwnProperty(size)) manifest.push(['font-' + size, atlas[size].src]);
+      if (!atlas.hasOwnProperty(size)) continue;
+      var pages = atlas[size].pages || [atlas[size]];
+      for (var page = 0; page < pages.length; page++) {
+        manifest.push(['font-' + size + (page ? '-' + page : ''), pages[page].src]);
+      }
     }
     // 战斗图集（单位、常规特效、继承图标都在这张里）
     if (A.GameAtlas && A.GameAtlas.src) manifest.push(['game', A.GameAtlas.src]);
@@ -100,7 +104,7 @@
       manifest.push(['hero-levels', A.HeroForms.src]);
       manifest.push(['hero-levels-back', A.HeroForms.backSrc]);
     }
-    manifest.push(['home-background-clean', 'res/Image/home-background-clean-v2.png']);
+    manifest.push(['home-background-clean', 'res/Image/home-background-clean-v2.jpg']);
     manifest.push(['home-level-card-no-banner', 'res/Image/home-level-card-no-banner-v1.png']);
     manifest.push(['home-level-frame-overlay', 'res/Image/home-level-frame-overlay-v1.png']);
     manifest.push(['home-level-arrows', 'res/Image/home-level-arrows-v1.png']);
@@ -109,11 +113,9 @@
     manifest.push(['home-level-lock', 'res/Image/home-level-lock-v1.png']);
     manifest.push(['home-menu-icons', 'res/Image/home-menu-icons-v1.png']);
     manifest.push(['home-start-paw', 'res/Image/home-start-paw-v1.png']);
-    manifest.push(['in-game-background', 'res/Image/in-game-background-topdown.png']);
+    manifest.push(['in-game-background', 'res/Image/in-game-background-topdown.jpg']);
     manifest.push(['guardian-photo', 'res/Image/guardian-photo-v1.png']);
 
-    manifest.push(['enemy-furniture-atlas', 'res/Image/enemy-furniture-atlas.png']);
-    manifest.push(['lamp-small', 'res/Image/lamp-small.png']);
     manifest.push(['shield-dog-front', 'res/Image/shield-dog-front.png']);
     manifest.push(['archer-cat-front', 'res/Image/archer-cat-front.png']);
     manifest.push(['melee-cat-poses', 'res/Image/melee-cat-poses.png']);

@@ -1,0 +1,332 @@
+[
+  {
+    "source": "res/Image/archer-cat-front.png",
+    "output": "res/Image/archer-cat-front.png",
+    "size": [
+      489,
+      512
+    ],
+    "before": 28025,
+    "after": 28025
+  },
+  {
+    "source": "res/Image/archer-cat-hurt.png",
+    "output": "res/Image/archer-cat-hurt.png",
+    "size": [
+      512,
+      484
+    ],
+    "before": 22305,
+    "after": 22305
+  },
+  {
+    "source": "res/Image/battle-fx-atlas.png",
+    "output": "res/Image/battle-fx-atlas.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "before": 110780,
+    "after": 110780
+  },
+  {
+    "source": "res/Image/enemy-furniture-atlas.png",
+    "output": "res/Image/enemy-furniture-atlas.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "before": 103025,
+    "after": 103025
+  },
+  {
+    "source": "res/Image/game.png",
+    "output": "res/Image/game.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "before": 194543,
+    "after": 194543
+  },
+  {
+    "source": "res/Image/guardian-photo-v1.png",
+    "output": "res/Image/guardian-photo-v1.png",
+    "size": [
+      512,
+      512
+    ],
+    "before": 36045,
+    "after": 36045
+  },
+  {
+    "source": "res/Image/heal-aura.png",
+    "output": "res/Image/heal-aura.png",
+    "size": [
+      256,
+      251
+    ],
+    "before": 22372,
+    "after": 22372
+  },
+  {
+    "source": "res/Image/heal-cross.png",
+    "output": "res/Image/heal-cross.png",
+    "size": [
+      89,
+      95
+    ],
+    "before": 3143,
+    "after": 3143
+  },
+  {
+    "source": "res/Image/hero-levels-back.png",
+    "output": "res/Image/hero-levels-back.png",
+    "size": [
+      1000,
+      600
+    ],
+    "before": 109898,
+    "after": 109898
+  },
+  {
+    "source": "res/Image/hero-levels.png",
+    "output": "res/Image/hero-levels.png",
+    "size": [
+      1000,
+      600
+    ],
+    "before": 125115,
+    "after": 125115
+  },
+  {
+    "source": "res/Image/home-level-arrows-disabled-v1.png",
+    "output": "res/Image/home-level-arrows-disabled-v1.png",
+    "size": [
+      512,
+      171
+    ],
+    "before": 9193,
+    "after": 9193
+  },
+  {
+    "source": "res/Image/home-level-arrows-v1.png",
+    "output": "res/Image/home-level-arrows-v1.png",
+    "size": [
+      512,
+      170
+    ],
+    "before": 9738,
+    "after": 9738
+  },
+  {
+    "source": "res/Image/home-level-card-no-banner-v1.png",
+    "output": "res/Image/home-level-card-no-banner-v1.png",
+    "size": [
+      1199,
+      1312
+    ],
+    "before": 696265,
+    "after": 555707
+  },
+  {
+    "source": "res/Image/home-level-frame-overlay-v1.png",
+    "output": "res/Image/home-level-frame-overlay-v1.png",
+    "size": [
+      1199,
+      1312
+    ],
+    "before": 39237,
+    "after": 39237
+  },
+  {
+    "source": "res/Image/home-level-lock-v1.png",
+    "output": "res/Image/home-level-lock-v1.png",
+    "size": [
+      256,
+      252
+    ],
+    "before": 9379,
+    "after": 9379
+  },
+  {
+    "source": "res/Image/home-level-nameplate-v1.png",
+    "output": "res/Image/home-level-nameplate-v1.png",
+    "size": [
+      1024,
+      341
+    ],
+    "before": 21043,
+    "after": 21043
+  },
+  {
+    "source": "res/Image/home-menu-icons-v1.png",
+    "output": "res/Image/home-menu-icons-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "before": 129296,
+    "after": 129296
+  },
+  {
+    "source": "res/Image/home-start-paw-v1.png",
+    "output": "res/Image/home-start-paw-v1.png",
+    "size": [
+      1326,
+      1187
+    ],
+    "before": 44587,
+    "after": 44587
+  },
+  {
+    "source": "res/Image/hud-panel.png",
+    "output": "res/Image/hud-panel.png",
+    "size": [
+      1024,
+      170
+    ],
+    "before": 14331,
+    "after": 14331
+  },
+  {
+    "source": "res/Image/lamp-small.png",
+    "output": "res/Image/lamp-small.png",
+    "size": [
+      468,
+      512
+    ],
+    "before": 20248,
+    "after": 20248
+  },
+  {
+    "source": "res/Image/mage-biscuit-flight.png",
+    "output": "res/Image/mage-biscuit-flight.png",
+    "size": [
+      512,
+      384
+    ],
+    "before": 37773,
+    "after": 37773
+  },
+  {
+    "source": "res/Image/mage-biscuit-impact.png",
+    "output": "res/Image/mage-biscuit-impact.png",
+    "size": [
+      640,
+      160
+    ],
+    "before": 18630,
+    "after": 18630
+  },
+  {
+    "source": "res/Image/mage-dog-back.png",
+    "output": "res/Image/mage-dog-back.png",
+    "size": [
+      461,
+      512
+    ],
+    "before": 30209,
+    "after": 30209
+  },
+  {
+    "source": "res/Image/mage-dog-front.png",
+    "output": "res/Image/mage-dog-front.png",
+    "size": [
+      443,
+      512
+    ],
+    "before": 43400,
+    "after": 43400
+  },
+  {
+    "source": "res/Image/mage-dog-poses.png",
+    "output": "res/Image/mage-dog-poses.png",
+    "size": [
+      2048,
+      682
+    ],
+    "before": 148093,
+    "after": 148093
+  },
+  {
+    "source": "res/Image/melee-cat-back.png",
+    "output": "res/Image/melee-cat-back.png",
+    "size": [
+      468,
+      512
+    ],
+    "before": 26303,
+    "after": 26303
+  },
+  {
+    "source": "res/Image/melee-cat-front.png",
+    "output": "res/Image/melee-cat-front.png",
+    "size": [
+      512,
+      497
+    ],
+    "before": 36399,
+    "after": 36399
+  },
+  {
+    "source": "res/Image/melee-cat-poses.png",
+    "output": "res/Image/melee-cat-poses.png",
+    "size": [
+      2048,
+      682
+    ],
+    "before": 206400,
+    "after": 206400
+  },
+  {
+    "source": "res/Image/shield-dog-front.png",
+    "output": "res/Image/shield-dog-front.png",
+    "size": [
+      455,
+      512
+    ],
+    "before": 29602,
+    "after": 29602
+  },
+  {
+    "source": "res/Image/shop-button.png",
+    "output": "res/Image/shop-button.png",
+    "size": [
+      768,
+      128
+    ],
+    "before": 7026,
+    "after": 7026
+  },
+  {
+    "source": "res/Image/shop-tray.png",
+    "output": "res/Image/shop-tray.png",
+    "size": [
+      1024,
+      381
+    ],
+    "before": 40593,
+    "after": 40593
+  },
+  {
+    "source": "res/Image/sprites.png",
+    "output": "res/Image/sprites.png",
+    "size": [
+      1056,
+      1024
+    ],
+    "before": 4682,
+    "after": 4682
+  },
+  {
+    "source": "res/Menu/avatars.png",
+    "output": "res/Menu/avatars.png",
+    "size": [
+      792,
+      792
+    ],
+    "before": 108435,
+    "after": 108435
+  }
+]

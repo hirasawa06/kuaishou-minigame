@@ -8,7 +8,7 @@ gen-assets.py — 塔防小游戏离线资源生成器
 同时生成单位/敌人/UI 图标精灵图与 yoola 平台素材。
 
 输出：
-  package/res/Image/font-48.png / font-28.png / font-18.png   (2x 位图)
+  package/res/Image/font-{48,28,18}[-N].png                   (2x 多页位图，每页 <=2048)
   package/res/Image/sprites.png                               (2x 位图)
   package/gameplay/data/font-atlas.js
   package/gameplay/data/sprites.js
@@ -117,38 +117,51 @@ def build_font(size, out_png, pad=3, width=None):
         width = pick_width(size, len(chars))
 
     placed = {}
+    page = 0
     x = y = 0
     row_h = 0
+    page_heights = []
+    max_texture_size = 2048
+    if width <= 0 or width > max_texture_size:
+        raise ValueError("Font page width must be between 1 and 2048")
     for ch in chars:
         adv = int(math.ceil(font_for(ch).getlength(ch)))
         w = max(adv, 1) + pad * 2
         h = line_h + pad * 2
+        if w > width or h + 2 > max_texture_size:
+            raise ValueError("Glyph cell exceeds font page size: " + repr(ch))
         if x + w > width:
             x = 0
             y += row_h + 1
             row_h = 0
-        placed[ch] = (x, y, w, h, adv)
+        # Start a fresh page before a row can exceed the WebGL 1.0 limit.
+        # Keep the original cells, font sizes and 2x rasterization unchanged.
+        if y + h + 2 > max_texture_size:
+            page_heights.append(y - 1 + 2)
+            page += 1
+            x = y = row_h = 0
+        placed[ch] = (page, x, y, w, h, adv)
         x += w + 1
         row_h = max(row_h, h)
+    page_heights.append(y + row_h + 2)
+    page_heights = [1 << (height - 1).bit_length() for height in page_heights]
 
-    height = y + row_h + 2
-    height = 1 << (height - 1).bit_length()
-
-    img = Image.new("L", (width, height), 0)
-    d = ImageDraw.Draw(img)
-    for ch, (gx, gy, gw, gh, adv) in placed.items():
-        d.text((gx + pad, gy + pad), ch, font=font_for(ch), fill=255)
+    images = [Image.new("L", (width, height), 0) for height in page_heights]
+    drawers = [ImageDraw.Draw(img) for img in images]
+    for ch, (page, gx, gy, gw, gh, adv) in placed.items():
+        drawers[page].text((gx + pad, gy + pad), ch, font=font_for(ch), fill=255)
 
     glyphs = {}
-    for ch, (gx, gy, gw, gh, adv) in placed.items():
-        cell = img.crop((gx, gy, gx + gw, gy + gh))
+    for ch, (page, gx, gy, gw, gh, adv) in placed.items():
+        cell = images[page].crop((gx, gy, gx + gw, gy + gh))
         bb = cell.getbbox()
         if not bb:
-            glyphs[ch] = {"x": 0, "y": 0, "w": 0, "h": 0,
+            glyphs[ch] = {"page": page, "x": 0, "y": 0, "w": 0, "h": 0,
                           "ox": 0, "oy": 0, "adv": adv / SUPERSAMPLE, "blank": 1}
             continue
         bx0, by0, bx1, by1 = bb
         glyphs[ch] = {
+            "page": page,
             "x": gx + bx0, "y": gy + by0,
             "w": bx1 - bx0, "h": by1 - by0,
             "ox": (bx0 - pad) / SUPERSAMPLE,
@@ -156,14 +169,23 @@ def build_font(size, out_png, pad=3, width=None):
             "adv": adv / SUPERSAMPLE,
         }
 
-    rgba = Image.new("RGBA", (width, height), (255, 255, 255, 0))
-    rgba.putalpha(img)
-    rgba.save(out_png)
+    pages = []
+    stem, ext = os.path.splitext(out_png)
+    for page, img in enumerate(images):
+        page_png = out_png if page == 0 else stem + "-" + str(page) + ext
+        # Every palette entry is white; its index is the exact 8-bit alpha.
+        # Unlike quantization this preserves all antialiasing coverage values.
+        indexed = Image.frombytes("P", img.size, img.tobytes())
+        indexed.putpalette([255, 255, 255] * 256)
+        indexed.save(page_png, transparency=bytes(range(256)), optimize=True)
+        pages.append({"src": "res/Image/" + os.path.basename(page_png),
+                      "texW": width, "texH": img.height})
     return {
-        "src": "res/Image/" + os.path.basename(out_png),
+        "src": pages[0]["src"],
         "size": size,
-        "texW": width,
-        "texH": height,
+        "texW": pages[0]["texW"],
+        "texH": pages[0]["texH"],
+        "pages": pages,
         "lineH": line_h / SUPERSAMPLE,
         "glyphs": glyphs,
     }

@@ -140,17 +140,22 @@
     if (align === 1) penX = x - total / 2;
     else if (align === 2) penX = x - total;
     var g = atlas.glyphs;
-    GL.setTexture(tex);
     for (var i = 0; i < str.length; i++) {
       var gl = g[str.charAt(i)] || g[' '];
       if (!gl) continue;
       if (!gl.blank && gl.w > 0) {
-        GL.push(penX + gl.ox * scale, y + gl.oy * scale,
-          gl.w * TEXT_SCALE * scale, gl.h * TEXT_SCALE * scale, col, {
-            mode: 1,
-            u0: gl.x / atlas.texW, v0: gl.y / atlas.texH,
-            u1: (gl.x + gl.w) / atlas.texW, v1: (gl.y + gl.h) / atlas.texH,
-          });
+        var page = gl.page || 0;
+        var pageAtlas = atlas.pages ? atlas.pages[page] : atlas;
+        var pageTex = page === 0 ? tex : A.Assets.tex('font-' + size + '-' + page);
+        if (pageAtlas && pageTex) {
+          GL.setTexture(pageTex);
+          GL.push(penX + gl.ox * scale, y + gl.oy * scale,
+            gl.w * TEXT_SCALE * scale, gl.h * TEXT_SCALE * scale, col, {
+              mode: 1,
+              u0: gl.x / pageAtlas.texW, v0: gl.y / pageAtlas.texH,
+              u1: (gl.x + gl.w) / pageAtlas.texW, v1: (gl.y + gl.h) / pageAtlas.texH,
+            });
+        }
       }
       penX += gl.adv * scale;
     }
