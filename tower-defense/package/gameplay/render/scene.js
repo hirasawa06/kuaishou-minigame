@@ -112,7 +112,9 @@
         sh = bg.w / targetRatio;
         sy = (bg.h - sh) / 2;
       }
+      A.Render.setSceneLight('environment');
       D.texture(bg.tex, bg.w, bg.h, sx, sy, sw, sh, 0, 0, u.w, u.h);
+      A.Render.setSceneLight('off');
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
     }
@@ -136,8 +138,12 @@
     D.ring(cx, shadowY, size * 0.33, 2, D.color('#c578ff', 0.48));
     drawGroundShadow(cx, shadowY, size * 0.35, 0.52);
     var rig = A.Rigs && A.Rigs.boss;
+    if (preview.impactT >= 0) drawBossImpact(cx, shadowY, preview.impactT,
+      Math.min(C.BOSS_IMPACT.drawSize, stage.w * 0.9));
+    A.Render.setSceneLight('character', shadowY - size * 0.40, size);
     if (rig) A.Anim.draw(rig, preview.entity, cx, shadowY - size * 0.40, size);
     else icon('enemy-boss', cx, shadowY - size * 0.40, size);
+    A.Render.setSceneLight('off');
   }
 
   function drawBase(dt) {
@@ -149,8 +155,10 @@
     var fw = Math.min(112, b.w * 0.29), fh = fw;
     var fx = b.x + (b.w - fw) / 2, fy = b.y - fh * 0.92;
     if (photo) {
+      A.Render.setSceneLight('character', fy + fh / 2, fh);
       D.texture(photo.tex, photo.w, photo.h, 0, 0, photo.w, photo.h,
         fx, fy, fw, fh);
+      A.Render.setSceneLight('off');
     }
     if (ratio <= 0.5) {
       D.roundRect(fx + fw * 0.67, fy + fh * 0.20, 2, fh * 0.40, 1, D.color('#fff8ed', 0.9));
@@ -212,6 +220,7 @@
         tilt = 6 * (1 - k) - 4 * k * (1 - k);
       }
     }
+    A.Render.setSceneLight('character', e.y - r * 0.15, r * 3.05 * (rig ? rig.scale || 1 : 1) * scale);
     if (rig) {
       A.Anim.draw(rig, e, e.x, e.y - r * 0.15, r * 3.05 * (rig.scale || 1) * scale, {
         alpha: 0.3 + 0.7 * spawn,
@@ -219,6 +228,7 @@
     } else {
       icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
     }
+    A.Render.setSceneLight('off');
     if (e.hitFlash > 0) {
       D.circle(e.x, e.y, rr, D.color('#ffffff', e.hitFlash * 3.2));
     }
@@ -404,7 +414,26 @@
 
   function drawGroundEffects() {
     drawActorShadows();
+    for (var i = 0; i < S.effects.length; i++) {
+      var e = S.effects[i];
+      if (e.type !== 'boss-ground-impact') continue;
+      var ground = actorGround({ x: e.x, y: e.y, def: C.ENEMIES.boss, spawnT: 0 }, true);
+      drawBossImpact(ground.x, ground.y, e.max - e.life, C.BOSS_IMPACT.drawSize);
+    }
     drawHealEffects(false);
+  }
+
+  // ── 冰裂砸地：地面层正常混合，原图紫烟和食物保持原色 ────
+  function drawBossImpact(cx, cy, time, width) {
+    var spec = C.BOSS_IMPACT;
+    var image = Assets.entry('boss-impact');
+    if (!image || time < 0 || time >= spec.duration) return;
+    var index = time < spec.timeline[1] ? 0 : time < spec.timeline[2] ? 1 : 2;
+    var fade = index === 2 ? 1 - (time - spec.timeline[2]) / (spec.duration - spec.timeline[2]) : 1;
+    var cell = spec.cell;
+    D.texture(image.tex, image.w, image.h, index * cell, 0, cell, cell,
+      cx - width / 2, cy - width / 2 + width * (spec.offsetYRatio || 0), width, width,
+      { r: 1, g: 1, b: 1, a: fade });
   }
 
   function drawHealEffects(foreground) {
@@ -434,6 +463,7 @@
     var shadowY = spriteY + size * 0.42;
 
     // 星级不改变立绘或动作，治疗猫统一沿用同一背面形象。
+    A.Render.setSceneLight('character', spriteY, size);
     var levelIdle = A.HeroForms && d.cls === 'healer' && !un.dead &&
       A.HeroForms.drawBattleIdle(d.id, 2, un.x, spriteY + size * 0.10, size * 0.68, 0.3 + 0.7 * spawn);
     if (rig && !levelIdle) {
@@ -457,6 +487,7 @@
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
+    A.Render.setSceneLight('off');
     var w = Math.max(22, r * 2.1);
     var ratio = Math.max(0, un.hp / un.maxHp);
     var col = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
@@ -509,6 +540,7 @@
     for (i = 0; i < S.effects.length; i++) {
       e = S.effects[i];
       t = 1 - e.life / e.max;
+      if (e.type === 'boss-ground-impact') continue; // 已在角色下方绘制。
       if (e.type === 'ring') {
         var rr = (e.r || 8) + ((e.r2 || e.r * 1.8) - (e.r || 8)) * t;
         D.ring(e.x, e.y, rr, 2.2 * (1 - t) + 0.6, D.color(e.color, (1 - t) * 0.8));

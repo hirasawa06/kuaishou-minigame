@@ -452,6 +452,48 @@ if (!(S.phase === 'win' || S.phase === 'lose' || simTime > 5)) {
   process.exit(1)
 }
 
+// Boss砸地必须在命中帧结算并只生成一次用户帧表特效。
+S.reset()
+S.phase = 'playing'
+S.waveTimer = 100
+const bossDef = A.Config.ENEMIES.boss
+const bossUi = A.Layout.ui
+const boss = { uid: 9999, def: bossDef, rigId: 'boss',
+  x: bossUi.base.x + bossUi.base.w / 2, y: bossUi.baseStopY,
+  hp: bossDef.hp, maxHp: bossDef.hp, atk: bossDef.atk, speed: bossDef.speed,
+  spawnT: 0, anim: 'idle', animT: 0, atkTimer: 0, pendingHit: -1, pendingKind: '' }
+S.enemies.push(boss)
+const baseBefore = S.baseHp
+A.Battle.update(0.01)
+A.Battle.update(0.46)
+if (S.baseHp !== baseBefore || S.effects.some(e => e.type === 'boss-ground-impact')) {
+  throw new Error('Boss砸地提前触发')
+}
+A.Battle.update(0.03)
+if (S.baseHp !== baseBefore - bossDef.baseDamage ||
+    S.effects.filter(e => e.type === 'boss-ground-impact').length !== 1) {
+  throw new Error('Boss砸地命中帧未正确结算/生成特效')
+}
+A.Battle.update(0.03)
+if (S.effects.filter(e => e.type === 'boss-ground-impact').length !== 1) {
+  throw new Error('Boss砸地特效重复触发')
+}
+console.log('boss ground impact gate: ok')
+// 动作场也按同一0.48秒命中时刻启动特效，不结算实际伤害。
+for (const file of ['gameplay/data/character-animations.js', 'gameplay/anim/defs.js']) {
+  vm.runInContext(fs.readFileSync(path.join(PKG, file), 'utf8'), ctx, { filename: file })
+}
+A.Game.openBossLab()
+A.Game.selectBossLabAction('aoe')
+A.Game.update(0.47)
+if (S.bossLab.impactT >= 0) throw new Error('动作场砸地提前触发')
+A.Game.update(0.02)
+if (!(S.bossLab.impactT >= 0)) throw new Error('动作场砸地特效未启动')
+A.Game.selectBossLabAction('idle')
+if (S.bossLab.impactT !== -1) throw new Error('切动作后砸地残留')
+A.Game.closeBossLab()
+console.log('boss lab impact gate: ok')
+
 // 退场姿势结束后才播放烟雾，且只触发一次。
 S.reset()
 S.waveTimer = 100

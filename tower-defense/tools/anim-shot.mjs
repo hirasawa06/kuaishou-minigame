@@ -253,6 +253,18 @@ async function main() {
     })()`)
     await evaluate(POSE(requestedState, previewTime, false))
     await shot('preview-' + requestedState)
+    if (actorType === 'enemy' && actorId === 'boss' && requestedState === 'aoe') {
+      for (const age of [0.02, 0.15, 0.45]) {
+        await evaluate(`(function () {
+          var A = window.AIGCUtils, S = A.State, un = window.__un;
+          var duration = A.Config.BOSS_IMPACT.duration;
+          S.effects.length = 0;
+          S.addEffect({ type: 'boss-ground-impact', x: un.x, y: un.y,
+            life: duration - ${age}, max: duration });
+        })()`);
+        await shot('boss-impact-' + age);
+      }
+    }
     console.log('截图目录:', outDir)
     ws.close()
     chrome.kill()

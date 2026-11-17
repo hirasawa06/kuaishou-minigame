@@ -118,7 +118,7 @@
     if (A.Tutorial) A.Tutorial.stop();
     var def = C.ENEMIES.boss;
     S.bossLab = {
-      action: 'idle',
+      action: 'idle', impactT: -1,
       entity: { def: def, rigId: 'boss', anim: 'idle', animT: 0, hitFlash: 0 },
     };
     S.phase = 'bossLab';
@@ -131,6 +131,7 @@
     preview.action = action;
     preview.entity.anim = action;
     preview.entity.animT = 0;
+    preview.impactT = -1;
     A.GameAudio && A.GameAudio.play('click');
     return true;
   }
@@ -150,7 +151,12 @@
     var state = preview && rig && rig.states[preview.action];
     if (!state) return;
     var entity = preview.entity;
+    var before = entity.animT;
     entity.animT += dt;
+    if (preview.impactT >= 0) preview.impactT += dt;
+    if (preview.action === 'aoe' && before < state.hit && entity.animT >= state.hit) {
+      preview.impactT = entity.animT - state.hit;
+    }
     if (state.loop && state.dur > 0) entity.animT %= state.dur;
     else if (entity.animT >= state.dur && preview.action !== 'die') entity.animT = 0;
     else if (entity.animT >= state.dur) entity.animT = state.dur;

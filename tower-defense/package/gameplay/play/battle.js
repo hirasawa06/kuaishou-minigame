@@ -928,13 +928,9 @@
     S.baseHp -= e.def.baseDamage;
     S.shake = Math.max(S.shake, 0.35);
     S.goalHitT = 0.3;
-    S.addEffect({ type: 'ring', x: e.x, y: e.y, r: e.def.radius * 0.7,
-      r2: e.def.splash || 90, life: 0.34, max: 0.34, color: '#a9f3ff' });
-    for (var ice = 0; ice < 6; ice++) {
-      var angle = Math.PI * 2 * ice / 6;
-      S.addEffect({ type: 'spark', x: e.x, y: e.y, vx: Math.cos(angle) * 64,
-        vy: Math.sin(angle) * 44 - 28, life: 0.26, max: 0.26, color: '#d9fbff' });
-    }
+    var duration = C.BOSS_IMPACT.duration;
+    S.addEffect({ type: 'boss-ground-impact', x: e.x, y: e.y,
+      life: duration, max: duration });
     S.addFloat(goalX, baseY - 72, '-' + e.def.baseDamage, '#ff7a8a');
     for (var i = 0; i < S.units.length; i++) {
       var unit = S.units[i];

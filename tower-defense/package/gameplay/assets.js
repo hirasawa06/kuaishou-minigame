@@ -89,6 +89,7 @@
     // 法师飞行与落地均使用离线生成的透明 PNG 帧表，运行时无需解码 GIF。
     if (A.MageFlight && A.MageFlight.src) manifest.push(['mage-flight', A.MageFlight.src]);
     if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
+    if (A.Config.BOSS_IMPACT) manifest.push(['boss-impact', A.Config.BOSS_IMPACT.src]);
     // 治疗特效分层素材。
     manifest.push(['heal-aura', 'res/Image/heal-aura.png']);
     manifest.push(['heal-cross', 'res/Image/heal-cross.png']);

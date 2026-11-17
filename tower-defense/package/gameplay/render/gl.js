@@ -12,6 +12,7 @@
     'attribute float aMode;',
     'uniform vec2 uRes;',
     'varying vec2 vUV;',
+    'varying float vScreenY;',
     'varying vec4 vColor;',
     'varying vec3 vShape;',
     'varying float vMode;',
@@ -19,6 +20,7 @@
     '  vec2 p = aPos / uRes * 2.0 - 1.0;',
     '  gl_Position = vec4(p.x, -p.y, 0.0, 1.0);',
     '  vUV = aUV;',
+    '  vScreenY = aPos.y;',
     '  vColor = aColor;',
     '  vShape = aShape;',
     '  vMode = aMode;',
@@ -28,12 +30,14 @@
   var FRAG = [
     'precision mediump float;',
     'varying vec2 vUV;',
+    'varying float vScreenY;',
     'varying vec4 vColor;',
     'varying vec3 vShape;',
     'varying float vMode;',
     'uniform sampler2D uTex;',
     'uniform sampler2D uMaskTex;',
     'uniform float uAdd;',
+    'uniform vec4 uSceneLight;', // 调色强度、身体中心Y、画布高、顶部光强度
     'void main() {',
     '  vec4 c = vColor;',
     '  vec2 h = vShape.xy;',
@@ -69,6 +73,18 @@
     '    float a = 1.0 - smoothstep(-0.9, 0.9, dist);',
     '    if (a < 0.02) discard;',
     '    c = vec4(c.rgb * mix(1.0, a, uAdd), c.a * a);',
+    '  }',
+    // 只处理实体贴图：阴影、几何UI、遮罩与加法光效不调色。
+    '  if (uSceneLight.x > 0.0 && uAdd < 0.5 && vMode > 0.5 && vMode < 1.5) {',
+    '    float luma = dot(c.rgb, vec3(0.299, 0.587, 0.114));',
+    '    vec3 tone = mix(vec3(luma), c.rgb, 0.94);',
+    '    tone = (tone - 0.5) * 1.065 + 0.5;',
+    '    tone = tone * vec3(1.025, 0.995, 0.955);',
+    '    tone += vec3(0.024, 0.009, 0.004) * (1.0 - luma);',
+    '    float height = clamp((vScreenY - uSceneLight.y) / max(1.0, uSceneLight.z) + 0.5, 0.0, 1.0);',
+    '    float overhead = mix(0.35, -0.85, smoothstep(0.18, 0.90, height));',
+    '    tone *= 1.0 + overhead * uSceneLight.w;',
+    '    c.rgb = mix(c.rgb, clamp(tone, 0.0, 1.0), uSceneLight.x);',
     '  }',
     '  gl_FragColor = c;',
     '}',
@@ -157,6 +173,7 @@
     loc.uTex = gl.getUniformLocation(prog, 'uTex');
     loc.uMaskTex = gl.getUniformLocation(prog, 'uMaskTex');
     loc.uAdd = gl.getUniformLocation(prog, 'uAdd');
+    loc.uSceneLight = gl.getUniformLocation(prog, 'uSceneLight');
 
     vbo = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
@@ -296,10 +313,21 @@
 
   function isAdditive() { return blendAdditive; }
 
+  // ── 场景光影：共用配置，切换先提交旧批次 ────────────────
+  var sceneLight = [0, 0, 1, 0];
+  var sceneLighting = { enabled: true, environment: 0.50, character: 1, overhead: 0.10 };
+  function setSceneLight(kind, cy, height) {
+    flush();
+    var strength = sceneLighting.enabled ? (sceneLighting[kind] || 0) : 0;
+    sceneLight = [strength, cy || 0, height || 1,
+      kind === 'character' ? sceneLighting.overhead : 0];
+  }
+
   function flush() {
     if (!gl || quadCount === 0) return;
     gl.useProgram(prog);
     gl.uniform2f(loc.uRes, resW, resH);
+    if (loc.uSceneLight != null) gl.uniform4f(loc.uSceneLight, sceneLight[0], sceneLight[1], sceneLight[2], sceneLight[3]);
     if (loc.uAdd) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, buffer.subarray(0, quadCount * 4 * FLOATS_PER_VERT));
@@ -325,6 +353,7 @@
     if (!gl) return;
     quadCount = 0;
     stats.quads = 0;
+    sceneLight = [0, 0, 1, 0];
     stats.flushes = 0;
     if (blendAdditive) {
       blendAdditive = false;
@@ -376,6 +405,8 @@
   A.Render.endFrame = flush;
   A.Render.push = push;
   A.Render.setAdditive = setAdditive;
+  A.Render.setSceneLight = setSceneLight;
+  A.Render.sceneLighting = sceneLighting;
   A.Render.isAdditive = isAdditive;
   A.Render.color = color;
   A.Render.mix = mix;
