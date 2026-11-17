@@ -185,6 +185,7 @@
 
     var i;
     Scene.drawSpawnHint();
+    Scene.drawGroundEffects();
     // 所有角色共用一个南北景深序列：北侧先画，南侧后画，因此南侧角色
     // 会自然遮住北侧角色，不再由“宠物总在前 / 怪物总在前”决定层级。
     var actors = [];

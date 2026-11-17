@@ -91,6 +91,8 @@
     // 落地爆发同样使用固定原点的 PNG 帧表，避免原 GIF 的镜头漂移。
     if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
     // 首页美术（进入游戏前的客厅场景）
+    manifest.push(['heal-aura', 'res/Image/heal-aura.png']);
+    manifest.push(['heal-cross', 'res/Image/heal-cross.png']);
     manifest.push(['menu-bg', 'res/Menu/menu-bg.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
     manifest.push(['avatars', 'res/Menu/avatars.png']);

@@ -261,60 +261,58 @@
     if (config.lightStyle === 2) D.ring(x, y, size * 0.30 * config.glowScale, 1.2, D.color(color, alpha * config.alpha));
   }
 
-  function tunedParticle(style, x, y, size, color, alpha) {
-    if (style === 1) { drawHealMote(x, y, size, color, alpha); return; }
-    if (style === 2) { D.ring(x, y, size * 0.72, 1.1, D.color(color, alpha)); return; }
-    D.circle(x, y, size * 0.42, D.color(color, alpha));
+  // ── 治疗地面层：0.5 秒淡入淡出，所有角色之前绘制 ──────────
+  function healTexture(key, x, y, width, alpha, anchor) {
+    var image = Assets.entry(key);
+    if (!image) return;
+    var height = width * image.h / image.w;
+    var origin = anchor || [0.5, 0.5];
+    D.texture(image.tex, image.w, image.h, 0, 0, image.w, image.h,
+      x - width * origin[0], y - height * origin[1], width, height,
+      { r: 1, g: 1, b: 1, a: alpha });
   }
 
-  function healCastOrigin(unit) {
-    var rig = A.Rigs && A.Rigs[unit.rigId || unit.def.id];
-    var origin = rig && rig.castOrigin || [0, -unit.def.radius * 0.7];
-    return { x: unit.x + origin[0], y: unit.y + origin[1] };
-  }
-
-  function drawHealMote(x, y, size, color, alpha) {
-    D.roundRect(x - size * 0.12, y - size * 0.42, size * 0.24, size * 0.84, size * 0.12,
-      D.color(color, alpha));
-    D.roundRect(x - size * 0.42, y - size * 0.12, size * 0.84, size * 0.24, size * 0.12,
-      D.color(color, alpha));
-  }
-
-  function drawHealEffect(e, t, source, target) {
-    var config = vfxTune('healer');
-    var from = healCastOrigin(source);
-    var tx = target.x, ty = target.y + target.def.radius * 0.22;
-    var travelDuration = 0.28 / config.travel;
-    var travel = clamp01(t / travelDuration);
-    var arrive = clamp01((t - 0.14 / config.travel) / travelDuration);
-    var fade = 1 - t;
-    var core = vfxColor('healer', 0, 0.70, '#a8ef8f');
-    var accent = vfxColor('healer', 52, 0.80, '#ffe4f1');
-    var count = config.particles;
-    A.Render.setAdditive(config.blendMode === 1);
-    tunedLight(from.x, from.y, 15 + t * 8, core, (1 - travel) * 0.46, config, t, false);
-    for (var i = 0; i < count; i++) {
-      var p = clamp01(travel * 1.35 - i * 0.16);
-      var arc = Math.sin(p * Math.PI) * (i % 2 ? 7 : -7) * config.spread;
-      var x = from.x + (tx - from.x) * p + arc;
-      var y = from.y + (ty - from.y) * p - Math.sin(p * Math.PI) * 9 + config.drift * p * 18;
-      tunedLight(x, y, 7 + (i % 2) * 2, i === 0 ? accent : core, fade * 0.32, config, t + i * 0.08, false);
+  function drawHealLayer(e, target, foreground) {
+    var t = clamp01(1 - e.life / e.max);
+    var alpha = Math.sin(Math.PI * t);
+    if (t === 0 || t === 1) alpha = 0;
+    var r = target.def.radius;
+    var rig = A.Rigs && A.Rigs[target.rigId || target.def.id];
+    var spawn = target.spawnT > 0 ? 1 - target.spawnT / 0.3 : 1;
+    var size = rig ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
+      : r * 2.35 * (0.8 + 0.2 * spawn);
+    var pivot = rig && rig.parts[0].pivot || [0.5, 0.92];
+    var footX = target.x + (pivot[0] - 0.5) * size;
+    var footY = target.y - (rig ? r * 0.15 : 0) + (pivot[1] - 0.5) * size;
+    var width = r * 3.2;
+    // 光环在角色下方，十字在角色上方；共用位置和透明度时间线。
+    if (!foreground) {
+      // 光环可见圆心并非图片中心；直接将素材圆心锚到角色脚底支点。
+      healTexture('heal-aura', footX, footY, width, alpha, [0.525, 0.68]);
+      return;
     }
-    tunedLight(tx, ty + 4, 18 + arrive * 24, core, arrive * fade * 0.45, config, t, true);
-    A.Render.setAdditive(false);
-    for (var k = 0; k < count; k++) {
-      var kp = clamp01(travel * 1.35 - k * 0.16);
-      var kArc = Math.sin(kp * Math.PI) * (k % 2 ? 7 : -7) * config.spread;
-      tunedParticle(config.particleStyle, from.x + (tx - from.x) * kp + kArc,
-        from.y + (ty - from.y) * kp - Math.sin(kp * Math.PI) * 9 + config.drift * kp * 18,
-        (3.2 + (k % 2)) * config.particleSize, k === 0 ? accent : core, fade * 0.88 * config.alpha);
-    }
-    var riseCount = count ? Math.min(3, Math.ceil(count * 0.75)) : 0;
-    for (var j = 0; j < riseCount; j++) {
-      var rise = clamp01((t - 0.18 - j * 0.06) / 0.24);
-      if (rise <= 0) continue;
-      tunedParticle(config.particleStyle, tx + (j - 1) * 7, ty - 4 - rise * 15,
-        3 * config.particleSize, core, (1 - rise) * fade * config.alpha);
+    // 参考图：左下大十字、右上小十字，沿身体两侧轻微上浮。
+    healTexture('heal-cross', target.x - size * 0.38,
+      footY - size * 0.40 - t * 4, size * 0.24, alpha);
+    healTexture('heal-cross', target.x + size * 0.43,
+      footY - size * 0.66 - t * 4, size * 0.14, alpha);
+  }
+
+  function drawGroundEffects() {
+    drawHealEffects(false);
+  }
+
+  function drawHealEffects(foreground) {
+    for (var i = 0; i < S.effects.length; i++) {
+      var e = S.effects[i];
+      if (e.type !== 'heal') continue;
+      for (var j = 0; j < S.units.length; j++) {
+        var target = S.units[j];
+        if (target.uid === e.targetUid && !target.dead && target.hp > 0) {
+          drawHealLayer(e, target, foreground);
+          break;
+        }
+      }
     }
   }
 
@@ -392,6 +390,7 @@
   }
 
   function drawEffects() {
+    drawHealEffects(true);
     var i, e, t;
     for (i = 0; i < S.effects.length; i++) {
       e = S.effects[i];
@@ -415,15 +414,7 @@
         additiveGlow(e.x, e.y, (e.r || 10) * (1.3 + t * 1.3), e.color, g * 0.62, 0);
         A.Render.setAdditive(false);
       } else if (e.type === 'heal') {
-        var source = null, target = null;
-        for (var hi = 0; hi < S.units.length; hi++) {
-          var hu = S.units[hi];
-          if (hu.dead || hu.hp <= 0) continue;
-          if (hu.uid === e.sourceUid) source = hu;
-          if (hu.uid === e.targetUid) target = hu;
-        }
-        if (!source || !target) continue;
-        drawHealEffect(e, t, source, target);
+        continue; // 治疗光环与十字由各自层级统一绘制。
       } else if (e.type === 'mage-biscuit-impact') {
         var mageConfig = vfxTune('mage');
         mageImpactVfx(e, t, mageConfig.scale, mageConfig.alpha);
@@ -456,7 +447,7 @@
     var a = (1 - t) * 0.95;
     var c = D.color(e.color, 1);
     var size = 40 - t * 10;
-    A.Render.setAdditive(config.blendMode === 1);
+    A.Render.setAdditive(true);
     D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, px, py, size, {
       rot: rot,
       w: size,
@@ -574,6 +565,7 @@
     actorDepthY: actorDepthY,
     drawProjectiles: drawProjectiles,
     drawEffects: drawEffects,
+    drawGroundEffects: drawGroundEffects,
     drawFloats: drawFloats,
     drawSpawnHint: drawSpawnHint,
     drawDragGhost: drawDragGhost,

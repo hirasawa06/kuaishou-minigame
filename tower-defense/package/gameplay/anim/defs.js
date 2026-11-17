@@ -314,6 +314,7 @@
 
   // 奶糖喵：固定背面驻守；绿色治疗连线与数值反馈继续由战斗层绘制。
   var healerCat = {
+    frameTransforms: healerSpec.frameTransforms,
     // 20.4 * 3.05 * 0.887 ≈ 55.2。
     scale: 0.887,
     // 法杖绿球：相对角色脚底锚点的施法源，不能从身体中心发光。
@@ -324,7 +325,8 @@
         dur: healerSpec.states.idle.duration, loop: true, ease: 'inOutSine',
         keys: [
           { t: 0.00, mods: [{ icon: healerSpec.frames.idle, dy: 0, sy: 1 }] },
-          { t: 1.00, mods: [{ icon: healerSpec.frames.idle, dy: -0.8, sy: 1.016, sx: 0.994 }] },
+          // 驻守治疗位保持稳定轮廓，任意待机时刻切换施法都不归零跳动。
+          { t: 1.00, mods: [{ icon: healerSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
           { t: healerSpec.states.idle.duration, mods: [{ icon: healerSpec.frames.idle, dy: 0, sy: 1 }] },
         ],
       },
@@ -332,7 +334,7 @@
         dur: healerSpec.states.attack.duration, ease: 'inOutSine', hit: healerSpec.states.attack.hit,
         keys: [
           { t: 0.00, mods: [{ icon: healerSpec.frames.idle, dy: 0, rot: 0 }] },
-          { t: healerSpec.states.attack.hit, mods: [{ icon: healerSpec.frames.heal, dy: -1.8, rot: 1.1, sx: 1.015 }] },
+          { t: healerSpec.states.attack.hit, mods: [{ icon: healerSpec.frames.heal, dy: 0, rot: 0, sx: 1 }] },
           { t: healerSpec.states.attack.duration, mods: [{ icon: healerSpec.frames.idle, dy: 0, rot: 0, sx: 1 }] },
         ],
       },

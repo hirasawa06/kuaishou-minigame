@@ -796,7 +796,7 @@
     S.addEffect({
       type: 'heal', sourceUid: healer.uid, targetUid: target.uid,
       x: target.x, y: target.y - target.def.radius * 0.3,
-      r: target.def.radius, life: 0.55, max: 0.55, color: '#6ff0a8',
+      r: target.def.radius, life: 0.5, max: 0.5, color: '#6ff0a8',
     });
   }
 

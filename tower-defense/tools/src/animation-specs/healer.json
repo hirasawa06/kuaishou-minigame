@@ -2,10 +2,11 @@
   "id": "healer",
   "entity": "hero",
   "render": "whole",
+  "frameTransforms": { "healer-back-heal": { "scale": 1.45454545, "x": 0.03787879, "y": -0.08787879 } },
   "sourceDir": "characters/角色/奶糖喵",
   "frames": {
     "idle": { "icon": "healer-back-idle", "file": "奶糖喵动作.png", "index": 0, "columns": 3, "rows": 1 },
-    "heal": { "icon": "healer-back-heal", "file": "奶糖喵动作.png", "index": 1, "columns": 3, "rows": 1 },
+    "heal": { "icon": "healer-back-heal", "file": "奶糖喵治疗动作-v2.png", "index": 0, "columns": 1, "rows": 1, "preserveAlpha": true },
     "hurt": { "icon": "healer-back-hurt", "file": "奶糖喵动作.png", "index": 2, "columns": 3, "rows": 1 }
   },
   "states": {
