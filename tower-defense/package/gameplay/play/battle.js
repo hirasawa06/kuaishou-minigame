@@ -74,6 +74,7 @@
       animT: 0,
       pendingHit: -1,
       pendingTarget: 0,
+      pendingKind: '',
       taunted: 0,
     };
     S.enemies.push(e);
@@ -396,9 +397,9 @@
     if (rigs) unit.rigId = targetY < unit.y ? rigs.back : rigs.front;
   }
 
-  function attackHitTime(unit, fallback) {
+  function attackHitTime(unit, fallback, stateName) {
     var rig = entityRig(unit);
-    var state = rig && rig.states && rig.states.atk;
+    var state = rig && rig.states && rig.states[stateName || 'atk'];
     return state && state.hit !== undefined ? state.hit : fallback;
   }
 
@@ -923,6 +924,25 @@
     A.GameAudio && A.GameAudio.play(def.cls === 'archer' ? 'arrow' : def.cls === 'mage' ? 'magic' : 'hit');
   }
 
+  function resolveBossBaseHit(e, goalX, baseY) {
+    S.baseHp -= e.def.baseDamage;
+    S.shake = Math.max(S.shake, 0.35);
+    S.goalHitT = 0.3;
+    S.addEffect({ type: 'ring', x: e.x, y: e.y, r: e.def.radius * 0.7,
+      r2: e.def.splash || 90, life: 0.34, max: 0.34, color: '#a9f3ff' });
+    for (var ice = 0; ice < 6; ice++) {
+      var angle = Math.PI * 2 * ice / 6;
+      S.addEffect({ type: 'spark', x: e.x, y: e.y, vx: Math.cos(angle) * 64,
+        vy: Math.sin(angle) * 44 - 28, life: 0.26, max: 0.26, color: '#d9fbff' });
+    }
+    S.addFloat(goalX, baseY - 72, '-' + e.def.baseDamage, '#ff7a8a');
+    for (var i = 0; i < S.units.length; i++) {
+      var unit = S.units[i];
+      if (!unit.dead && S.dist2(unit.x, unit.y, e.x, e.y) <= 95 * 95) damageUnit(unit, 22);
+    }
+    A.GameAudio && A.GameAudio.play('base');
+  }
+
   function updateEnemies(dt) {
     var u = L.ui;
     var alive = [];
@@ -945,20 +965,28 @@
       }
       if (e.atkTimer > 0) e.atkTimer -= dt;
 
+      var goalX = u.base.x + u.base.w * 0.5;
+
       if (e.pendingHit >= 0) {
         e.pendingHit -= dt;
         if (e.pendingHit < 0) {
-          var hitUnit = null;
-          for (var hu = 0; hu < S.units.length; hu++) {
-            if (S.units[hu].uid === e.pendingTarget && !S.units[hu].dead) {
-              hitUnit = S.units[hu];
-              break;
+          e.pendingHit = -1;
+          if (e.pendingKind === 'base') {
+            e.pendingKind = '';
+            resolveBossBaseHit(e, goalX, u.base.y);
+          } else {
+            var hitUnit = null;
+            for (var hu = 0; hu < S.units.length; hu++) {
+              if (S.units[hu].uid === e.pendingTarget && !S.units[hu].dead) {
+                hitUnit = S.units[hu];
+                break;
+              }
             }
-          }
-          if (hitUnit) {
-            damageUnit(hitUnit, e.atk);
-            enemyImpactEffect(e, hitUnit);
-            S.hitstop = Math.max(S.hitstop, 0.035);
+            if (hitUnit) {
+              damageUnit(hitUnit, e.atk);
+              enemyImpactEffect(e, hitUnit);
+              S.hitstop = Math.max(S.hitstop, 0.035);
+            }
           }
         }
       }
@@ -976,22 +1004,14 @@
       }
 
       // 三路在底部汇向合照。敌人必须靠近相框本体才可造成伤害。
-      var goalX = u.base.x + u.base.w * 0.5;
       var atBase = e.y >= u.baseStopY && Math.abs(e.x - goalX) <= Math.max(16, e.def.radius * 0.55);
       if (atBase && e.def.tier === 'boss') {
         if (e.anim === 'move') enterAnimation(e, 'idle');
-        if (e.atkTimer <= 0) {
+        if (e.atkTimer <= 0 && e.pendingHit < 0) {
           e.atkTimer = e.def.interval;
-          S.baseHp -= e.def.baseDamage;
-          S.shake = Math.max(S.shake, 0.35);
-          S.goalHitT = 0.3;
-          S.addFloat(goalX, u.base.y - 72, '-' + e.def.baseDamage, '#ff7a8a');
-          for (var bi = 0; bi < S.units.length; bi++) {
-            var bu = S.units[bi];
-            if (bu.dead) continue;
-            if (S.dist2(bu.x, bu.y, e.x, e.y) <= 95 * 95) damageUnit(bu, 22);
-          }
-          A.GameAudio && A.GameAudio.play('base');
+          enterAnimation(e, 'aoe');
+          e.pendingKind = 'base';
+          e.pendingHit = attackHitTime(e, 0.48, 'aoe');
         }
       } else if (atBase) {
         if (e.anim === 'move') enterAnimation(e, 'idle');
@@ -1010,6 +1030,7 @@
           selectAttackRig(e, blocker);
           e.atkTimer = e.def.interval;
           enterAnimation(e, 'atk');
+          e.pendingKind = '';
           e.pendingHit = attackHitTime(e, 0.18);
           e.pendingTarget = blocker.uid;
         }

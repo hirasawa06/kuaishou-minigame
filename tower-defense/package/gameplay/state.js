@@ -64,6 +64,8 @@
     menuSlide: null,   // 首页选关吸附动画；切换完成后才更新 selectedLevel
 
     menuStartDelay: 0,
+    // 动作场是独立预览状态，不写入对局、波次或玩家存档。
+    bossLab: null,
   };
 
   function shuffle(a) {

@@ -14,6 +14,7 @@
   var rafOn = false;
 
   var STEP = 1 / 60;
+  var BOSS_LAB_ACTIONS = ['idle', 'move', 'atk', 'aoe', 'hurt', 'die'];
 
   function boot() {
     if (booted) return;
@@ -53,7 +54,8 @@
       // 仅冷启动时根据本地通关记录定位；局内返回首页仍保留玩家所选关卡。
       var completed = A.Profile && A.Profile.data ? A.Profile.data.completedLevel : 0;
       S.selectedLevel = S.clamp((completed | 0) + 1, 1, C.LEVELS.length);
-      S.phase = 'menu';
+      if (window.__bossLabPreview) openBossLab();
+      else S.phase = 'menu';
     }
     return true;
   }
@@ -109,6 +111,49 @@
     if (S.phase !== 'playing') return;
     S.battleSpeed = S.battleSpeed === 2 ? 1 : 2;
     A.GameAudio && A.GameAudio.play('speed');
+  }
+
+  function openBossLab() {
+    A.Input.cancel();
+    if (A.Tutorial) A.Tutorial.stop();
+    var def = C.ENEMIES.boss;
+    S.bossLab = {
+      action: 'idle',
+      entity: { def: def, rigId: 'boss', anim: 'idle', animT: 0, hitFlash: 0 },
+    };
+    S.phase = 'bossLab';
+    A.GameAudio && A.GameAudio.play('click');
+  }
+
+  function selectBossLabAction(action) {
+    if (S.phase !== 'bossLab' || BOSS_LAB_ACTIONS.indexOf(action) < 0) return false;
+    var preview = S.bossLab;
+    preview.action = action;
+    preview.entity.anim = action;
+    preview.entity.animT = 0;
+    A.GameAudio && A.GameAudio.play('click');
+    return true;
+  }
+
+  function closeBossLab() {
+    if (S.phase !== 'bossLab') return false;
+    S.bossLab = null;
+    S.phase = 'menu';
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
+    A.GameAudio && A.GameAudio.play('click');
+    return true;
+  }
+
+  function updateBossLab(dt) {
+    var preview = S.bossLab;
+    var rig = A.Rigs && A.Rigs.boss;
+    var state = preview && rig && rig.states[preview.action];
+    if (!state) return;
+    var entity = preview.entity;
+    entity.animT += dt;
+    if (state.loop && state.dur > 0) entity.animT %= state.dur;
+    else if (entity.animT >= state.dur && preview.action !== 'die') entity.animT = 0;
+    else if (entity.animT >= state.dur) entity.animT = state.dur;
   }
 
   function selectLevel(delta, releaseOffset) {
@@ -199,7 +244,8 @@
       if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
     }
     // 首次引导只更新提示/UI/音乐，不调用 Battle，波次与攻击保持冻结。
-    if (A.Tutorial && A.Tutorial.isActive()) A.Tutorial.update(dt);
+    if (S.phase === 'bossLab') updateBossLab(dt);
+    else if (A.Tutorial && A.Tutorial.isActive()) A.Tutorial.update(dt);
     else {
       // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
       var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
@@ -290,6 +336,14 @@
       return;
     }
 
+    if (S.phase === 'bossLab') {
+      Scene.drawBossLab();
+      Hud.drawBossLab();
+      if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
+      A.Render.endFrame();
+      return;
+    }
+
     drawBattle();
     // 战斗中打开排行榜等页面时，仍然显示 HUD，但页面盖在最上层
     Hud.drawHud();
@@ -341,6 +395,9 @@
     boot: boot,
     nextLevel: nextLevel,
     toggleSpeed: toggleSpeed,
+    openBossLab: openBossLab,
+    closeBossLab: closeBossLab,
+    selectBossLabAction: selectBossLabAction,
     selectLevel: selectLevel,
     start: start,
     restart: restart,

@@ -169,6 +169,7 @@ window.canvas = document.getElementById('game');
 var _q = new URLSearchParams(window.location.search);
 window.__safeAreaDebug = _q.get('debug') === 'safe';
 window.__safeAreaPreview = window.__safeAreaDebug ? { top: 44, bottomInset: 68 } : null;
+window.__bossLabPreview = _q.get('bossLab') === '1';
 
 // 将固定分辨率写入 html 属性，供 kwaiStandard/main.js 浏览器调试时读取
 var _debugHtml = document.documentElement;
@@ -222,29 +223,29 @@ function toggleOrientation() {
 <!-- 在下方按依赖顺序追加游戏 js 文件；kwaiStandard/main.js 保持最后 -->
 <script src="gameplay/data/font-atlas.js?v=main-art-1"></script>
 <script src="gameplay/data/sprites.js?v=3"></script>
-<script src="gameplay/data/rigs.js?v=mage-impact-10"></script>
-<script src="gameplay/data/character-animations.js?v=bedside-normal-1"></script>
+<script src="gameplay/data/rigs.js?v=boss-lab-1"></script>
+<script src="gameplay/data/character-animations.js?v=boss-lab-1"></script>
 <script src="gameplay/data/avatars.js?v=3"></script>
-<script src="gameplay/config.js?v=bedside-normal-1"></script>
-<script src="gameplay/layout.js?v=settings-panel-layout-1"></script>
-<script src="gameplay/state.js?v=shop-lock-all-stars-1"></script>
+<script src="gameplay/config.js?v=boss-lab-1"></script>
+<script src="gameplay/layout.js?v=boss-lab-1"></script>
+<script src="gameplay/state.js?v=boss-lab-1"></script>
 <script src="gameplay/profile.js?v=ten-levels-2"></script>
-<script src="gameplay/render/gl.js?v=4"></script>
-<script src="gameplay/render/draw.js?v=tutorial-panel-1"></script>
+<script src="gameplay/render/gl.js?v=feet-shadow-restored-5"></script>
+<script src="gameplay/render/draw.js?v=feet-shadow-restored-5"></script>
 <script src="gameplay/hero-forms.js?v=shop-stars-3"></script>
 <script src="gameplay/assets.js?v=mage-impact-11"></script>
 <script src="gameplay/audio.js?v=user-audio-quiet-6"></script>
 <script src="gameplay/anim/rig.js?v=3"></script>
 
-<script src="gameplay/anim/defs.js?v=bedside-normal-1"></script>
+<script src="gameplay/anim/defs.js?v=boss-lab-1"></script>
 <script src="gameplay/tutorial.js?v=tutorial-drag-guide-1"></script>
-<script src="gameplay/play/battle.js?v=mage-impact-10"></script>
-<script src="gameplay/input.js?v=shop-lock-all-stars-1"></script>
-<script src="gameplay/render/scene.js?v=mage-impact-10"></script>
+<script src="gameplay/play/battle.js?v=boss-lab-1"></script>
+<script src="gameplay/input.js?v=boss-lab-1"></script>
+<script src="gameplay/render/scene.js?v=feet-shadow-restored-5"></script>
 <script src="gameplay/ui.js?v=settings-panel-layout-1"></script>
-<script src="gameplay/render/hud.js?v=pause-panel-layout-1"></script>
+<script src="gameplay/render/hud.js?v=boss-lab-1"></script>
 <script src="gameplay/render/safe-area-debug.js?v=3"></script>
-<script src="gameplay/game.js?v=main-art-1"></script>
+<script src="gameplay/game.js?v=boss-lab-1"></script>
 
 <script src="kwaiStandard/main.js?v=3"></script>
 </body>

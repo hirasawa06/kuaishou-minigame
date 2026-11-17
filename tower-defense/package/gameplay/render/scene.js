@@ -118,6 +118,28 @@
     }
   }
 
+  // 动作场复用正式图集和 Rig，只替换战斗背景与实体来源，便于比对实际播放结果。
+  function drawBossLab() {
+    var lab = L.ui.bossLab;
+    var preview = S.bossLab;
+    if (!lab || !preview || !preview.entity) return;
+    drawBackground();
+    var stage = lab.stage;
+    D.vGradient(stage.x, stage.y, stage.w, stage.h,
+      D.color('#4c265d', 0.92), D.color('#1a254f', 0.95), 18);
+    D.roundRect(stage.x, stage.y, stage.w, stage.h, 20, D.color('#ffd9ee', 0.82));
+    D.roundRect(stage.x + 3, stage.y + 3, stage.w - 6, stage.h - 6, 17,
+      D.color('#291d4c', 0.92));
+    var cx = stage.x + stage.w * 0.5;
+    var shadowY = stage.y + stage.h * 0.78;
+    var size = Math.min(stage.w * 0.74, stage.h * 0.76);
+    D.ring(cx, shadowY, size * 0.33, 2, D.color('#c578ff', 0.48));
+    drawGroundShadow(cx, shadowY, size * 0.35, 0.52);
+    var rig = A.Rigs && A.Rigs.boss;
+    if (rig) A.Anim.draw(rig, preview.entity, cx, shadowY - size * 0.40, size);
+    else icon('enemy-boss', cx, shadowY - size * 0.40, size);
+  }
+
   function drawBase(dt) {
     var u = L.ui;
     var b = u.base;
@@ -670,6 +692,7 @@
     frame: frame,
     additiveGlow: additiveGlow,
     drawBackground: drawBackground,
+    drawBossLab: drawBossLab,
     drawBase: drawBase,
     drawEnemy: drawEnemy,
     drawUnit: drawUnit,

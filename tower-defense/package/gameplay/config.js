@@ -126,7 +126,7 @@
         attackEffect: 'bump', impactColor: '#e4a878',
       },
       boss: {
-        id: 'boss', name: '首领', tier: 'boss', icon: 'enemy-boss',
+        id: 'boss', name: '双开门冰箱怪', tier: 'boss', species: 'double-door-fridge', icon: 'enemy-boss',
         hp: 4200, atk: 70, interval: 1.35, speed: 21,
         radius: 25, color: '#e04e6e', baseDamage: 14, gold: 60, splash: 90,
       },

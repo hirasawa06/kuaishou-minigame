@@ -53,6 +53,7 @@
     if (hitControl(m.rank, x, y, 6)) return 'rank';
     if (hitControl(m.avatar, x, y, 6)) return 'avatar';
     if (hitControl(m.stamina, x, y, 6)) return 'stamina';
+    if (hitControl(m.bossLab, x, y, 4)) return 'bossLab';
     return null;
   }
 
@@ -348,6 +349,18 @@
     }
     if (!inInteractiveArea(px, py)) return;
 
+    if (S.phase === 'bossLab') {
+      var lab = u.bossLab;
+      if (hitControl(lab.close, px, py, 4)) { A.Game.closeBossLab(); return; }
+      for (var action in lab.buttons) {
+        if (hitControl(lab.buttons[action], px, py, 4)) {
+          A.Game.selectBossLabAction(action);
+          return;
+        }
+      }
+      return;
+    }
+
     if (S.phase === 'menu') {
       if (S.menuStartDelay > 0) return;
       if (S.menuPanel) {
@@ -370,6 +383,7 @@
         S.menuStartDelay = 0.18;
         return;
       }
+      if (key === 'bossLab') { A.Game.openBossLab(); return; }
       if (key === 'collection') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('collection'); return; }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
       if (key === 'rank') { A.ProfileUI.open('rank'); return; }

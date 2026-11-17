@@ -477,6 +477,17 @@
     }
   }
 
+  function drawBossLabEntry(target) {
+    var active = S.menuPressed === 'bossLab';
+    var feedback = S.menuFeedback && S.menuFeedback.key === 'bossLab' && S.menuFeedback.life > 0;
+    var scale = active ? 0.95 : feedback ? 1.03 : 1;
+    var w = target.w * scale, h = target.h * scale;
+    var x = target.x + (target.w - w) / 2, y = target.y + (target.h - h) / 2;
+    D.roundRect(x, y + 2, w, h - 2, h / 2, D.color('#754334', 0.95));
+    D.roundRect(x + 2, y + 2, w - 4, h * 0.48, Math.max(4, h * 0.38), D.color('#ffe6b8'));
+    D.text('查看 Boss 动作', x + w / 2, y + (h - 18) / 2, 18, D.color('#704026'), 1);
+  }
+
   function menuPlate(r, pill) {
     var x = r.x, y = r.y, w = r.w, h = r.h;
     var unit = pill ? h / 44 : w / 78;
@@ -683,10 +694,36 @@
     if (!unlocked) {
       drawMenuStartButton(m.start, 1, true, '尚未解锁');
     }
+    drawBossLabEntry(m.bossLab);
     if (S.toast) {
       D.text(S.toast.text, m.card.x + m.card.w / 2, m.card.y + 12, 18, D.color('#fff0d4'), 1);
     }
     if (S.menuPanel) drawMenuPanel(m);
+  }
+
+  function drawBossLab() {
+    var lab = L.ui.bossLab;
+    var preview = S.bossLab;
+    if (!lab || !preview) return;
+    D.creamPanel(lab.header, 1, 16);
+    D.text('双开门冰箱怪 · 动作场', lab.header.x + 16,
+      lab.header.y + (lab.header.h - 18) / 2, 18, D.color('#704026'), 0);
+    D.circle(lab.close.x + lab.close.w / 2, lab.close.y + lab.close.h / 2,
+      lab.close.h * 0.32, D.color('#9b542c'));
+    icon('ui-close', lab.close.x + lab.close.w / 2, lab.close.y + lab.close.h / 2,
+      lab.close.h * 0.42);
+    var labels = { idle: '待机', move: '移动', atk: '单体攻击',
+      aoe: '范围攻击', hurt: '受击', die: '倒地' };
+    for (var key in lab.buttons) {
+      var r = lab.buttons[key];
+      var active = preview.action === key;
+      D.roundRect(r.x, r.y, r.w, r.h, r.h * 0.42,
+        D.color(active ? '#b75d2c' : '#754334'));
+      D.roundRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4, Math.max(4, r.h * 0.37),
+        D.color(active ? '#ffd16f' : '#ffe3bd'));
+      D.text(labels[key], r.x + r.w / 2, r.y + (r.h - 18) / 2, 18,
+        D.color(active ? '#693510' : '#704026'), 1);
+    }
   }
 
   function drawMenuPanel(m) {
@@ -849,6 +886,7 @@
     drawInspect: drawInspect,
     drawToast: drawToast,
     drawMenu: drawMenu,
+    drawBossLab: drawBossLab,
     drawPaused: drawPaused,
     drawResult: drawResult,
     drawLoading: drawLoading,
