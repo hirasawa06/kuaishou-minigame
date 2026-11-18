@@ -1,0 +1,42 @@
+{
+  "status": "决定：用户指定第1—6关封面",
+  "origin": "用户附件，2026-11-18",
+  "items": [
+    {
+      "level": 1,
+      "source": "第1关.png",
+      "file": "level-1.png",
+      "sha256": "2ac1959ef256b6d3f0539c86c885c0a3d7dae1b14cac1fc485e5c5430542f09d"
+    },
+    {
+      "level": 2,
+      "source": "第2关.png",
+      "file": "level-2.png",
+      "sha256": "685fc84519a3bdfe89a8636cd274eebd8521ffdb83dd1e75939843a2ecb14e0b"
+    },
+    {
+      "level": 3,
+      "source": "第3关.png",
+      "file": "level-3.png",
+      "sha256": "d7da5d5bd6111b0da58e415869c1ec703112a3ea48bd3193449d9ff42a5e1a20"
+    },
+    {
+      "level": 4,
+      "source": "第4关.png",
+      "file": "level-4.png",
+      "sha256": "c2e689f0ed3b1122188efee8b034b5602feecfa27f09c26f4924b90bd3b4a1c0"
+    },
+    {
+      "level": 5,
+      "source": "第5关.png",
+      "file": "level-5.png",
+      "sha256": "c326ccfea7773df550bf7213d006b736148b8e77326d719e23ffb4236814f916"
+    },
+    {
+      "level": 6,
+      "source": "第6关.png",
+      "file": "level-6.png",
+      "sha256": "9f6d6b2b28c251aabd45e14b045d6e1eab04bf04cca6c50b78ca93cb6a2a0843"
+    }
+  ]
+}

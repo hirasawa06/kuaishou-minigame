@@ -1,5 +1,21 @@
 # 塔防小游戏 — 项目上下文
 
+## 2026-11-18｜关卡封面（现状/真机待验）
+
+- 14:55 当前运行封面位于 package/res/Image/level-covers/level-1.jpg 至 level-6.jpg，768×644、质量92、subsampling=0，总计约1.24MiB。生成器成功重建后仅清理本任务旧PNG及frame-mask；tools/src/level-covers/approved/原图保留。主包21.64MiB仍超6MiB，不代表平台验收通过。
+
+- 14:26 当前容器半径更新为 card.w*85/1107+10，比14:14再增加5逻辑像素，图片与暗幕仍共用同一几何。
+
+- 14:14 当前实现改为完整矩形封面 + 运行时容器：Draw.roundTexture 用WebGL1距离场裁切；容器半径 card.w*85/1107+5，暗幕与图片共用边界。下文12:42离线合成方案为历史记录，已由本条替代。
+
+- 12:42 封面派生图改为场景与原画框合成的完整卡图；内框覆盖区域为(43,34,1064,890)，保留既定取景。锁定态使用同裁切、同分辨率 frame-mask.png，避免旧场景边缘回盖及遮罩 UV 错位。
+
+- 11:46 第1关取景采用顶部对齐以保留飞碟；第6关先按 SUBJECT_CROP 裁取宠物区域，再等比适配画框。其余关卡仍居中取景。
+
+- 第1—6关对应用户提供的同名文件，第7—10关沿用既有封面。新封面作为场景层，旧画框以 alpha 遮罩重绘，锁定时只压暗场景，切关共用原滑动逻辑。
+- 原图与来源记录集中在 tools/src/level-covers/approved/；游戏派生图在 package/res/Menu/level-covers/，每张768×644。运行 python3 tools/gen-level-covers.py 重建；首次导入用 --import-dir。竖幅原图等比居中裁切以适配现有横向框。
+- 独立工作树 /tmp/kuaishou-level-covers，分支 codex/fridge-boss-animation，未提交。H5 六关及锁定态、菜单与布局回归通过，快手真机待验。
+
 ## 2026-11-18｜头像更新（现状/真机待验证）
 
 - 11:20 用户确认将头像相关改动提交并推送至 codex/fridge-boss-animation；版本以 Git 提交记录为准。

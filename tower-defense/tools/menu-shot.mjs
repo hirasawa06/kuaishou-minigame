@@ -108,6 +108,22 @@ async function main() {
   console.log('phase:', await evaluate('AIGCUtils.State.phase'),
     'failures:', await evaluate('JSON.stringify(AIGCUtils.Assets.failures())'))
   await shot('01-menu')
+  if (args.includes('--covers-only')) {
+    const completed = await evaluate('AIGCUtils.Profile.data.completedLevel')
+    await evaluate('AIGCUtils.Profile.data.completedLevel = 6')
+    for (let level = 1; level <= 6; level++) {
+      await evaluate(`AIGCUtils.State.selectedLevel = ${level}`)
+      await shot('cover-' + level)
+    }
+    await evaluate(`AIGCUtils.Profile.data.completedLevel = ${completed}`)
+    await evaluate('AIGCUtils.State.selectedLevel = 2')
+    await shot('cover-2-locked')
+    if (logs.length) throw new Error(logs.join('\n'))
+    console.log('六关封面及锁定态截图完成，无运行时异常')
+    ws.close()
+    chrome.kill()
+    process.exit(0)
+  }
 
   // 进游戏并给一点金币，看商店全貌
   await evaluate(`(function(){

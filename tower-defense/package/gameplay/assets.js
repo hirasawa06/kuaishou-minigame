@@ -104,6 +104,9 @@
     manifest.push(['home-background-clean', 'res/Image/home-background-clean-v2.png']);
     manifest.push(['home-level-card-no-banner', 'res/Image/home-level-card-no-banner-v1.png']);
     manifest.push(['home-level-frame-overlay', 'res/Image/home-level-frame-overlay-v1.png']);
+    for (var level = 1; level <= 6; level++) {
+      manifest.push(['level-cover-' + level, 'res/Image/level-covers/level-' + level + '.jpg']);
+    }
     manifest.push(['home-level-arrows', 'res/Image/home-level-arrows-v1.png']);
     manifest.push(['home-level-arrows-disabled', 'res/Image/home-level-arrows-disabled-v1.png']);
     manifest.push(['home-level-nameplate', 'res/Image/home-level-nameplate-v1.png']);

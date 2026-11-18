@@ -79,6 +79,16 @@
     }
   };
 
+  // --- 完整图片放进圆角容器，圆角不写入素材 ---
+  draw.roundTexture = function (tex, x, y, w, h, radius) {
+    if (!tex || w <= 0 || h <= 0) return;
+    GL.setTexture(tex);
+    GL.push(x, y, w, h, WHITE, {
+      mode: 5, hw: w / 2, hh: h / 2,
+      r: Math.min(radius, w / 2, h / 2),
+    });
+  };
+
   // 从图集绘制（sx/sy/sw/sh 为纹理像素）
   // tw/th 为纹理像素尺寸：WebGLTexture 对象本身不带宽高，必须显式传入。
   // sy 以「图片左上角」为原点（与 PNG / 图集元数据一致），这里换算成 GL 的左下原点。

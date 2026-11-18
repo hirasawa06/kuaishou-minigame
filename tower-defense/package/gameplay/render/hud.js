@@ -630,23 +630,35 @@
     function drawLevelCard(levelNo, shift) {
       if (levelNo < 1 || levelNo > C.LEVELS.length) return;
       // 只绘透明插画卡片；章节信息统一落入卡片底部信息区。
+      var cover = A.Assets.entry('level-cover-' + levelNo);
+      if (cover) A.Render.setMaskTexture(frameOverlayArt.tex);
       D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
-        card.x + shift, clipY, card.w, clipH);
+        card.x + shift, clipY, card.w, clipH, undefined, cover ? { alphaCutout: true } : undefined);
+      if (cover) A.Render.setMaskTexture(null);
+      var container = {
+        x: card.x + shift + card.w * 43 / 1107, y: clipY + clipH * 34 / 928,
+        w: card.w * 1021 / 1107, h: clipH * 856 / 928,
+        radius: card.w * 85 / 1107 + 10,
+      };
+      if (cover) D.roundTexture(cover.tex, container.x, container.y,
+        container.w, container.h, container.radius);
       var unlocked = A.Profile.isLevelUnlocked(levelNo);
       if (!unlocked) {
         // 锁定遮罩由 WebGL 圆角几何绘制；略伸入框内，再以原卡图像素重绘画框。
         // 这样场景四角被遮住，外部背景不会出现随卡片移动的黑色矩形。
-        var maskX = card.x + shift + card.w * LEVEL_CARD_MASK.insetX;
-        var maskY = clipY + clipH * LEVEL_CARD_MASK.insetY;
-        var maskW = card.w * (1 - 2 * LEVEL_CARD_MASK.insetX);
-        var maskH = clipH * (1 - 2 * LEVEL_CARD_MASK.insetY);
-        D.roundRect(maskX, maskY, maskW, maskH, card.w * LEVEL_CARD_MASK.radius,
+        var maskX = cover ? container.x : card.x + shift + card.w * LEVEL_CARD_MASK.insetX;
+        var maskY = cover ? container.y : clipY + clipH * LEVEL_CARD_MASK.insetY;
+        var maskW = cover ? container.w : card.w * (1 - 2 * LEVEL_CARD_MASK.insetX);
+        var maskH = cover ? container.h : clipH * (1 - 2 * LEVEL_CARD_MASK.insetY);
+        D.roundRect(maskX, maskY, maskW, maskH, cover ? container.radius : card.w * LEVEL_CARD_MASK.radius,
           D.color('#000000', 0.45));
         // 仅用提取层的 alpha 标识画框；重绘原卡图像素，内外边界不会放大。
-        A.Render.setMaskTexture(frameOverlayArt.tex);
-        D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
-          card.x + shift, clipY, card.w, clipH, undefined, { alphaCutout: true });
-        A.Render.setMaskTexture(null);
+        if (!cover) {
+          A.Render.setMaskTexture(frameOverlayArt.tex);
+          D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
+            card.x + shift, clipY, card.w, clipH, undefined, { alphaCutout: true });
+          A.Render.setMaskTexture(null);
+        }
         var scene = { x: card.x + shift + 13, y: card.y + 13,
           w: card.w - 26, h: card.h - 26 };
         var lockW = Math.min(76, scene.w * 0.24);
