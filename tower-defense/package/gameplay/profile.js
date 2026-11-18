@@ -13,15 +13,15 @@
 
   // 头像与地区在美术脚本/本地配置里各有一份，这里只保存索引
   var AVATARS = [
-    { id: 'av-cat-orange', name: '暖阳小橘' },
-    { id: 'av-bear-cream', name: '奶油团子' },
-    { id: 'av-rabbit-pink', name: '桃气兔兔' },
-    { id: 'av-cat-gray', name: '青灰小满' },
-    { id: 'av-dog-brown', name: '可可豆豆' },
-    { id: 'av-fox-red', name: '赤焰阿福' },
-    { id: 'av-cat-blue', name: '蓝莓团子' },
-    { id: 'av-dog-yellow', name: '勇敢小橘' },
-    { id: 'av-cat-green', name: '抹茶布丁' },
+    { id: 'av-cat-orange', name: '哈利边牧' },
+    { id: 'av-bear-cream', name: '柴不破' },
+    { id: 'av-rabbit-pink', name: '锤锤喵' },
+    { id: 'av-cat-gray', name: '镭射喵' },
+    { id: 'av-dog-brown', name: '奶糖喵' },
+    { id: 'av-fox-red', name: '台灯小怪' },
+    { id: 'av-cat-blue', name: '床头柜怪' },
+    { id: 'av-dog-yellow', name: '冰箱Boss' },
+    { id: 'av-cat-green', name: '沙发精英' },
   ];
 
   // 虚拟地区：地区身份统一为中国，切换的是地区内的虚拟小镇

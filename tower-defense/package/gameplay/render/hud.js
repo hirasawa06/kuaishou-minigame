@@ -535,8 +535,9 @@
       D.roundRect(r.x + 5 * unit, r.y + 5 * unit, w - 10 * unit, h - 13 * unit,
         14 * unit,
         D.color('#dcc1d1'));
-      menuIconInBox('avatar', { x: r.x + 7 * unit, y: r.y + 6 * unit,
-        w: w - 14 * unit, h: h - 15 * unit });
+      A.ProfileUI.avatar(A.Profile.data.avatarIndex,
+        r.x + w / 2, r.y + (h - 3 * unit) / 2,
+        Math.min(w - 14 * unit, h - 15 * unit));
       return;
     }
     var label = key === 'settings' ? '设置' : key === 'rank' ? '排行榜' : '收藏';

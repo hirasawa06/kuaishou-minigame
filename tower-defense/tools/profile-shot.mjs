@@ -136,6 +136,9 @@ async function main() {
   await tapLog('AIGCUtils.Layout.ui.avatarPick.rect(4)')
   await tapLog('AIGCUtils.Layout.ui.avatarPick.save')
   console.log('avatarIndex:', await evaluate('AIGCUtils.Profile.data.avatarIndex'))
+  const savedAvatar = await evaluate('JSON.parse(localStorage.getItem("td_profile_v1")).avatarIndex')
+  if (savedAvatar !== 4) throw new Error('新头像未保存到存档')
+  await shot('03-avatar-saved')
 
   // 修改昵称
   await tapLog('AIGCUtils.Layout.ui.profile.nickBtn')
@@ -145,6 +148,7 @@ async function main() {
   // 回首页 → 设置
   await tapLog('AIGCUtils.Layout.ui.nickname.close')
   await tapLog('AIGCUtils.Layout.ui.profile.close')
+  await shot('04-menu-saved-avatar')
   await tapLog('AIGCUtils.Layout.ui.menu.settings')
   await shot('05-settings')
 

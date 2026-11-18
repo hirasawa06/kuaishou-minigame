@@ -1,0 +1,123 @@
+{
+  "origin": "用户提供，2026-11-18",
+  "status": "决定：按附件顺序替换九宫格头像",
+  "items": [
+    {
+      "id": "av-cat-orange",
+      "name": "哈利边牧",
+      "source": "image 5.png",
+      "sha256": "360dc9f202c65f4e906bb03d44ccd46771f8acebc5fa14010b490da14dceab26",
+      "crop": [
+        260,
+        280,
+        820,
+        840
+      ],
+      "derived": "allies/av-cat-orange.png"
+    },
+    {
+      "id": "av-bear-cream",
+      "name": "柴不破",
+      "source": "image 6.png",
+      "sha256": "defcf802e38d8cea63c425c5e9882cd75f6c61726ed3636e42250f9098a3a43b",
+      "crop": [
+        260,
+        250,
+        860,
+        850
+      ],
+      "derived": "allies/av-bear-cream.png"
+    },
+    {
+      "id": "av-rabbit-pink",
+      "name": "锤锤喵",
+      "source": "image 7.png",
+      "sha256": "ea004ab1364795c82536b91c53c5f37ae873011ae439b09a26f252420756b031",
+      "crop": [
+        390,
+        250,
+        940,
+        800
+      ],
+      "derived": "allies/av-rabbit-pink.png"
+    },
+    {
+      "id": "av-cat-gray",
+      "name": "镭射喵",
+      "source": "image 8.png",
+      "sha256": "9ebc189d765dc215cd768b4432e92a2bf2fce79342159bb8ffade7c5231b64a0",
+      "crop": [
+        200,
+        220,
+        800,
+        820
+      ],
+      "derived": "allies/av-cat-gray.png"
+    },
+    {
+      "id": "av-dog-brown",
+      "name": "奶糖喵",
+      "source": "image 9.png",
+      "sha256": "f964aecbe6bba05a1a7925e81d4ec904a3f50f608b6dc29e3e6d0621f0fcff3e",
+      "crop": [
+        210,
+        240,
+        810,
+        840
+      ],
+      "derived": "allies/av-dog-brown.png"
+    },
+    {
+      "id": "av-fox-red",
+      "name": "台灯小怪",
+      "source": "image 16.png",
+      "sha256": "d64d1686ebf63cefceab5058c3f04fd6f92892eb96633cb2de16be203ef607f0",
+      "crop": [
+        220,
+        150,
+        870,
+        800
+      ],
+      "derived": "enemies/av-fox-red.png"
+    },
+    {
+      "id": "av-cat-blue",
+      "name": "床头柜怪",
+      "source": "image 18.png",
+      "sha256": "a3e8e641137ccf50527cf197e36efa1fab54e893e1a004459b0d58e125f0536d",
+      "crop": [
+        240,
+        450,
+        870,
+        1080
+      ],
+      "derived": "enemies/av-cat-blue.png"
+    },
+    {
+      "id": "av-dog-yellow",
+      "name": "冰箱Boss",
+      "source": "image 20.png",
+      "sha256": "70700c008faca40043a37ed2190b0de0ce7fc3fa3ec9454a5e7a54079960ff71",
+      "crop": [
+        180,
+        280,
+        850,
+        950
+      ],
+      "derived": "enemies/av-dog-yellow.png"
+    },
+    {
+      "id": "av-cat-green",
+      "name": "沙发精英",
+      "source": "image 21.png",
+      "sha256": "8126c2e03d10c4d7a46b39f9ae1f94ac190abff1c23ae5ad7fce0a2059d8360c",
+      "crop": [
+        210,
+        230,
+        930,
+        950
+      ],
+      "derived": "enemies/av-cat-green.png"
+    }
+  ]
+}
