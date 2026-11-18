@@ -39,6 +39,8 @@
   var RETRY_DELAY = 160;
 
   function load(key, src, attempt) {
+    // 包内素材按实际文件名进入平台CDN映射；查询参数会使映射和本地文件查找失配。
+    src = src.split('?')[0].split('#')[0];
     attempt = attempt || 1;
     KwaiRender.loadImage({
       src: src,

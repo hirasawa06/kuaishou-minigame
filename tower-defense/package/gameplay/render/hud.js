@@ -873,7 +873,7 @@
     var total = Math.max(0, Math.floor(progress.total || 0));
     var failed = Math.max(0, Math.floor(progress.failed || 0));
     var panelW = Math.min(340, u.interactiveRect.w - u.pad * 2);
-    var panelH = Math.min(310, u.contentH - 16);
+    var panelH = Math.min(S.phase === 'error' ? 480 : 310, u.contentH - 16);
     var panel = { x: u.safeLeft + (u.interactiveRect.w - panelW) / 2,
       y: u.contentTop + (u.contentH - panelH) / 2, w: panelW, h: panelH };
     var cx = panel.x + panel.w / 2;
@@ -897,6 +897,19 @@
       Math.min(7, fillW / 2), D.color('#f2a12b'));
     resultText('已加载 ' + loaded + '/' + total, cx, bar.y + 26,
       panel.w - 32, 18, '#8a6248', 1);
+    if (S.phase === 'error') {
+      var failures = A.Assets.failures();
+      var detailY = bar.y + 52;
+      var rowH = 22;
+      var count = Math.min(failures.length, Math.max(1, Math.floor((panel.y + panelH - 38 - detailY) / rowH)));
+      for (var fi = 0; fi < count; fi++) {
+        var failure = failures[fi];
+        var file = String(failure.src || failure.key).split('/').pop().toUpperCase();
+        var reason = failure.reason === 'texture-upload' ? 'UPLOAD' : 'LOAD';
+        resultText((fi + 1) + '. ' + file + ' ' + reason, cx, detailY + fi * rowH,
+          panel.w - 24, 18, '#b04f4c', 1);
+      }
+    }
     resultText(S.phase === 'error' || failed > 0 ? '资源加载失败' + (failed ? ' ' + failed : '') : '正在准备小家',
       cx, panel.y + panelH - 29, panel.w - 32, 18,
       S.phase === 'error' || failed > 0 ? '#b04f4c' : '#8a6248', 1);
