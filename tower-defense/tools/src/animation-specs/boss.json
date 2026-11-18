@@ -1,0 +1,28 @@
+{
+  "id": "boss",
+  "entity": "enemy",
+  "render": "whole",
+  "sourceDir": "characters/角色/双开门冰箱怪",
+  "frames": {
+    "idle": { "icon": "fridge-boss-idle", "file": "双开门冰箱怪-idle-v1.png" },
+    "moveLeft": { "icon": "fridge-boss-move-left", "file": "双开门冰箱怪-move-2f-v1.png", "index": 0, "columns": 2 },
+    "moveRight": { "icon": "fridge-boss-move-right", "file": "双开门冰箱怪-move-2f-v1.png", "index": 1, "columns": 2 },
+    "singleWindup": { "icon": "fridge-boss-single-windup", "file": "双开门冰箱怪-atk-single-3f-v1.png", "index": 0, "columns": 3 },
+    "singleImpact": { "icon": "fridge-boss-single-impact", "file": "双开门冰箱怪-atk-single-3f-v1.png", "index": 1, "columns": 3 },
+    "singleRecover": { "icon": "fridge-boss-single-recover", "file": "双开门冰箱怪-atk-single-3f-v1.png", "index": 2, "columns": 3 },
+    "aoeWindup": { "icon": "fridge-boss-aoe-windup", "file": "双开门冰箱怪-atk-aoe-3f-v1.png", "index": 0, "columns": 3 },
+    "aoeCharge": { "icon": "fridge-boss-aoe-charge", "file": "双开门冰箱怪-atk-aoe-3f-v1.png", "index": 1, "columns": 3 },
+    "aoeImpact": { "icon": "fridge-boss-aoe-impact", "file": "双开门冰箱怪-atk-aoe-3f-v1.png", "index": 2, "columns": 3 },
+    "hurt": { "icon": "fridge-boss-hurt", "file": "双开门冰箱怪-hurt-v1.png" },
+    "dieFall": { "icon": "fridge-boss-die-fall", "file": "双开门冰箱怪-die-2f-v1.png", "index": 0, "columns": 2 },
+    "dieLanded": { "icon": "fridge-boss-die-landed", "file": "双开门冰箱怪-die-2f-v1.png", "index": 1, "columns": 2 }
+  },
+  "states": {
+    "idle": { "duration": 2.4 },
+    "move": { "duration": 0.64, "frames": ["moveLeft", "moveRight"] },
+    "attack": { "duration": 0.60, "hit": 0.34, "windup": "singleWindup", "impact": "singleImpact", "recover": "singleRecover" },
+    "aoe": { "duration": 0.72, "hit": 0.48, "windup": "aoeWindup", "charge": "aoeCharge", "impact": "aoeImpact" },
+    "hurt": { "duration": 0.24, "frame": "hurt" },
+    "die": { "duration": 0.60, "fall": "dieFall", "landed": "dieLanded" }
+  }
+}

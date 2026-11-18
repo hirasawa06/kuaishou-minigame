@@ -136,7 +136,7 @@
         attackEffect: 'bump', impactColor: '#e4a878',
       },
       boss: {
-        id: 'boss', name: '首领', tier: 'boss', icon: 'enemy-boss',
+        id: 'boss', name: '双开门冰箱怪', tier: 'boss', species: 'double-door-fridge', icon: 'enemy-boss',
         hp: 4200, atk: 70, interval: 1.35, speed: 21,
         radius: 25, color: '#e04e6e', baseDamage: 14, gold: 60, splash: 90,
       },
@@ -148,6 +148,11 @@
     spawnGap: 0.75,
     waveGap: 6.0,
     firstWaveDelay: 5.0,
+
+    // 用户确认的冰箱砸地：三帧共享冰裂圆心，末帧残光渐隐。
+    BOSS_IMPACT: { src: 'res/Image/boss-ground-impact.png?v=1',
+      cell: 256, frames: 3, timeline: [0, 0.10, 0.30], duration: 0.70, drawSize: 260,
+      offsetYRatio: 0.08 },
 
     // 十个独立关卡：首关五波，其余十波；名称与倍率为首轮可调数值。
     LEVELS: [

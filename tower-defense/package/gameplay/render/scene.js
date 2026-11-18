@@ -112,10 +112,38 @@
         sh = bg.w / targetRatio;
         sy = (bg.h - sh) / 2;
       }
+      A.Render.setSceneLight('environment');
       D.texture(bg.tex, bg.w, bg.h, sx, sy, sw, sh, 0, 0, u.w, u.h);
+      A.Render.setSceneLight('off');
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
     }
+  }
+
+  // 动作场复用正式图集和 Rig，只替换战斗背景与实体来源，便于比对实际播放结果。
+  function drawBossLab() {
+    var lab = L.ui.bossLab;
+    var preview = S.bossLab;
+    if (!lab || !preview || !preview.entity) return;
+    drawBackground();
+    var stage = lab.stage;
+    D.vGradient(stage.x, stage.y, stage.w, stage.h,
+      D.color('#4c265d', 0.92), D.color('#1a254f', 0.95), 18);
+    D.roundRect(stage.x, stage.y, stage.w, stage.h, 20, D.color('#ffd9ee', 0.82));
+    D.roundRect(stage.x + 3, stage.y + 3, stage.w - 6, stage.h - 6, 17,
+      D.color('#291d4c', 0.92));
+    var cx = stage.x + stage.w * 0.5;
+    var shadowY = stage.y + stage.h * 0.78;
+    var size = Math.min(stage.w * 0.74, stage.h * 0.76);
+    D.ring(cx, shadowY, size * 0.33, 2, D.color('#c578ff', 0.48));
+    drawGroundShadow(cx, shadowY, size * 0.35, 0.52);
+    var rig = A.Rigs && A.Rigs.boss;
+    if (preview.impactT >= 0) drawBossImpact(cx, shadowY, preview.impactT,
+      Math.min(C.BOSS_IMPACT.drawSize, stage.w * 0.9));
+    A.Render.setSceneLight('character', shadowY - size * 0.40, size);
+    if (rig) A.Anim.draw(rig, preview.entity, cx, shadowY - size * 0.40, size);
+    else icon('enemy-boss', cx, shadowY - size * 0.40, size);
+    A.Render.setSceneLight('off');
   }
 
   function drawBase(dt) {
@@ -127,8 +155,10 @@
     var fw = Math.min(112, b.w * 0.29), fh = fw;
     var fx = b.x + (b.w - fw) / 2, fy = b.y - fh * 0.92;
     if (photo) {
+      A.Render.setSceneLight('character', fy + fh / 2, fh);
       D.texture(photo.tex, photo.w, photo.h, 0, 0, photo.w, photo.h,
         fx, fy, fw, fh);
+      A.Render.setSceneLight('off');
     }
     if (ratio <= 0.5) {
       D.roundRect(fx + fw * 0.67, fy + fh * 0.20, 2, fh * 0.40, 1, D.color('#fff8ed', 0.9));
@@ -190,7 +220,7 @@
         tilt = 6 * (1 - k) - 4 * k * (1 - k);
       }
     }
-    drawGroundShadow(e.x, e.y + rr * 0.84, rr * 0.70, 0.48 * spawn);
+    A.Render.setSceneLight('character', e.y - r * 0.15, r * 3.05 * (rig ? rig.scale || 1 : 1) * scale);
     if (rig) {
       A.Anim.draw(rig, e, e.x, e.y - r * 0.15, r * 3.05 * (rig.scale || 1) * scale, {
         alpha: 0.3 + 0.7 * spawn,
@@ -198,6 +228,7 @@
     } else {
       icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
     }
+    A.Render.setSceneLight('off');
     if (e.hitFlash > 0) {
       D.circle(e.x, e.y, rr, D.color('#ffffff', e.hitFlash * 3.2));
     }
@@ -210,19 +241,46 @@
   // 用角色真正落在地面的绘制点决定前后层级，而不是按“宠物 / 怪物”分组。
   // 数值和各自阴影中心一致：北侧（较小 y）先画，南侧（较大 y）后画。
   function actorDepthY(actor, isEnemy) {
+    return actorGround(actor, isEnemy).y;
+  }
+
+  // ── 待机双脚接触点：120px 格，排除尾巴和武器 ────────────
+  var groundFeet = {
+    arch: [[40, 99], [78, 99]], tank: [[40, 116], [87, 116]],
+    war: [[34, 106], [80, 103]], mage: [[38, 107], [73, 110]],
+    healer: [[48, 90], [76, 90]], small: [[39, 115], [81, 115]],
+    normal: [[38, 115], [82, 115]], elite: [[33, 106], [85, 106]],
+    boss: [[38, 109], [87, 109]],
+  };
+
+  function actorGround(actor, isEnemy) {
     var r = actor.def.radius;
-    if (isEnemy) {
-      var spawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.35 : 1;
-      var scale = 0.7 + 0.3 * spawn;
-      return actor.y + r * scale * 0.84;
-    }
-    var unitSpawn = actor.spawnT > 0 ? 1 - actor.spawnT / 0.3 : 1;
+    var duration = isEnemy ? 0.35 : 0.3;
+    var spawn = actor.spawnT > 0 ? Math.max(0, 1 - actor.spawnT / duration) : 1;
     var rig = A.Rigs && A.Rigs[actor.rigId || actor.def.id];
-    var size = rig
-      ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * unitSpawn)
-      : r * 2.35 * (0.8 + 0.2 * unitSpawn);
+    var scale = isEnemy ? 0.7 + 0.3 * spawn : 0.86 + 0.14 * spawn;
+    var size = rig ? r * 3.05 * (rig.scale || 1) * scale : r * 2.35 * (0.8 + 0.2 * spawn);
+    var feet = groundFeet[actor.def.id] || [[60, 106], [60, 106]];
+    var point = [(feet[0][0] + feet[1][0]) / 240, (feet[0][1] + feet[1][1]) / 240];
+    var back = A.HeroForms && A.Assets.entry && A.Assets.entry('hero-levels-back');
+    if (actor.def.id === 'healer' && back && back.w === 1000 && back.h === 600) {
+      point = [0.5 + 0.68 * (91.5 / 200 - 0.5), 0.6 + 0.68 * (161.5 / 200 - 0.5)];
+    }
     var spriteY = rig ? actor.y - r * 0.15 : actor.y;
-    return spriteY + size * 0.42;
+    return { x: actor.x + size * (point[0] - 0.5),
+      y: spriteY + size * (point[1] - 0.5), size: size, spawn: spawn };
+  }
+
+  function drawActorShadows() {
+    var groups = [S.units, S.enemies];
+    for (var g = 0; g < groups.length; g++) {
+      for (var i = 0; i < groups[g].length; i++) {
+        var actor = groups[g][i];
+        if (actor.dead) continue;
+        var ground = actorGround(actor, g === 1);
+        drawGroundShadow(ground.x, ground.y, ground.size * 0.40, ground.spawn);
+      }
+    }
   }
 
   // 图集帧绘制：优先用 frame 名字直接查 A.SpriteAtlas
@@ -241,17 +299,16 @@
     return sp;
   }
 
-  // 地面阴影复用柔边光斑纹理，正常混合下染成近黑色并压成椭圆。
-  // 它不是角色光环，边缘会随贴图 alpha 自然羽化。
+  // 地面阴影独立绘制柔边椭圆，正常混合下使用深红棕色。
+  // 两层同心，外围由着色器径向渐隐，不依赖光斑纹理。
   function drawGroundShadow(cx, cy, radius, alpha) {
-    var sp = glowTex();
-    if (!sp) return;
-    var width = radius * 2;
-    D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h, cx, cy, width, {
-      w: width,
-      h: radius * 0.56,
-      tint: { r: 0.02, g: 0.02, b: 0.03, a: alpha },
-    });
+    // 圆心保持在双脚中点；扩大外围，避免整个深色区被身体遮住。
+    var layers = [[2.5, 1.5, 0.38], [1.4, 0.7, 0.46]];
+    for (var i = 0; i < layers.length; i++) {
+      var layer = layers[i];
+      D.softEllipse(cx, cy, radius * layer[0], radius * layer[1],
+        { r: 0.18, g: 0.055, b: 0.045, a: alpha * layer[2] });
+    }
   }
 
   // GIF 已离线拆为透明 PNG 帧表。按固定节奏取格，飞行距离变化不会拉伸动画速度。
@@ -356,7 +413,27 @@
   }
 
   function drawGroundEffects() {
+    drawActorShadows();
+    for (var i = 0; i < S.effects.length; i++) {
+      var e = S.effects[i];
+      if (e.type !== 'boss-ground-impact') continue;
+      var ground = actorGround({ x: e.x, y: e.y, def: C.ENEMIES.boss, spawnT: 0 }, true);
+      drawBossImpact(ground.x, ground.y, e.max - e.life, C.BOSS_IMPACT.drawSize);
+    }
     drawHealEffects(false);
+  }
+
+  // ── 冰裂砸地：地面层正常混合，原图紫烟和食物保持原色 ────
+  function drawBossImpact(cx, cy, time, width) {
+    var spec = C.BOSS_IMPACT;
+    var image = Assets.entry('boss-impact');
+    if (!image || time < 0 || time >= spec.duration) return;
+    var index = time < spec.timeline[1] ? 0 : time < spec.timeline[2] ? 1 : 2;
+    var fade = index === 2 ? 1 - (time - spec.timeline[2]) / (spec.duration - spec.timeline[2]) : 1;
+    var cell = spec.cell;
+    D.texture(image.tex, image.w, image.h, index * cell, 0, cell, cell,
+      cx - width / 2, cy - width / 2 + width * (spec.offsetYRatio || 0), width, width,
+      { r: 1, g: 1, b: 1, a: fade });
   }
 
   function drawHealEffects(foreground) {
@@ -385,8 +462,8 @@
     var spriteY = rig ? un.y - r * 0.15 : un.y;
     var shadowY = spriteY + size * 0.42;
 
-    drawGroundShadow(un.x, shadowY, r * 0.70, 0.40 * (0.4 + 0.6 * spawn));
     // 星级不改变立绘或动作，治疗猫统一沿用同一背面形象。
+    A.Render.setSceneLight('character', spriteY, size);
     var levelIdle = A.HeroForms && d.cls === 'healer' && !un.dead &&
       A.HeroForms.drawBattleIdle(d.id, 2, un.x, spriteY + size * 0.10, size * 0.68, 0.3 + 0.7 * spawn);
     if (rig && !levelIdle) {
@@ -410,6 +487,7 @@
       if (un.hitFlash > 0) D.circle(un.x, un.y, r, D.color('#ffffff', un.hitFlash * 3));
     }
 
+    A.Render.setSceneLight('off');
     var w = Math.max(22, r * 2.1);
     var ratio = Math.max(0, un.hp / un.maxHp);
     var col = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
@@ -462,6 +540,7 @@
     for (i = 0; i < S.effects.length; i++) {
       e = S.effects[i];
       t = 1 - e.life / e.max;
+      if (e.type === 'boss-ground-impact') continue; // 已在角色下方绘制。
       if (e.type === 'ring') {
         var rr = (e.r || 8) + ((e.r2 || e.r * 1.8) - (e.r || 8)) * t;
         D.ring(e.x, e.y, rr, 2.2 * (1 - t) + 0.6, D.color(e.color, (1 - t) * 0.8));
@@ -673,6 +752,7 @@
     frame: frame,
     additiveGlow: additiveGlow,
     drawBackground: drawBackground,
+    drawBossLab: drawBossLab,
     drawBase: drawBase,
     drawEnemy: drawEnemy,
     drawUnit: drawUnit,

@@ -8,6 +8,13 @@
   draw.white = WHITE;
   draw.color = function (hex, a) { return GL.color(hex, a); };
 
+  // ── 正上方光源的地面软影 ────────────────────────────────
+  draw.softEllipse = function (cx, cy, w, h, col) {
+    if (w <= 0 || h <= 0) return;
+    GL.push(cx - w / 2, cy - h / 2, w, h, col,
+      { mode: 4, hw: w / 2, hh: h / 2, r: 0 });
+  };
+
   draw.rect = function (x, y, w, h, col) {
     if (w <= 0 || h <= 0) return;
     GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: 0 });
@@ -70,6 +77,16 @@
     for (var i = 0; i < bands; i++) {
       draw.rect(x + i * bw, y, bw + 0.6, h, GL.mix(left, right, i / (bands - 1)));
     }
+  };
+
+  // --- 完整图片放进圆角容器，圆角不写入素材 ---
+  draw.roundTexture = function (tex, x, y, w, h, radius) {
+    if (!tex || w <= 0 || h <= 0) return;
+    GL.setTexture(tex);
+    GL.push(x, y, w, h, WHITE, {
+      mode: 5, hw: w / 2, hh: h / 2,
+      r: Math.min(radius, w / 2, h / 2),
+    });
   };
 
   // 从图集绘制（sx/sy/sw/sh 为纹理像素）

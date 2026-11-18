@@ -49,7 +49,9 @@ function createHarness(textureMode = 'ok') {
     },
   }
   sandbox.window = sandbox
-  vm.runInContext(fs.readFileSync(ASSETS_FILE, 'utf8'), vm.createContext(sandbox), {
+  const context = vm.createContext(sandbox)
+  vm.runInContext(fs.readFileSync(path.join(HERE, '..', 'package', 'gameplay', 'config.js'), 'utf8'), context)
+  vm.runInContext(fs.readFileSync(ASSETS_FILE, 'utf8'), context, {
     filename: 'gameplay/assets.js',
   })
   return { sandbox, requests, timers }

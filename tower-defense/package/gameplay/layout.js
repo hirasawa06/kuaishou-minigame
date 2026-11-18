@@ -340,12 +340,43 @@
     ui.menu.stamina = figmaRect(navLeft + navSize + 10, navTop, 142, 44);
     ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
     ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
+    ui.menu.bossLab = figmaRect(112, 706, 166, 42);
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
     ui.menu.levelStatus = { x: ui.menu.card.x + 48, y: ui.menu.card.y + ui.menu.card.h - 82,
       w: ui.menu.card.w - 96, h: 78 };
 
-    // ── 设置 / 名片 / 头像 / 昵称 / 邀请 的界面几何 ──
+    // ── Boss 动作场：预览区和六枚动作键共用安全区布局 ─────────
+    var labW = safeW - pad * 2;
+    var labX = metrics.safeLeft + pad;
+    var labHeaderH = contentH < 500 ? 42 : 50;
+    var labButtonH = contentH < 500 ? 36 : 42;
+    var labGap = 8;
+    var labRowsH = labButtonH * 2 + labGap;
+    var labStageY = contentTop + labHeaderH + 10;
+    var labButtonsY = contentBottom - labRowsH;
+    var labStageH = Math.max(120, labButtonsY - labStageY - 10);
+    var labButtonW = (labW - labGap * 2) / 3;
+    var labActions = ['idle', 'move', 'atk', 'aoe', 'hurt', 'die'];
+    var labButtons = {};
+    for (var li = 0; li < labActions.length; li++) {
+      var col = li % 3;
+      var row = Math.floor(li / 3);
+      labButtons[labActions[li]] = {
+        x: labX + col * (labButtonW + labGap),
+        y: labButtonsY + row * (labButtonH + labGap),
+        w: labButtonW,
+        h: labButtonH,
+      };
+    }
+    ui.bossLab = {
+      header: { x: labX, y: contentTop, w: labW, h: labHeaderH },
+      stage: { x: labX, y: labStageY, w: labW, h: labStageH },
+      close: { x: labX + labW - labHeaderH, y: contentTop, w: labHeaderH, h: labHeaderH },
+      buttons: labButtons,
+    };
+
+    // ── 设置 / 名片 / 头像 / 昵称 / 排行榜 / 邀请 的界面几何 ──
     // 所有弹窗与全屏页都从同一份可交互区域派生：标题栏、按钮、行高都由 contentH 缩放。
     var sheetW = Math.round(Math.min(340, safeW - pad * 2 - 8));
     var sheetX = Math.round(metrics.safeLeft + (safeW - sheetW) / 2);

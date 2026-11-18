@@ -1,0 +1,32 @@
+{
+  "status": "已实现/视觉待验",
+  "source": "冰箱Boss砸地-用户确认-v6.png",
+  "original": "用户2026-11-17提供的三阶段透明PNG",
+  "centers": [
+    [
+      700,
+      615
+    ],
+    [
+      2120,
+      615
+    ],
+    [
+      3590,
+      615
+    ]
+  ],
+  "cell": 256,
+  "timeline": [
+    0,
+    0.1,
+    0.3
+  ],
+  "duration": 0.7,
+  "anchor": [
+    128,
+    128
+  ],
+  "drawSize": 260,
+  "originalSha256": "e11ab334175948fb06fa2f3e8acf90fc79007b46a8c178a28842bf678dcc07bf"
+}

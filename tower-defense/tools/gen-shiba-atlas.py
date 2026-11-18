@@ -26,10 +26,10 @@ SRC_DIR = os.path.join(ROOT, "tools", "src")
 CELL = 128
 PAD = 4
 COLS = 8
-ROWS = 8
+ROWS = 9
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
-ATLAS_VERSION = 16
+ATLAS_VERSION = 17
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICON_BOXES = {
@@ -74,6 +74,8 @@ HEALER_SPEC = load_animation_spec("healer")
 HEALER_CAT_DIR = os.path.join(SRC_DIR, HEALER_SPEC["sourceDir"])
 ELITE_SPEC = load_animation_spec("elite")
 ELITE_SOFA_DIR = os.path.join(SRC_DIR, ELITE_SPEC["sourceDir"])
+BOSS_SPEC = load_animation_spec("boss")
+BOSS_FRIDGE_DIR = os.path.join(SRC_DIR, BOSS_SPEC["sourceDir"])
 DEFEAT_SMOKE_DIR = os.path.join(SRC_DIR, "effects", "defeat-smoke")
 DEFEAT_SMOKE = [
     os.path.join(DEFEAT_SMOKE_DIR, "vanish-smoke-01.png"),
@@ -236,6 +238,27 @@ def elite_sofa_frame(name):
     x0, x1 = col * width // frame["columns"], (col + 1) * width // frame["columns"]
     # 精英帧收紧为 96px 有效边长以满足主包限制；Rig 用同倍数补回战场体量。
     return fit_visible(sheet.crop((x0, 0, x1, height)), 96)
+
+
+def boss_fridge_frame(name):
+    """冰箱首领的整姿势帧统一落入共享画布，脚底不因动作而漂移。"""
+    frame = BOSS_SPEC["frames"][name]
+    sheet = Image.open(os.path.join(BOSS_FRIDGE_DIR, frame["file"])).convert("RGBA")
+    columns = frame.get("columns", 1)
+    rows = frame.get("rows", 1)
+    index = frame.get("index", 0)
+    if index < 0 or index >= columns * rows:
+        raise ValueError("冰箱首领动作帧索引越界: " + name)
+    width, height = sheet.size
+    col, row = index % columns, index // columns
+    panel = sheet.crop((col * width // columns, row * height // rows,
+                        (col + 1) * width // columns, (row + 1) * height // rows))
+    canvas_w, canvas_h = 1289, 1220
+    scale = canvas_h / panel.height
+    panel = panel.resize((round(panel.width * scale), canvas_h), Image.LANCZOS)
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    canvas.alpha_composite(panel, ((canvas_w - panel.width) // 2, 0))
+    return fit_cell(canvas, CELL - 2 * PAD)[0]
 
 
 def defeat_smoke(index):
@@ -522,6 +545,10 @@ def build():
     for frame_name, frame in ELITE_SPEC["frames"].items():
         cell(frame["icon"], elite_sofa_frame(frame_name))
 
+    # 双开门冰箱首领：全套姿势共用一个透明画布，避免逐帧裁边改变体型或脚底。
+    for frame_name, frame in BOSS_SPEC["frames"].items():
+        cell(frame["icon"], boss_fridge_frame(frame_name))
+
     # 继承旧图标
     legacy_src = os.path.join(SRC_DIR, "sprites-legacy.png")
     old = Image.open(legacy_src).convert("RGBA") if os.path.exists(legacy_src) else None
@@ -568,7 +595,7 @@ def write_rigs(atlas_data, mage_flight, mage_impact):
 def write_character_animations():
     """把离线动作规格中运行时需要的字段导出给 Rig 定义。"""
     runtime = {}
-    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC, HEALER_SPEC, ELITE_SPEC):
+    for spec in (ARCHER_SPEC, TANK_SPEC, LAMP_SPEC, NORMAL_SPEC, WAR_SPEC, MAGE_SPEC, HEALER_SPEC, ELITE_SPEC, BOSS_SPEC):
         runtime[spec["id"]] = {
             "frames": {name: frame["icon"] for name, frame in spec["frames"].items()},
             "states": spec["states"],

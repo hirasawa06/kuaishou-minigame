@@ -97,6 +97,7 @@
     // 法师飞行与落地均使用离线生成的透明 PNG 帧表，运行时无需解码 GIF。
     if (A.MageFlight && A.MageFlight.src) manifest.push(['mage-flight', A.MageFlight.src]);
     if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
+    if (A.Config.BOSS_IMPACT) manifest.push(['boss-impact', A.Config.BOSS_IMPACT.src]);
     // 治疗特效分层素材。
     manifest.push(['heal-aura', 'res/Image/heal-aura.png']);
     manifest.push(['heal-cross', 'res/Image/heal-cross.png']);
@@ -111,6 +112,9 @@
     manifest.push(['home-background-clean', 'res/Image/home-background-clean-v2.jpg']);
     manifest.push(['home-level-card-no-banner', 'res/Image/home-level-card-no-banner-v1.png']);
     manifest.push(['home-level-frame-overlay', 'res/Image/home-level-frame-overlay-v1.png']);
+    for (var level = 1; level <= 6; level++) {
+      manifest.push(['level-cover-' + level, 'res/Image/level-covers/level-' + level + '.jpg']);
+    }
     manifest.push(['home-level-arrows', 'res/Image/home-level-arrows-v1.png']);
     manifest.push(['home-level-arrows-disabled', 'res/Image/home-level-arrows-disabled-v1.png']);
     manifest.push(['home-level-nameplate', 'res/Image/home-level-nameplate-v1.png']);

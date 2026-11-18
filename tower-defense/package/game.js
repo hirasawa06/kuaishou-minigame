@@ -64,6 +64,7 @@ require("./kwaiOpenApi/kwai-storage.js"); // 本地存档（资料与设置）
 // ↓ 游戏文件（按依赖顺序填入，禁止在业务文件内写 require）
 require("./gameplay/data/font-atlas.js"); // 字形图集数据
 require("./gameplay/data/sprites.js"); // 图标精灵图数据
+require("./gameplay/data/avatars.js"); // 共用头像图集
 require("./gameplay/data/rigs.js"); // 战斗图集元数据（动作帧 + 特效）
 require("./gameplay/data/character-animations.js"); // 角色动作规格（生成）
 require("./gameplay/data/avatars.js"); // 首页与个人资料头像元数据

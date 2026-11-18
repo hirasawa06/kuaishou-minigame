@@ -22,9 +22,12 @@ const port = Number(option('--port', '8099')) || 8099
 const outDir = option('--out', '/tmp/tdanim')
 const actorId = option('--hero', 'tank')
 const actorType = option('--entity', 'hero')
+const showAllCards = args.includes('--all-cards')
+const solo = args.includes('--solo')
 const targetSide = option('--target', 'right')
 const requestedRig = option('--rig', '')
 const requestedState = option('--state', '')
+const bossLab = args.includes('--boss-lab')
 const debugPort = 9335
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -101,9 +104,11 @@ const SETUP = `(function () {
     return { cardId: id, sold: false, born: 0 };
   });
   S.phase = 'playing';
+  S.currentLevel = 2;
   S.waveState = 'prep';
   S.waveTimer = 9999;
   S.baseHp = A.Config.BASE_HP;
+  S.cardsPlaced = 1;
   S.time = 0;
   S.units.length = 0;
   S.enemies.length = 0;
@@ -128,12 +133,14 @@ const SETUP = `(function () {
     anim: 'idle', animT: 0, pendingHit: -1, pendingTarget: 0,
   };
   (isEnemy ? S.enemies : S.units).push(un);
-  (isEnemy ? S.units : S.enemies).push(target);
+  if (!${solo}) (isEnemy ? S.units : S.enemies).push(target);
   window.__un = un;
   // 冻结逻辑推进：只保留渲染，才能定格到精确帧
   window.__battleUpdate = A.Battle.update;
   A.Battle.update = function () {};
-  return { x: Math.round(un.x), y: Math.round(un.y), phase: S.phase };
+  if (A.Tutorial) A.Tutorial.stop();
+  return { x: Math.round(un.x), y: Math.round(un.y), phase: S.phase,
+    tutorial: A.Tutorial && A.Tutorial.isActive ? A.Tutorial.isActive() : null };
 })()`
 
 const POSE = (state, t, fx) => `(function () {
@@ -172,6 +179,20 @@ const SMOKE = (t) => `(function () {
   return true;
 })()`
 
+const BOSS_LAB_SETUP = `(function () {
+  var A = window.AIGCUtils;
+  A.Game.openBossLab();
+  return { phase: A.State.phase, action: A.State.bossLab.action,
+    buttons: Object.keys(A.Layout.ui.bossLab.buttons).length };
+})()`
+
+const BOSS_LAB_POSE = (state, t) => `(function () {
+  var A = window.AIGCUtils;
+  A.Game.selectBossLabAction(${JSON.stringify(state)});
+  A.State.bossLab.entity.animT = ${t};
+  return { action: A.State.bossLab.action, anim: A.State.bossLab.entity.anim };
+})()`
+
 async function main() {
   ws = new WebSocket(await getTarget())
   await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject })
@@ -187,6 +208,26 @@ async function main() {
   await send('Runtime.enable')
   await send('Page.enable')
   await sleep(2200)
+
+  if (bossLab) {
+    const lab = await evaluate(BOSS_LAB_SETUP)
+    if (lab.phase !== 'bossLab' || lab.buttons !== 6) throw new Error('动作场未初始化')
+    const renderCheck = await evaluate(`(function () {
+      var A = window.AIGCUtils, errors = [], old = console.error;
+      console.error = function () { errors.push(Array.prototype.join.call(arguments, ' ')); };
+      A.Game.render.__logged = false;
+      A.Game.render();
+      console.error = old;
+      return errors;
+    })()`)
+    if (renderCheck.length) throw new Error(renderCheck.join('\n'))
+    if (requestedState) await evaluate(BOSS_LAB_POSE(requestedState, 0.18))
+    await shot('boss-lab' + (requestedState ? '-' + requestedState : ''))
+    console.log('动作场:', lab, '截图目录:', outDir)
+    ws.close()
+    chrome.kill()
+    return
+  }
 
   const pos = await evaluate(SETUP)
   console.log('unit at', pos)
@@ -212,6 +253,18 @@ async function main() {
     })()`)
     await evaluate(POSE(requestedState, previewTime, false))
     await shot('preview-' + requestedState)
+    if (actorType === 'enemy' && actorId === 'boss' && requestedState === 'aoe') {
+      for (const age of [0.02, 0.15, 0.45]) {
+        await evaluate(`(function () {
+          var A = window.AIGCUtils, S = A.State, un = window.__un;
+          var duration = A.Config.BOSS_IMPACT.duration;
+          S.effects.length = 0;
+          S.addEffect({ type: 'boss-ground-impact', x: un.x, y: un.y,
+            life: duration - ${age}, max: duration });
+        })()`);
+        await shot('boss-impact-' + age);
+      }
+    }
     console.log('截图目录:', outDir)
     ws.close()
     chrome.kill()

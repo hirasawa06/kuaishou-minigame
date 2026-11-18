@@ -13,6 +13,7 @@
   var mageSpec = A.CharacterAnimations.mage;
   var healerSpec = A.CharacterAnimations.healer;
   var eliteSpec = A.CharacterAnimations.elite;
+  var bossSpec = A.CharacterAnimations.boss;
 
   // 柴不破：战场与卡牌统一使用背视完整姿势帧。
   var shiba = {
@@ -407,6 +408,66 @@
     },
   };
 
+  // 双开门冰箱首领：单体拳击与相框范围砸击共用完整姿势帧，特效保持在战斗层。
+  var fridgeBoss = {
+    scale: 1.95,
+    parts: [{ icon: bossSpec.frames.idle, pivot: [0.50, 0.88] }],
+    states: {
+      idle: {
+        dur: bossSpec.states.idle.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: bossSpec.frames.idle, dy: 0, sy: 1 }] },
+          { t: 1.20, mods: [{ icon: bossSpec.frames.idle, dy: -0.7, sy: 1.012, sx: 0.996 }] },
+          { t: bossSpec.states.idle.duration, mods: [{ icon: bossSpec.frames.idle, dy: 0, sy: 1, sx: 1 }] },
+        ],
+      },
+      move: {
+        dur: bossSpec.states.move.duration, loop: true, ease: 'inOutSine',
+        keys: [
+          { t: 0.00, mods: [{ icon: bossSpec.frames.moveLeft, dy: 0 }] },
+          { t: bossSpec.states.move.duration / 2, mods: [{ icon: bossSpec.frames.moveRight, dy: 0 }] },
+          { t: bossSpec.states.move.duration, mods: [{ icon: bossSpec.frames.moveLeft, dy: 0 }] },
+        ],
+      },
+      atk: {
+        dur: bossSpec.states.attack.duration, ease: 'inOutSine', hit: bossSpec.states.attack.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: bossSpec.frames.idle, dy: 0 }] },
+          { t: 0.18, mods: [{ icon: bossSpec.frames.singleWindup, dy: 0 }] },
+          { t: bossSpec.states.attack.hit, mods: [{ icon: bossSpec.frames.singleImpact, dy: 0 }] },
+          { t: 0.48, mods: [{ icon: bossSpec.frames.singleRecover, dy: 0 }] },
+          { t: bossSpec.states.attack.duration, mods: [{ icon: bossSpec.frames.idle, dy: 0 }] },
+        ],
+      },
+      aoe: {
+        dur: bossSpec.states.aoe.duration, ease: 'inOutSine', hit: bossSpec.states.aoe.hit,
+        keys: [
+          { t: 0.00, mods: [{ icon: bossSpec.frames.idle, dy: 0 }] },
+          { t: 0.18, mods: [{ icon: bossSpec.frames.aoeWindup, dy: 0 }] },
+          { t: 0.36, mods: [{ icon: bossSpec.frames.aoeCharge, dy: 0 }] },
+          { t: bossSpec.states.aoe.hit, mods: [{ icon: bossSpec.frames.aoeImpact, dy: 0 }] },
+          { t: bossSpec.states.aoe.duration, mods: [{ icon: bossSpec.frames.idle, dy: 0 }] },
+        ],
+      },
+      hurt: {
+        dur: bossSpec.states.hurt.duration, ease: 'outQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: bossSpec.frames.idle, dy: 0 }] },
+          { t: 0.10, mods: [{ icon: bossSpec.frames.hurt, dy: 1.8, rot: -1.8 }] },
+          { t: bossSpec.states.hurt.duration, mods: [{ icon: bossSpec.frames.idle, dy: 0, rot: 0 }] },
+        ],
+      },
+      die: {
+        dur: bossSpec.states.die.duration, ease: 'inQuad',
+        keys: [
+          { t: 0.00, mods: [{ icon: bossSpec.frames.idle, alpha: 1, dy: 0 }] },
+          { t: 0.24, mods: [{ icon: bossSpec.frames.dieFall, alpha: 1, dy: 0 }] },
+          { t: bossSpec.states.die.duration, mods: [{ icon: bossSpec.frames.dieLanded, alpha: 1, dy: 0 }] },
+        ],
+      },
+    },
+  };
+
   // 盾位：柴犬关键帧动画。config 里的英雄 id 为 'tank'
   A.Rigs = {
     tank: shiba,
@@ -421,5 +482,6 @@
     small: lampMinion,
     normal: bedsideNormal,
     elite: sofaElite,
+    boss: fridgeBoss,
   };
 })();
