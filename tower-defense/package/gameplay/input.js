@@ -48,6 +48,7 @@
     if (S.selectedLevel > 1 && hitControl(m.levelPrev, x, y, 0)) return 'levelPrev';
     if (S.selectedLevel < C.LEVELS.length && hitControl(m.levelNext, x, y, 0)) return 'levelNext';
     if (A.Profile.isLevelUnlocked(S.selectedLevel) && hitControl(m.start, x, y, 12)) return 'start';
+    if (hitControl(m.stamina, x, y, 0)) return 'stamina';
     if (hitControl(m.collection, x, y, 0)) return 'collection';
     if (hitControl(m.settings, x, y, 6)) return 'settings';
     if (hitControl(m.avatar, x, y, 6)) return 'avatar';
@@ -363,12 +364,21 @@
         S.menuStartDelay = 0.18;
         return;
       }
+      if (key === 'stamina') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('stamina'); return; }
       if (key === 'collection') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('collection'); return; }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
       if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {
+      // 广告期间吞掉结算操作，不能在回调前重开或退出当前对局。
+      if (S.adBusy || (A.Rewards && A.Rewards.isBusy())) return;
+      if (S.phase === 'lose' && hitControl(u.resultRevive, px, py, 0)) {
+        if (S.revivesUsed > 0) { S.toastMsg('本局复活次数已用', 1.4); return; }
+        if (A.Rewards && A.Rewards.watchRevive) A.Rewards.watchRevive();
+        else S.toastMsg('当前环境不支持广告', 1.4);
+        return;
+      }
       if (S.phase === 'win' && S.currentLevel < C.LEVELS.length && hitControl(u.resultNext, px, py, 0)) {
         A.Game.nextLevel();
         return;

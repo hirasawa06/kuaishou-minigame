@@ -381,7 +381,7 @@
       size, D.color('#633b25'), 1);
   }
 
-  // ── 首页（客厅 + 头像 + 只读体力 + 设置 / 收藏 + 章节卡 + 开始） ──
+  // ── 首页（客厅 + 头像 + 体力入口 + 设置 / 收藏 + 章节卡 + 开始） ──
   function menuIcon(key, x, y, w, h) {
     var art = A.Assets.entry('home-menu-icons');
     var crop = MENU_ICON_CROPS[key];
@@ -504,7 +504,7 @@
       var barUnit = h / 44;
       var boltW = 19 * barUnit, boltH = 25 * barUnit;
       var gap = 5 * barUnit;
-      // 快照负责按时间恢复，绘制不保存数据，也不提供点击入口。
+      // 快照负责按时间恢复；这里只展示，不改变体力计算。
       var stamina = A.Profile.getStaminaSnapshot();
       var value = stamina.value + '/' + stamina.max;
       var valueW = D.textWidth(value, A.FontAtlas['18']);
@@ -580,9 +580,7 @@
       D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
     }
 
-    // 体力为只读状态条，不参与按压或回弹反馈。
-    drawMenuControl('stamina', m.stamina, 1);
-    var keys = ['avatar', 'settings', 'collection', 'start'];
+    var keys = ['avatar', 'stamina', 'settings', 'collection', 'start'];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
       var target = m[key];
@@ -776,6 +774,12 @@
       panel.y + (result.compact ? 58 : 83), panel.w - 32,
       result.compact ? 18 : 28, '#704026', 1);
 
+    if (!win) {
+      var reviveNotice = result.notice;
+      resultText(S.toast ? S.toast.text : '复活恢复合照50并击退敌人 · 每局1次',
+        cx, reviveNotice.y + (reviveNotice.h - 18) / 2,
+        reviveNotice.w - 16, 18, '#8a6248', 1);
+    }
     var hasNotice = win && S.unlockNotice && S.unlockNotice.length;
     if (hasNotice) {
       var notice = result.notice;
@@ -808,7 +812,7 @@
       ['上阵英雄', String(S.cardsPlaced)],
       ['合照完好', Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP],
     ];
-    var statsY = hasNotice ? result.statsY :
+    var statsY = hasNotice || !win ? result.statsY :
       result.infoTop + Math.max(0, (result.infoH - stats.length * result.statsGap) / 2);
     var left = panel.x + 27, right = panel.x + panel.w - 27;
     for (var i = 0; i < stats.length; i++) {
@@ -818,24 +822,84 @@
     }
 
     if (nextUnlocked) drawResultButton('下一关', u.resultNext, true);
-    else resultText(win ? '全部关卡已通关' : '调整阵容，再试一次',
+    else if (!win) {
+      var busy = S.adBusy || (A.Rewards && A.Rewards.isBusy());
+      var used = S.revivesUsed > 0;
+      drawResultButton(used ? '本局复活次数已用' : busy ? '广告加载中' : '看广告复活',
+        u.resultRevive, !used && !busy, result.compact ? 18 : 28);
+      if (used || busy) D.roundRect(u.resultRevive.x + 3, u.resultRevive.y + 3,
+        u.resultRevive.w - 6, u.resultRevive.h - 6, u.resultRevive.h / 2 - 3,
+        D.color('#b5a18a', 0.22));
+    } else resultText('全部关卡已通关',
       cx, u.resultNext.y + (u.resultNext.h - 18) / 2,
       panel.w - 36, 18, '#8a6248', 1);
     drawResultButton('再玩一次', u.resultReplay, !win);
     drawResultButton('返回选关', u.resultHome, false);
   }
 
+  // 字体纹理尚未就绪时，用七段几何显示真实整数百分比；不依赖图片。
+  function loadingPercent(value, cx, y) {
+    var label = String(value) + '%';
+    if (A.Assets && A.Assets.tex('font-28')) {
+      resultText(label, cx, y, 160, 28, '#704026', 1);
+      return;
+    }
+    var digits = String(value), step = 18, start = cx - (digits.length * step + 20) / 2;
+    var segments = ['1111110', '0110000', '1101101', '1111001', '0110011',
+      '1011011', '1011111', '1110000', '1111111', '1111011'];
+    var boxes = [[3, 0, 10, 2], [13, 2, 2, 10], [13, 14, 2, 10],
+      [3, 24, 10, 2], [1, 14, 2, 10], [1, 2, 2, 10], [3, 12, 10, 2]];
+    for (var i = 0; i < digits.length; i++) {
+      var active = segments[Number(digits.charAt(i))];
+      for (var j = 0; j < boxes.length; j++) if (active.charAt(j) === '1') {
+        var b = boxes[j];
+        D.rect(start + i * step + b[0], y + b[1], b[2], b[3], D.color('#704026'));
+      }
+    }
+    var px = start + digits.length * step + 4;
+    D.ring(px + 2, y + 5, 3, 1.5, D.color('#704026'));
+    D.ring(px + 12, y + 21, 3, 1.5, D.color('#704026'));
+    for (var k = 0; k < 7; k++) D.rect(px + 12 - k * 2, y + 5 + k * 2, 2, 3, D.color('#704026'));
+  }
+
   function drawLoading() {
-    var u = L.ui && L.ui.ready ? L.ui : {
-      w: C.designW,
-      h: C.designH,
-      contentTop: 96,
-      contentH: C.designH - 96,
-    };
-    var w = u.w || C.designW;
-    var y = u.contentTop + u.contentH * 0.38;
-    D.text('塔防小游戏', w / 2, y, 48, COL.textMain, 1);
-    D.text(S.phase === 'error' ? '资源加载失败' : '加载中', w / 2, y + 70, 18, COL.textDim, 1);
+    if (S.phase !== 'loading' && S.phase !== 'error') return;
+    var u = L.calc();
+    var progress = A.Assets && A.Assets.progress ? A.Assets.progress() :
+      { loaded: 0, total: 0, ratio: 0, failed: 0 };
+    var ratio = typeof progress.ratio === 'number' && isFinite(progress.ratio) ?
+      Math.max(0, Math.min(1, progress.ratio)) : 0;
+    var loaded = Math.max(0, Math.floor(progress.loaded || 0));
+    var total = Math.max(0, Math.floor(progress.total || 0));
+    var failed = Math.max(0, Math.floor(progress.failed || 0));
+    var panelW = Math.min(340, u.interactiveRect.w - u.pad * 2);
+    var panelH = Math.min(310, u.contentH - 16);
+    var panel = { x: u.safeLeft + (u.interactiveRect.w - panelW) / 2,
+      y: u.contentTop + (u.contentH - panelH) / 2, w: panelW, h: panelH };
+    var cx = panel.x + panel.w / 2;
+    D.vGradient(0, 0, u.w, u.h, D.color('#fff0d9'), D.color('#e7c69b'), 18);
+    D.creamPanel(panel, 1, 22);
+    D.roundRect(panel.x + 7, panel.y + 7, panel.w - 14, 58, 17, D.color('#f5d29f'));
+    resultText('猫狗大战家具', cx, panel.y + 22, panel.w - 36, 28, '#704026', 1);
+    // 暖色代码爪印是初始加载兜底，即便没有一张图片也可绘制。
+    var pawY = panel.y + panelH * 0.35;
+    D.roundRect(cx - 20, pawY + 3, 40, 27, 14, D.color('#d6a060'));
+    var toes = [[-25, -8], [-9, -20], [9, -20], [25, -8]];
+    for (var pi = 0; pi < toes.length; pi++) {
+      D.circle(cx + toes[pi][0], pawY + toes[pi][1], 8, D.color('#d6a060'));
+    }
+    loadingPercent(Math.floor(ratio * 100), cx, panel.y + panelH * 0.53);
+    var bar = { x: panel.x + 24, y: panel.y + panelH * 0.67, w: panel.w - 48, h: 18 };
+    D.roundRect(bar.x, bar.y, bar.w, bar.h, 9, D.color('#b88350'));
+    D.roundRect(bar.x + 2, bar.y + 2, bar.w - 4, bar.h - 4, 7, D.color('#ecd9bc'));
+    var fillW = (bar.w - 4) * ratio;
+    if (fillW > 0) D.roundRect(bar.x + 2, bar.y + 2, fillW, bar.h - 4,
+      Math.min(7, fillW / 2), D.color('#f2a12b'));
+    resultText('已加载 ' + loaded + '/' + total, cx, bar.y + 26,
+      panel.w - 32, 18, '#8a6248', 1);
+    resultText(S.phase === 'error' || failed > 0 ? '资源加载失败' + (failed ? ' ' + failed : '') : '正在准备小家',
+      cx, panel.y + panelH - 29, panel.w - 32, 18,
+      S.phase === 'error' || failed > 0 ? '#b04f4c' : '#8a6248', 1);
   }
 
   A.Hud = {

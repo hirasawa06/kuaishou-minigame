@@ -4,6 +4,7 @@
 
   var textures = {};   // key -> { tex, w, h }
   var pending = 0;
+  var total = 0;
   var ready = false;
   var onReady = null;
   var failed = [];
@@ -77,6 +78,7 @@
     onReady = cb;
     ready = false;
     pending = 0;
+    total = 0;
     failed.length = 0;
     var manifest = [];
     // 字体图集
@@ -97,7 +99,7 @@
     manifest.push(['heal-aura', 'res/Image/heal-aura.png']);
     manifest.push(['heal-cross', 'res/Image/heal-cross.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
-    manifest.push(['avatars', 'res/Menu/avatars.png']);
+    manifest.push(['avatars', 'res/Image/avatars.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
     if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
     if (A.HeroForms) {
@@ -130,7 +132,8 @@
     manifest.push(['shop-tray', 'res/Image/shop-tray.png']);
     manifest.push(['shop-button', 'res/Image/shop-button.png']);
 
-    pending = manifest.length;
+    total = manifest.length;
+    pending = total;
     for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);
     if (pending === 0) check();
   }
@@ -165,6 +168,11 @@
     entry: entry,
     sprite: sprite,
     isReady: function () { return ready; },
+    progress: function () {
+      var settled = Math.max(0, total - pending);
+      return { loaded: Math.max(0, settled - failed.length), total: total,
+        ratio: total ? settled / total : 0, failed: failed.length };
+    },
     failures: function () { return failed.slice(); },
   };
 

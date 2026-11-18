@@ -10,10 +10,10 @@ const ui = {
   interactiveRect: rect(0, 140, 414, 688),
   menu: {
     avatar: rect(12, 140, 85, 87),
-    // Display-only stamina rect; there is deliberately no rank entry.
-    stamina: rect(100, 159, 150, 48),
+    // Stamina now opens the rewarded recovery panel; no rank entry.
+    stamina: rect(100, 140, 150, 48),
     settings: rect(328, 140, 78, 87),
-    collection: rect(328, 237, 78, 90),
+    collection: rect(12, 237, 78, 90),
     start: rect(68, 735, 277, 91),
     card: rect(9, 423, 396, 305),
     levelPrev: rect(18, 535, 44, 44),
@@ -66,26 +66,19 @@ assert(state.menuFeedback.key === 'settings', '设置按钮缺少点击反馈')
 tap(207, 550)
 assert(openPanel === null, '个人中心弹窗未关闭')
 assert(!Object.prototype.hasOwnProperty.call(ui.menu, 'rank'), '首页不应保留排行榜布局入口')
-const feedbackBeforeRank = state.menuFeedback
-tap(44, 275) // Former rank entry: now empty home space.
-assert(openPanel === null && state.menuPanel === null && state.menuPressed === null &&
-  state.menuFeedback === feedbackBeforeRank && starts === 0 && selections.length === 0,
-'已取消的排行榜区域仍响应交互')
-tap(365, 275)
-assert(openPanel === 'collection' && state.menuFeedback.key === 'collection', '收藏入口或点击反馈未响应')
+tap(44, 275)
+assert(openPanel === 'collection' && state.menuFeedback.key === 'collection', '左侧收藏入口未响应')
 tap(200, 800)
 assert(starts === 0 && state.menuStartDelay === 0 && openPanel === null, '弹层下的开始按钮被误触')
 tap(50, 180)
 assert(openPanel === 'profile' && state.menuFeedback.key === 'avatar', '头像入口或点击反馈未响应')
 tap(200, 600)
-const feedbackBeforeStamina = state.menuFeedback
-listeners.mousedown({ clientX: 150, clientY: 180 })
-assert(state.menuPressed === null, '仅展示的体力条不应有按下高亮')
-listeners.mouseup({ clientX: 150, clientY: 180 })
-assert(state.menuPanel === null && openPanel === null && state.menuPressed === null &&
-  state.menuFeedback === feedbackBeforeStamina && state.menuStartDelay === 0 &&
-  starts === 0 && selections.length === 0,
-'仅展示的体力条不应打开面板、产生点击反馈或触发其他操作')
+listeners.mousedown({ clientX: 150, clientY: 160 })
+assert(state.menuPressed === 'stamina', '体力条缺少按下反馈')
+listeners.mouseup({ clientX: 150, clientY: 160 })
+assert(openPanel === 'stamina' && state.menuFeedback.key === 'stamina', '体力恢复面板未打开')
+tap(200, 600)
+assert(openPanel === null, '体力面板弹层未关闭')
 tap(200, 80)
 assert(starts === 0, '安全区外触发了交互')
 tap(36, 557)

@@ -297,6 +297,8 @@
       resultBtnH * 3 - resultGap * 2;
     var resultBtnX = resultPanel.x + (resultPanelW - resultW) / 2;
     ui.resultNext = { x: resultBtnX, y: resultTop, w: resultW, h: resultBtnH };
+    // 失败复活复用胜利“下一关”的一行，不增加结算面板高度。
+    ui.resultRevive = { x: resultBtnX, y: resultTop, w: resultW, h: resultBtnH };
     ui.resultReplay = { x: resultBtnX, y: resultTop + resultBtnH + resultGap,
       w: resultW, h: resultBtnH };
     ui.resultHome = { x: resultBtnX, y: resultTop + (resultBtnH + resultGap) * 2,
@@ -328,15 +330,14 @@
     ui.menuArtwork = { x: figmaX, y: figmaY, w: 390 * figmaScale,
       h: 845 * figmaScale, scale: figmaScale };
     ui.menu = {};
-    // 顶部方牌同尺寸；收藏留在设置下方，体力仅作头像旁的只读状态条。
+    // 顶部方牌同尺寸；收藏在头像下方同左列，体力与头像顶部对齐。
     var navSize = 78, navMargin = 11.5, navRowGap = 12;
     var navTop = 45.77, navLeft = navMargin, navRight = 390 - navMargin - navSize;
     var navBottom = navTop + navSize + navRowGap;
     ui.menu.avatar = figmaRect(navLeft, navTop, navSize, navSize);
     ui.menu.settings = figmaRect(navRight, navTop, navSize, navSize);
-    ui.menu.collection = figmaRect(navRight, navBottom, navSize, navSize);
-    ui.menu.stamina = figmaRect(navLeft + navSize + 10,
-      navTop + (navSize - 44) / 2, 142, 44);
+    ui.menu.collection = figmaRect(navLeft, navBottom, navSize, navSize);
+    ui.menu.stamina = figmaRect(navLeft + navSize + 10, navTop, 142, 44);
     ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
     ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
@@ -379,6 +380,20 @@
       shareBtn: shareBtn,
       close: { x: sheetX + sheetW - 44, y: setY + (setHead - 32) / 2, w: 32, h: 32 },
       versionY: shareBtn.y + shareBtn.h + setVersionGap,
+    };
+
+    // 体力弹窗：安全区居中，倒计时与广告入口各占独立一行。
+    var staminaH = Math.min(300, Math.max(1, contentH - 16));
+    var staminaY = contentTop + (contentH - staminaH) / 2;
+    var staminaHead = staminaH < 280 ? 64 : 80;
+    ui.stamina = {
+      sheet: { x: sheetX, y: staminaY, w: sheetW, h: staminaH },
+      head: staminaHead,
+      close: { x: sheetX + sheetW - 44, y: staminaY + (staminaHead - 32) / 2, w: 32, h: 32 },
+      valueY: staminaY + staminaHead + 18,
+      timerY: staminaY + staminaHead + 56,
+      noteY: staminaY + staminaH - 30,
+      ad: { x: sheetX + 20, y: staminaY + staminaH - 94, w: sheetW - 40, h: 48 },
     };
 
     // 名片：整页卡片，标题带 + 头像 + 昵称 + ID + 两个入口

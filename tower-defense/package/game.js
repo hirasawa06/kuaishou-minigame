@@ -66,6 +66,7 @@ require("./gameplay/data/font-atlas.js"); // 字形图集数据
 require("./gameplay/data/sprites.js"); // 图标精灵图数据
 require("./gameplay/data/rigs.js"); // 战斗图集元数据（动作帧 + 特效）
 require("./gameplay/data/character-animations.js"); // 角色动作规格（生成）
+require("./gameplay/data/avatars.js"); // 首页与个人资料头像元数据
 require("./gameplay/config.js"); // 数值配置
 require("./gameplay/layout.js"); // 竖屏布局
 require("./gameplay/state.js"); // 运行时数据模型
@@ -77,6 +78,7 @@ require("./gameplay/audio.js"); // 音效
 require("./gameplay/anim/rig.js"); // 分件关键帧动画
 require("./gameplay/anim/defs.js"); // 单位动画表
 require("./gameplay/play/battle.js"); // 核心玩法
+require("./gameplay/rewards.js"); // 激励奖励业务门禁（禁止占位/H5 假奖励）
 require("./gameplay/input.js"); // 触摸输入
 require("./gameplay/render/scene.js"); // 战场绘制
 require("./gameplay/hero-forms.js"); // 角色三等级形象

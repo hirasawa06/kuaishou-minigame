@@ -76,6 +76,7 @@
   }
 
   function start() {
+    if (S.adBusy || (A.Rewards && A.Rewards.isBusy())) return false;
     var level = S.clamp(S.selectedLevel | 0, 1, C.LEVELS.length);
     if (A.Profile && !A.Profile.isLevelUnlocked(level)) {
       S.toastMsg('请先通过第 ' + (level - 1) + ' 关', 1.4);
@@ -146,12 +147,14 @@
 
   // 由「重新开始」调用：保留当前布局，重置对局数据
   function restart() {
+    if (S.adBusy || (A.Rewards && A.Rewards.isBusy())) return false;
     S.selectedLevel = S.currentLevel;
     return start();
   }
 
   // 返回主页：清空本局临时状态，回到首页；未结束的一局不计入存档
   function goMenu() {
+    if (A.Rewards) A.Rewards.cancel();
     if (A.Tutorial) A.Tutorial.stop();
     A.Input.cancel();
     S.menuStartDelay = 0;
@@ -194,6 +197,10 @@
     if (S.phase !== 'playing' && !tutorialActive && S.toast) {
       S.toast.life = Math.max(0, S.toast.life - dt);
       if (S.toast.life <= 0) S.toast = null;
+    }
+    if (S.adBusy) {
+      A.GameAudio && A.GameAudio.syncPhase(S.phase);
+      return; // 视频期间不倒计时开新局、不推进波次/教程；失败阶段保持 lose。
     }
     if (S.menuFeedback && S.menuFeedback.life > 0) S.menuFeedback.life -= dt;
     if (S.menuSlide) {

@@ -13,7 +13,7 @@
  *   // 系统菜单「转发」（右上角「...」）自定义文案，注册一次即可全局生效
  *   KwaiRepost.registerSystemShare({
  *     title:    '快来挑战我！',
- *     imageUrl: 'res/Image/share-cover.png', // 可留空
+ *     imageUrl: 'https://cdn.example.com/cover.png', // 可留空
  *   });
  *
  * 说明：
@@ -29,11 +29,6 @@
     return Object.keys(params)
       .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
       .join('&');
-  }
-
-  function buildInviteCode(params) {
-    var query = buildQuery(params);
-    return query ? 'TD?' + query : 'TD';
   }
 
   function shareAppMessage(options) {
@@ -105,7 +100,6 @@
     registerSystemShare: registerSystemShare,
     getLaunchQuery:      getLaunchQuery,
     buildQuery:          buildQuery,
-    buildInviteCode:     buildInviteCode,
   };
 
 })();

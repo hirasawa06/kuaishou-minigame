@@ -141,6 +141,23 @@
     return true;
   };
 
+  // 广告/其他明确奖励：先结算自然恢复，未满保留余数，满时丢弃储备。
+  // 返回实际增加点数；非法参数或已满返回 0。
+  S.addStamina = function (amount, now) {
+    if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0 ||
+        Math.floor(amount) !== amount) return 0;
+    now = staminaNow(now);
+    var changed = refreshStamina(now);
+    var d = S.data;
+    var added = Math.min(amount, C.STAMINA_MAX - d.stamina);
+    if (added > 0) {
+      d.stamina += added;
+      if (d.stamina === C.STAMINA_MAX) d.lastRecoveryAt = Math.max(now, d.lastRecoveryAt);
+    }
+    if (changed || added > 0) S.save();
+    return added;
+  };
+
   function defaults() {
     return {
       nickname: NICK_DEFAULT,
@@ -313,7 +330,10 @@
   };
 
   // 一局结束：最高波次独立保留，只有胜利才解锁下一关。
-  S.recordRun = function (cleared, won) {
+  S.recordRun = function (cleared, won, finalization) {
+    // Battle 传同一局的对象：失败先计 games，复活后胜利仅补 clears/进度。
+    // 无第三参数的旧调用仍按独立一局记录。
+    finalization = finalization || { gamesCounted: false, wonCounted: false };
     var d = S.data;
     var level = A.State ? A.State.currentLevel : 1;
     var previousCompleted = d.completedLevel;
@@ -332,8 +352,14 @@
       }
       A.State.unlockNotice = newlyUnlocked;
     }
-    d.games += 1;
-    if (won) d.clears += 1;
+    if (!finalization.gamesCounted) {
+      d.games += 1;
+      finalization.gamesCounted = true;
+    }
+    if (won && !finalization.wonCounted) {
+      d.clears += 1;
+      finalization.wonCounted = true;
+    }
     if (cleared > d.bestWave) {
       d.bestWave = cleared;
       d.bestAt = Date.now();

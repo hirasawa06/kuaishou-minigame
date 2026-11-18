@@ -46,7 +46,11 @@
     cardsPlaced: 0,
     assetErrors: [],
     ranking: null,     // 排行榜快照（由 Profile.buildRanking 生成）
-    runRecorded: false, // 本局是否已计入存档，避免重复记录
+    runRecorded: false, // 当前结算是否已完成；复活后可再次结算
+    runFinalization: { gamesCounted: false, wonCounted: false },
+    runToken: 0,       // 对局世代；独立于每局重置的角色 uid
+    revivesUsed: 0,
+    adBusy: false,
     menuPanel: null,
     menuSoundEnabled: true,
     menuPressed: null,
@@ -278,6 +282,11 @@
   };
 
   S.reset = function () {
+    if (A.Rewards) A.Rewards.cancel();
+    S.runToken++;
+    S.revivesUsed = 0;
+    S.adBusy = false;
+    S.runFinalization = { gamesCounted: false, wonCounted: false };
     S.phase = 'playing';
     S.battleSpeed = 1;
     S.time = 0;

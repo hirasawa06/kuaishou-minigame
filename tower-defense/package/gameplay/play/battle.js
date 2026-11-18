@@ -495,6 +495,7 @@
 
   // ── 帧更新 ─────────────────────────────────────────────────
   function update(dt) {
+    if (S.adBusy) return;
     if (S.phase === 'paused') {
       updateEffects(dt);
       return;
@@ -661,7 +662,7 @@
     if (S.runRecorded) return;
     S.runRecorded = true;
     var cleared = won ? S.getWaves().length : Math.max(0, S.waveIndex);
-    if (A.Profile && A.Profile.recordRun) A.Profile.recordRun(cleared, won);
+    if (A.Profile && A.Profile.recordRun) A.Profile.recordRun(cleared, won, S.runFinalization);
     S.ranking = null;
   }
 
@@ -1108,12 +1109,58 @@
     S.floats = fl;
   }
 
+  // 只恢复本局合照；不重建波次、不治疗/复活宠物、不结算击杀金币。
+  function revive(runToken) {
+    if (S.phase !== 'lose' || (runToken !== undefined && runToken !== S.runToken) ||
+        S.revivesUsed >= C.REVIVES_PER_RUN) return false;
+    var north = typeof L.ui.spawnY === 'number' ? L.ui.spawnY : L.ui.field.y;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var enemy = S.enemies[i];
+      if (enemy.dead || enemy.hp <= 0) continue;
+      // 北界附近不向南搬回；其余怪物至少退 120 逻辑像素，最多到出生北界。
+      enemy.y = Math.min(enemy.y, Math.max(north, enemy.y - C.REVIVE_KNOCKBACK));
+      enemy.pendingTarget = 0;
+      enemy.pendingHit = -1;
+      enemy.atkTimer = Math.max(1, enemy.atkTimer || 0);
+      enemy.taunted = 0;
+      enemy.anim = 'move';
+      enemy.animT = 0;
+    }
+    for (var ui = 0; ui < S.units.length; ui++) {
+      var unit = S.units[ui];
+      if (unit.dead || unit.hp <= 0) continue;
+      unit.pendingTarget = 0;
+      unit.pendingHit = -1;
+      unit.atkTimer = Math.max(1, unit.atkTimer || 0);
+      unit.anim = 'idle';
+      unit.animT = 0;
+    }
+    S.projectiles.length = 0;
+    S.effects.length = 0;
+    S.floats.length = 0;
+    S.hitstop = 0;
+    S.shake = 0;
+    S.goalHitT = 0;
+    S.drag = null;
+    S.dragging = null;
+    S.inspect = null;
+    S.baseHp = C.REVIVE_HP;
+    S.revivesUsed++;
+    S.runRecorded = false; // 保留 runFinalization，下一次结算不重复 games。
+    S.phase = 'playing';
+    A.Input && A.Input.cancel();
+    S.toastMsg('合照恢复 ' + C.REVIVE_HP + '，继续守护！', 1.8);
+    A.GameAudio && A.GameAudio.syncPhase(S.phase);
+    return true;
+  }
+
   function remainingEnemies() {
     return S.enemies.length + S.spawnQueue.length;
   }
 
   A.Battle = {
     update: update,
+    revive: revive,
     tryDeploy: tryDeploy,
     findDeployPoint: findDeployPoint,
     deployBlockReason: deployBlockReason,

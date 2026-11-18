@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """现状/待验证：复用正式角色美术生成个人资料头像，不调用生图。
 
-输出：package/res/Menu/avatars.png（3×3，792×792，真实 RGBA）
+输出：package/res/Image/avatars.png（3×3，792×792，真实 RGBA）
       package/gameplay/data/avatars.js（兼容原 id/name/color 元数据）
 
 四个英雄取现有正面独立图，奶糖喵取收藏图集的一星正面格；
@@ -21,7 +21,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "package"
-OUT_DIR = PKG / "res" / "Menu"
+OUT_DIR = PKG / "res" / "Image"
 DATA_DIR = PKG / "gameplay" / "data"
 
 S = 128
@@ -117,7 +117,7 @@ def build_sheet(out_png):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     atlas.save(out_png, optimize=True)
     return {
-        "src": "res/Menu/avatars.png", "texW": atlas.width, "texH": atlas.height,
+        "src": "res/Image/avatars.png", "texW": atlas.width, "texH": atlas.height,
         "grid": GRID, "size": S, "frames": frames,
         "items": [{key: item[key] for key in ("id", "name", "color")} for item in AVATARS],
     }
