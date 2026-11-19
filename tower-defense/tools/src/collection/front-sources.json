@@ -1,0 +1,77 @@
+{
+  "status": "决定：用户2026-11-18提供，收藏页静态使用",
+  "targetBodyHeight": 176,
+  "targetFeetY": 216,
+  "items": [
+    {
+      "id": "tank",
+      "source": "柴不破三视图.png",
+      "sha256": "01b67ef474918a16525b9649f3b9b1bd1f26b90702e8f8f85d069abcd9e9fc1d",
+      "crop": [
+        0,
+        0,
+        444,
+        444
+      ],
+      "bodyTop": 36,
+      "feetY": 382,
+      "basis": "正面耳/头顶至脚底，不含武器光晕；人工标定，叠图复核"
+    },
+    {
+      "id": "war",
+      "source": "锤锤喵三视图.png",
+      "sha256": "33fe24c85516de4e14c7c783eaf474f1fbd1848ce0ff9ea09c7e9e59746f1682",
+      "crop": [
+        0,
+        0,
+        591,
+        590
+      ],
+      "bodyTop": 133,
+      "feetY": 531,
+      "basis": "正面耳/头顶至脚底，不含武器光晕；人工标定，叠图复核"
+    },
+    {
+      "id": "arch",
+      "source": "镭射喵三视图.png",
+      "sha256": "d3be4ccbed8f6a01cc7eb69dd790c36513e28e6576bb42d4895af2e2716f20d4",
+      "crop": [
+        0,
+        0,
+        583,
+        830
+      ],
+      "bodyTop": 162,
+      "feetY": 696,
+      "basis": "正面耳/头顶至脚底，不含武器光晕；人工标定，叠图复核"
+    },
+    {
+      "id": "mage",
+      "source": "哈利边牧三视图.png",
+      "sha256": "096835a8099370d9d0ae206d37d9b18e3383539d68ca96d76cec7ffe981a81e3",
+      "crop": [
+        0,
+        0,
+        799,
+        618
+      ],
+      "bodyTop": 46,
+      "feetY": 562,
+      "basis": "正面耳/头顶至脚底，不含武器光晕；人工标定，叠图复核"
+    },
+    {
+      "id": "healer",
+      "source": "奶糖猫三视图.png",
+      "sha256": "6a192c647a326690583b39fbfb143f5be953b24f89b409f01298749bc7e09c0f",
+      "crop": [
+        1183,
+        0,
+        1774,
+        887
+      ],
+      "bodyTop": 146,
+      "feetY": 758,
+      "basis": "正面耳/头顶至脚底，不含武器光晕；人工标定，叠图复核"
+    }
+  ]
+}

@@ -13,4 +13,6 @@ sources = json.loads((ROOT / 'tools/src/effects/healer/source.json').read_text()
 for name, encoded in sources.items():
     image = Image.open(io.BytesIO(base64.b64decode(encoded))).convert('RGBA')
     image.thumbnail((256, 256), Image.Resampling.LANCZOS)
-    image.save(ROOT / f'package/res/Image/heal-{name}.png', optimize=True)
+    output = ROOT / 'package/res/Image/ingame/effects'
+    output.mkdir(parents=True, exist_ok=True)
+    image.save(output / f'heal-{name}.png', optimize=True)

@@ -25,7 +25,7 @@
 
 ## 布局与父任务接入合同
 
-- 资源 key：`hero-levels`；src：`res/Image/hero-levels.png`。
+- 资源 key：`hero-levels`；src：`res/Image/outgame/hero-forms/hero-levels.png`。
 - RGBA PNG，1000×600，72 PPI；5 列 × 3 行；格位 200×200。
 - 列从左至右 `tank, war, arch, mage, healer`；行从上至下 `Lv1, Lv2, Lv3`。
 - 采样矩形 `[column*200, (level-1)*200, 200, 200]`。图集中第五列故意为空，禁止将其当作完成的奶糖喵立绘。

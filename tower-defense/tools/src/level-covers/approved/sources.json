@@ -1,5 +1,5 @@
 {
-  "status": "决定：用户指定第1—6关封面",
+  "status": "决定：用户指定第1—10关封面，第6—10关本轮更新",
   "origin": "用户附件，2026-11-18",
   "items": [
     {
@@ -36,7 +36,31 @@
       "level": 6,
       "source": "第6关.png",
       "file": "level-6.png",
-      "sha256": "9f6d6b2b28c251aabd45e14b045d6e1eab04bf04cca6c50b78ca93cb6a2a0843"
+      "sha256": "e3e09e96e3b747c674436de6f492423236ee45f09ac540c131b97adb3c9ddc47"
+    },
+    {
+      "level": 7,
+      "source": "第7关.png",
+      "file": "level-7.png",
+      "sha256": "58f673efe2dcd84e8ec7b71680081d1246797f9aad2d00be0c0da2de583a45fc"
+    },
+    {
+      "level": 8,
+      "source": "第8关.png",
+      "file": "level-8.png",
+      "sha256": "b3c4a98751f37ac5631c9c43e77018e8b4563c4b30db75ad56b870739cc37519"
+    },
+    {
+      "level": 9,
+      "source": "第9关.png",
+      "file": "level-9.png",
+      "sha256": "2e03a2448f06189133e359d6c397f831eefa2a5f1918a73cb538ce4289d746b6"
+    },
+    {
+      "level": 10,
+      "source": "第10关.png",
+      "file": "level-10.png",
+      "sha256": "601d656a66b6c3c00fd033624905841b1e2fc25cfa17721c4ede741cc72d4494"
     }
   ]
 }

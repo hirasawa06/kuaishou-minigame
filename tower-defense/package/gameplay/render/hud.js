@@ -27,7 +27,6 @@
     collection: [125, 439, 400, 370],
     bolt: [182, 873, 287, 354],
   };
-  var menuTextMetrics = {};
 
   function fmt(n) {
     return String(Math.floor(n));
@@ -199,10 +198,7 @@
 
   function drawCardText(value, x, y, maxW, col, align) {
     if (maxW <= 0) return;
-    var atlas = A.FontAtlas['18'];
-    var width = D.textWidth(value, atlas);
-    D.text(value, x, y, 18, col, align,
-      width > maxW ? maxW / width : 1);
+    D.fittedText(value, x, y, 16, maxW, col, align);
   }
 
   // 费用在右上、锁定按钮在右下；文字仅占头像与角标之间的可用宽度。
@@ -252,11 +248,10 @@
     var statRight = parts.lock.x - 3;
     var statW = Math.max(1, statRight - tx);
     // 两行使用相同字号与缩放，分隔点两侧不再占用空格。
-    var atlas = A.FontAtlas['18'];
-    var textScale = Math.min(1, nameW / Math.max(1, D.textWidth(def.name, atlas)),
-      statW / Math.max(1, D.textWidth(line1, atlas)));
-    D.text(def.name, tx, nameY, 18, D.color('#663c2b', a), 0, textScale);
-    D.text(line1, tx, nameY + 20, 18, clsCol, 0, textScale);
+    var fontSize = Math.min(D.fitTextSize(def.name, 18, nameW),
+      D.fitTextSize(line1, 18, statW));
+    D.fittedText(def.name, tx, nameY, fontSize, nameW, D.color('#663c2b', a), 0);
+    D.fittedText(line1, tx, nameY + 20, fontSize, statW, clsCol, 0);
 
     var cc = parts.cost;
     D.circle(cc.x, cc.y, cc.r,
@@ -317,7 +312,7 @@
     var line = '', line2 = '';
     for (var i = 0; i < def.desc.length; i++) {
       var next = line + def.desc.charAt(i);
-      if (!line2 && D.textWidth(next, A.FontAtlas['18']) <= maxLineW) line = next;
+      if (!line2 && D.textWidth(next, 18) <= maxLineW) line = next;
       else line2 += def.desc.charAt(i);
     }
     D.text(line, x + 14, y + 70, 18, D.color('#76513c', a), 0);
@@ -398,32 +393,8 @@
   }
 
   // 按位图字形的可见范围居中，避免“文字 y 值居中”却压到底边。
-  function menuText(str, cx, cy, col, size, scale) {
-    size = size || 18;
-    scale = scale === undefined ? 1 : scale;
-    var cacheKey = size + ':' + str;
-    var bounds = menuTextMetrics[cacheKey];
-    if (!bounds) {
-      var atlas = A.FontAtlas && A.FontAtlas[String(size)];
-      if (!atlas) return;
-      var glyphs = atlas.glyphs, pen = 0;
-      var left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
-      for (var i = 0; i < str.length; i++) {
-        var glyph = glyphs[str.charAt(i)] || glyphs[' '];
-        if (!glyph) continue;
-        if (!glyph.blank && glyph.w > 0) {
-          left = Math.min(left, pen + glyph.ox);
-          right = Math.max(right, pen + glyph.ox + glyph.w * 0.5);
-          top = Math.min(top, glyph.oy);
-          bottom = Math.max(bottom, glyph.oy + glyph.h * 0.5);
-        }
-        pen += glyph.adv;
-      }
-      bounds = menuTextMetrics[cacheKey] = { left: left, right: right, top: top, bottom: bottom };
-    }
-    if (!isFinite(bounds.left)) return;
-    D.text(str, cx - (bounds.left + bounds.right) * scale / 2,
-      cy - (bounds.top + bounds.bottom) * scale / 2, size, col, 0, scale);
+  function menuText(str, cx, cy, col, size) {
+    D.centeredText(str, cx, cy, size || 20, col);
   }
 
   function menuPaw(cx, cy, unit) {
@@ -444,13 +415,10 @@
     var face = disabled ? '#d3cbc4' : '#ffac2c';
     var light = disabled ? '#e5ddd4' : '#ffd771';
     var ink = disabled ? '#756a63' : '#fff3dc';
-    var textScale = disabled ? Math.min(1, 1.17 * unit) : unit;
-    var labelSize = disabled ? 28 : 48;
+    var labelSize = disabled ? 24 : 40;
     var centerY = y + h * 0.49;
     var radius = h * 0.48;
 
-    D.roundRect(x, y + 5 * unit, w, h - 2 * unit, radius,
-      D.color('#6e391c', disabled ? 0.22 : 0.30));
     D.roundRect(x, y, w, h - 5 * unit, radius, D.color(rim));
     D.roundRect(x + 2 * unit, y + 2 * unit, w - 4 * unit, h - 10 * unit,
       radius - 2 * unit, D.color(edge));
@@ -465,42 +433,27 @@
       0.75 * unit, D.color('#fff6db', disabled ? 0.20 : 0.76));
 
     if (!disabled) {
-      var textWidth = D.textWidth(label, A.FontAtlas['48']) * textScale;
+      var textWidth = D.textWidth(label, labelSize);
       var pawGap = 13 * unit, pawW = 20 * unit;
       var groupW = textWidth + 2 * (pawGap + pawW);
       var groupX = x + (w - groupW) / 2;
       menuPaw(groupX + pawW / 2, centerY, unit);
-      menuText(label, x + w / 2, centerY, D.color('#77401e'), labelSize,
-        textScale);
-      menuText(label, x + w / 2, centerY - 2 * unit, D.color(ink), labelSize,
-        textScale);
+      menuText(label, x + w / 2, centerY, D.color(ink), labelSize);
       menuPaw(groupX + groupW - pawW / 2, centerY, unit);
     } else {
-      menuText(label, x + w / 2, centerY, D.color(ink), labelSize, textScale);
+      menuText(label, x + w / 2, centerY, D.color(ink), labelSize);
     }
-  }
-
-  function drawBossLabEntry(target) {
-    var active = S.menuPressed === 'bossLab';
-    var feedback = S.menuFeedback && S.menuFeedback.key === 'bossLab' && S.menuFeedback.life > 0;
-    var scale = active ? 0.95 : feedback ? 1.03 : 1;
-    var w = target.w * scale, h = target.h * scale;
-    var x = target.x + (target.w - w) / 2, y = target.y + (target.h - h) / 2;
-    D.roundRect(x, y + 2, w, h - 2, h / 2, D.color('#754334', 0.95));
-    D.roundRect(x + 2, y + 2, w - 4, h * 0.48, Math.max(4, h * 0.38), D.color('#ffe6b8'));
-    D.text('查看 Boss 动作', x + w / 2, y + (h - 18) / 2, 18, D.color('#704026'), 1);
   }
 
   function menuPlate(r, pill) {
     var x = r.x, y = r.y, w = r.w, h = r.h;
     var unit = pill ? h / 44 : w / 78;
     var radius = pill ? h / 2 : 18 * unit;
-    var border = 2 * unit, inset = 4 * unit, shadow = 3 * unit;
-    D.roundRect(x, y + shadow, w, h - shadow, radius, D.color('#5f3722', 0.25));
-    D.roundRect(x, y, w, h - shadow, radius, D.color('#a3663d'));
-    D.roundRect(x + border, y + border, w - border * 2, h - shadow - border * 2,
+    var border = 2 * unit, inset = 4 * unit;
+    D.roundRect(x, y, w, h, radius, D.color('#a3663d'));
+    D.roundRect(x + border, y + border, w - border * 2, h - border * 2,
       Math.max(1, radius - border), D.color('#f3cf9e'));
-    D.roundRect(x + inset, y + inset, w - inset * 2, h - shadow - inset * 2,
+    D.roundRect(x + inset, y + inset, w - inset * 2, h - inset * 2,
       Math.max(1, radius - inset), D.color('#ffecd2'));
     D.roundRect(x + 10 * unit, y + 7 * unit, 14 * unit, 2 * unit, unit,
       D.color('#ffffff', 0.36));
@@ -518,30 +471,25 @@
       // 快照负责按时间恢复；这里只展示，不改变体力计算。
       var stamina = A.Profile.getStaminaSnapshot();
       var value = stamina.value + '/' + stamina.max;
-      var valueW = D.textWidth(value, A.FontAtlas['18']);
-      var valueScale = Math.min(barUnit, Math.max(0.1,
-        (w - boltW - gap - 20 * barUnit) / Math.max(1, valueW)));
-      var groupW = boltW + gap + valueW * valueScale;
-      var groupX = r.x + (w - groupW) / 2;
+      var valueFontSize = 16;
       var seconds = Math.ceil(stamina.nextRecoveryMs / 1000);
-      var timer = stamina.value >= stamina.max ? '已满' :
+      var timer = stamina.value >= stamina.max ? '' :
         Math.floor(seconds / 60) + ':' + ('0' + (seconds % 60)).slice(-2) + ' +1';
-      var timerWidth = D.textWidth(timer, A.FontAtlas['18']);
-      var timerScale = barUnit * 0.62;
-      var timerGap = 7 * barUnit;
+      var timerFontSize = 12;
+      var timerGap = timer ? 7 * barUnit : 0;
       var availableW = Math.max(1, w - 18 * barUnit - boltW - gap - timerGap);
-      var textW = valueW * valueScale + timerWidth * timerScale;
-      var fit = Math.min(1, availableW / Math.max(1, textW));
-      valueScale *= fit;
-      timerScale *= fit;
-      var rowW = boltW + gap + valueW * valueScale + timerGap + timerWidth * timerScale;
+      valueFontSize = D.fitTextSize(value, valueFontSize, availableW - D.textWidth(timer, timerFontSize));
+      timer = D.fitTextContent(timer, timerFontSize, availableW - D.textWidth(value, valueFontSize));
+      var valueW = D.textWidth(value, valueFontSize);
+      var timerWidth = D.textWidth(timer, timerFontSize);
+      var rowW = boltW + gap + valueW + timerGap + timerWidth;
       var rowX = r.x + (w - rowW) / 2;
       menuIconInBox('bolt', { x: rowX, y: r.y + (h - boltH) / 2, w: boltW, h: boltH });
       var valueX = rowX + boltW + gap;
-      menuText(value, valueX + valueW * valueScale / 2,
-        r.y + h / 2, D.color('#704026'), 18, valueScale);
-      menuText(timer, valueX + valueW * valueScale + timerGap + timerWidth * timerScale / 2,
-        r.y + h / 2, D.color('#916b50'), 18, timerScale);
+      menuText(value, valueX + valueW / 2,
+        r.y + h / 2, D.color('#704026'), valueFontSize);
+      menuText(timer, valueX + valueW + timerGap + timerWidth / 2,
+        r.y + h / 2, D.color('#916b50'), timerFontSize);
       return;
     }
     menuPlate(r, false);
@@ -638,12 +586,14 @@
       var canvas = window.canvas;
       var sx = canvas.width / u.w, sy = canvas.height / u.h;
       gl.enable(gl.SCISSOR_TEST);
+      // ── 裁剪区包含封面顶部信息条，滑动时不截掉圆章 ──────
+      var scissorTop = Math.min(clipY, m.levelStatus.y - 2);
       gl.scissor(Math.round(card.x * sx), Math.round((u.h - clipY - clipH) * sy),
-        Math.round(card.w * sx), Math.round(clipH * sy));
+        Math.round(card.w * sx), Math.round((clipY + clipH - scissorTop) * sy));
     }
     function drawLevelCard(levelNo, shift) {
       if (levelNo < 1 || levelNo > C.LEVELS.length) return;
-      // 只绘透明插画卡片；章节信息统一落入卡片底部信息区。
+      // 先绘封面，再叠加顶部关卡信息条。
       var cover = A.Assets.entry('level-cover-' + levelNo);
       if (cover) A.Render.setMaskTexture(frameOverlayArt.tex);
       D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
@@ -654,9 +604,9 @@
         w: card.w * 1021 / 1107, h: clipH * 856 / 928,
         radius: card.w * 85 / 1107 + 10,
       };
-      if (cover) D.roundTexture(cover.tex, container.x, container.y,
-        container.w, container.h, container.radius);
       var unlocked = A.Profile.isLevelUnlocked(levelNo);
+      if (cover) D.roundTexture(cover.tex, container.x, container.y,
+        container.w, container.h, container.radius, !unlocked);
       if (!unlocked) {
         // 锁定遮罩由 WebGL 圆角几何绘制；略伸入框内，再以原卡图像素重绘画框。
         // 这样场景四角被遮住，外部背景不会出现随卡片移动的黑色矩形。
@@ -680,24 +630,18 @@
         D.texture(lockArt.tex, lockArt.w, lockArt.h, 48, 26, 160, 200,
           scene.x + (scene.w - lockW) / 2, scene.y + (scene.h - lockH) / 2,
           lockW, lockH);
-        var hintW = Math.min(186, scene.w - 28);
-        D.roundRect(scene.x + (scene.w - hintW) / 2, scene.y + 12,
-          hintW, 29, 14, D.color('#3c2a25', 0.78));
-        D.text('先通关第 ' + (levelNo - 1) + ' 关',
-          scene.x + scene.w / 2, scene.y + 17, 18, D.color('#fff1d9'), 1);
       }
       var status = m.levelStatus;
-      D.texture(nameplateArt.tex, nameplateArt.w, nameplateArt.h, 27, 32, 970, 270,
+      D.texture(nameplateArt.tex, nameplateArt.w, nameplateArt.h, 0, 0, nameplateArt.w, nameplateArt.h,
         status.x + shift, status.y, status.w, status.h);
-      var medallionX = status.x + shift + status.w * 0.125;
-      var nameX = status.x + shift + status.w * 0.61;
-      D.text(String(levelNo), medallionX, status.y + 12, 28, D.color('#784323'), 1);
-      D.text('关', medallionX, status.y + 46, 18, D.color('#784323'), 1);
+      // ── 单行名称与纯数字，锚点来自新素材中心 ────────────
+      var medallionX = status.x + shift + status.w * 192 / 1296;
+      var nameX = status.x + shift + status.w * 0.625;
+      var textCenterY = status.y + status.h * 0.55;
+      D.centeredText(String(levelNo), medallionX, status.y + status.h * 220 / 404,
+        24, D.color('#784323'));
       D.text(C.LEVELS[levelNo - 1].name,
-        nameX, status.y + 12, 18, D.color('#784323'), 1);
-      D.text(levelNo + '/' + C.LEVELS.length + ' · ' + (unlocked ?
-        (levelNo <= A.Profile.data.completedLevel ? '已通关' : '可挑战') : '未解锁'),
-        nameX, status.y + 45, 18, D.color(unlocked ? '#784323' : '#8f8276'), 1);
+        nameX, textCenterY - 10, 20, D.color('#784323'), 1);
     }
     drawLevelCard(S.selectedLevel, offset);
     if (moving) {
@@ -721,7 +665,6 @@
     if (!unlocked) {
       drawMenuStartButton(m.start, 1, true, '尚未解锁');
     }
-    drawBossLabEntry(m.bossLab);
     if (S.toast) {
       D.text(S.toast.text, m.card.x + m.card.w / 2, m.card.y + 12, 18, D.color('#fff0d4'), 1);
     }
@@ -786,9 +729,7 @@
   }
 
   function resultText(value, x, y, maxW, size, color, align) {
-    var width = D.textWidth(value, A.FontAtlas[String(size)]);
-    D.text(value, x, y, size, D.color(color), align,
-      width > maxW ? maxW / width : 1);
+    D.fittedText(value, x, y, size, maxW, D.color(color), align);
   }
 
   function drawResultButton(label, rect, primary, fontSize) {

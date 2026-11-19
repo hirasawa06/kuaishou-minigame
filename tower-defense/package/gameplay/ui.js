@@ -63,17 +63,17 @@
     D.rect(0, 0, u.w, u.h, col(COLOR.mask, 0.34));
   }
 
-  function paper(rect, radius, title, headH) {
+  function paper(rect, radius, title, headH, borderless) {
     // 柔和投影 + 纸面
     D.roundRect(rect.x + 2, rect.y + 5, rect.w, rect.h, radius, col('#7a5533', 0.18));
     D.roundRect(rect.x, rect.y, rect.w, rect.h, radius, col(COLOR.paper, 0.985));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#f3e3cd'));
+    if (!borderless) D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#f3e3cd'));
     if (!title) return;
     // 木棕标题栏：仅盖住上半部分，底边与纸面同色形成圆角包裹
     var hh = headH;
     D.roundRect(rect.x, rect.y, rect.w, hh, radius, col(COLOR.brown));
     D.rect(rect.x, rect.y + hh - radius, rect.w, radius, col(COLOR.brown));
-    D.text(title, rect.x + rect.w / 2, rect.y + (hh - 28) / 2, 28, col(COLOR.white), 1);
+    D.centeredText(title, rect.x + rect.w / 2, rect.y + hh / 2, 32, col(COLOR.white));
   }
 
   function closeButton(rect) {
@@ -87,19 +87,18 @@
   }
 
   function backButton(rect) {
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 14, col(COLOR.paper, 0.96));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#e7d3b8'));
-    icon('ui-back', rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.5);
+    icon('ui-back', rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.6);
   }
 
-  function primaryButton(rect, label, size) {
+  function primaryButton(rect, label, size, borderless) {
+    size = D.fontSize(size || 24);
     D.roundRect(rect.x, rect.y - 1, rect.w, rect.h + 3, rect.h / 2, col(COLOR.accentEdge, 0.34));
     D.roundRect(rect.x, rect.y, rect.w, rect.h, rect.h / 2, col(COLOR.accent));
     D.roundRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h * 0.44, rect.h / 2,
       col(COLOR.accentTop, 0.92));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1.5, col(COLOR.accentEdge, 0.8));
-    D.text(label, rect.x + rect.w / 2, rect.y + (rect.h - (size || 26)) / 2 + 1,
-      size || 26, col(COLOR.accentText), 1);
+    if (!borderless) D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1.5, col(COLOR.accentEdge, 0.8));
+    D.centeredText(label, rect.x + rect.w / 2, rect.y + rect.h / 2,
+      size, col(COLOR.accentText));
   }
 
   function ghostRow(rect, label, opts) {
@@ -130,9 +129,9 @@
     var sw = switchRects(rect);
     var t = sw.track;
     var textW = t.x - rect.x - pad - 8;
-    fittedText(label, rect.x + pad, rect.y + 6, 28, textW, COLOR.brownDeep, 0);
+    fittedText(label, rect.x + pad, rect.y + 6, 20, textW, COLOR.brownDeep, 0);
     if (sub) {
-      fittedText(sub, rect.x + pad, rect.y + (rect.h < 60 ? 35 : 39), 18,
+      fittedText(sub, rect.x + pad, rect.y + (rect.h < 60 ? 35 : 39), 14,
         textW, COLOR.textDim, 0);
     }
     D.roundRect(t.x, t.y, t.w, t.h, t.h / 2,
@@ -146,32 +145,17 @@
   }
 
   function fittedText(value, x, y, size, maxW, color, align) {
-    var width = D.textWidth(value, A.FontAtlas[String(size)]);
-    D.text(value, x, y, size, col(color), align,
-      width > maxW ? maxW / width : 1);
+    D.fittedText(value, x, y, size, maxW, col(color), align);
   }
 
-  // 头像：外圈奶油底 + 选中时橙色描边与右下角勾选
+  // 头像铺满格子，选中外圈沿用素材的1/8圆角比例
   function avatarFrame(rect, index, selected) {
     var r = Math.min(rect.w, rect.h);
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, Math.round(r * 0.3), col(COLOR.paperDim));
     if (selected) {
-      D.roundRect(rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, Math.round(r * 0.3) + 2,
+      D.roundRect(rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, r / 8 + 2,
         col('#f8c66a'));
-      D.roundRect(rect.x, rect.y, rect.w, rect.h, Math.round(r * 0.3), col('#fff6e2'));
-      D.strokeRect(rect.x, rect.y, rect.w, rect.h, 2, col(COLOR.accent));
-    } else {
-      D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#e9d8c0'));
     }
-    drawAvatar(index, rect.x + rect.w / 2, rect.y + rect.h / 2, r * 0.82);
-    if (selected) {
-      var cs = Math.max(14, r * 0.24);
-      var cx = rect.x + rect.w - cs / 2 - 3;
-      var cy = rect.y + rect.h - cs / 2 - 3;
-      D.circle(cx, cy, cs / 2, col(COLOR.accent));
-      D.ring(cx, cy, cs / 2 - 0.8, 1.2, col('#fff6e2'));
-      icon('ui-check', cx, cy, cs * 0.66);
-    }
+    drawAvatar(index, rect.x + rect.w / 2, rect.y + rect.h / 2, r);
   }
 
   function drawAvatar(index, cx, cy, size) {
@@ -198,7 +182,7 @@
     D.roundRect(g.sheet.x + 7, g.sheet.y + 7,
       g.sheet.w - 14, g.head - 11, 17, col('#f5d29f'));
     fittedText('设置', g.sheet.x + g.sheet.w / 2,
-      g.sheet.y + (g.compact ? 19 : 27), g.compact ? 28 : 48,
+      g.sheet.y + (g.compact ? 19 : 27), g.compact ? 24 : 32,
       g.sheet.w - 90, COLOR.brownDeep, 1);
     closeButton(g.close);
 
@@ -212,13 +196,13 @@
       col('#fff0d9'));
     icon('ui-share', g.shareBtn.x + 25, g.shareBtn.y + g.shareBtn.h / 2, 20, 0.85);
     fittedText('分享给好友', g.shareBtn.x + g.shareBtn.w / 2,
-      g.shareBtn.y + (g.shareBtn.h - 28) / 2, 28,
+      g.shareBtn.y + (g.shareBtn.h - 20) / 2, 20,
       g.shareBtn.w - 88, COLOR.brownDeep, 1);
     icon('ui-chevron', g.shareBtn.x + g.shareBtn.w - 22,
       g.shareBtn.y + g.shareBtn.h / 2, 17);
 
     fittedText('版本 ' + VERSION, g.sheet.x + g.sheet.w / 2, g.versionY,
-      18, g.sheet.w - 36, COLOR.textDim, 1);
+      12, g.sheet.w - 36, COLOR.textDim, 1);
   }
 
   // ── 体力：仅展示 Profile 快照，不在 UI 改动恢复或奖励计算 ──
@@ -254,25 +238,74 @@
   }
 
   // ── 我的名片 ────────────────────────────────────────────────
+  function whiteClose(rect) {
+    var cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+    var width = rect.w * 0.5, thickness = 3;
+    for (var arm = -1; arm <= 1; arm += 2) {
+      A.Render.push(cx - width / 2, cy - thickness / 2, width, thickness, col('#ffffff'),
+        { mode: 0, hw: width / 2, hh: thickness / 2, r: thickness / 2,
+          rot: arm * Math.PI / 4 });
+    }
+  }
+
+  // --- 纸面内侧压边：阴影限制在圆角内部，向中心逐层淡出 ---
+  function profileInset(x, y, w, h) {
+    D.roundRect(x, y, w, h, 26, col('#e9c6a1'), col('#dcb48d'));
+    D.roundRect(x + 1, y + 1, w - 2, h - 2, 25, col('#f5dfc7'), col('#eccba8'));
+    D.roundRect(x + 3, y + 2, w - 6, h - 5, 24, col('#fbeedd'), col('#f4ddc2'));
+    D.roundRect(x + 6, y + 4, w - 12, h - 10, 22, col('#fffaf3'), col('#fff0de'));
+  }
+
+  function profilePaper(g) {
+    var r = g.card, bodyY = r.y + g.head - 4;
+    for (var i = 3; i > 0; i--) {
+      D.roundRect(r.x - i, r.y + 3 + i * 2, r.w + i * 2, r.h, 28 + i,
+        col('#714325', 0.045));
+    }
+    D.roundRect(r.x, r.y, r.w, r.h, 28, col('#ce996d'), col('#825130'));
+    // --- 顶部内沿六级羽化，避免亮边直接切到深棕色 ---
+    for (var edge = 1; edge <= 6; edge++) {
+      D.roundRect(r.x + Math.min(edge, 2), r.y + edge, r.w - Math.min(edge, 2) * 2,
+        r.h - edge, 28 - Math.min(edge, 2),
+        A.Render.mix(col('#ce996d'), col('#ac7149'), edge / 6), col('#825130'));
+    }
+    profileInset(r.x, bodyY, r.w, r.y + r.h - bodyY);
+    D.text('我的名片', r.x + r.w / 2, r.y + (g.head - 28) / 2, 28, col(COLOR.white), 1);
+  }
+
+  function profileRow(rect, label) {
+    var radius = rect.h / 2;
+    D.roundRect(rect.x - 1, rect.y + 5, rect.w + 2, rect.h, radius + 1, col('#a86e38', 0.09));
+    D.roundRect(rect.x, rect.y + 3, rect.w, rect.h, radius, col('#b57c43', 0.19));
+    D.roundRect(rect.x, rect.y + 1, rect.w, rect.h, radius, col('#d6ad7d'));
+    D.roundRect(rect.x, rect.y, rect.w, rect.h - 1, radius, col('#f9e8cd'), col('#f8dfba'));
+    D.text(label, rect.x + rect.w / 2, rect.y + (rect.h - 28) / 2 + 2,
+      28, col(COLOR.brownDeep), 1);
+    icon('ui-chevron', rect.x + rect.w - 18, rect.y + rect.h / 2, rect.h * 0.4);
+  }
+
   function drawProfile() {
     var u = L.ui;
     var g = u.profile;
     dimBackground();
-    paper(g.card, 26, '我的名片', g.head);
-    closeButton(g.close);
+    profilePaper(g);
+    whiteClose(g.close);
 
     // 头像（可点击，等同「选择头像」）
     var av = g.avatar;
-    D.roundRect(av.x - 4, av.y - 4, av.w + 8, av.h + 8, 22, col('#f8c66a'));
-    D.roundRect(av.x - 1, av.y - 1, av.w + 2, av.h + 2, 18, col('#fff6e2'));
-    drawAvatar(P.data.avatarIndex, av.x + av.w / 2, av.y + av.h / 2, av.w * 0.82);
+    var avatarSize = Math.min(av.w, av.h), border = 1.5;
+    D.roundRect(av.x + (av.w - avatarSize) / 2 - border,
+      av.y + (av.h - avatarSize) / 2 - border,
+      avatarSize + border * 2, avatarSize + border * 2,
+      avatarSize / 8 + border, col('#8c5a33'));
+    drawAvatar(P.data.avatarIndex, av.x + av.w / 2, av.y + av.h / 2, avatarSize);
 
     D.text(P.data.nickname, g.card.x + g.card.w / 2, g.nameY, 28, col(COLOR.brownDeep), 1);
     D.text(ID_PREFIX + P.data.id + ' · 中国', g.card.x + g.card.w / 2,
       g.idY, 18, col(COLOR.textDim), 1);
 
-    ghostRow(g.avatarBtn, '选择头像', { chevron: true, size: 28 });
-    ghostRow(g.nickBtn, '修改昵称', { chevron: true, size: 28 });
+    profileRow(g.avatarBtn, '选择头像');
+    profileRow(g.nickBtn, '修改昵称');
   }
 
   // ── 选择头像 ────────────────────────────────────────────────
@@ -280,20 +313,15 @@
     var u = L.ui;
     var g = u.avatarPick;
     dimBackground();
-    paper(g.sheet, 26, '选择头像', g.head);
-    closeButton(g.close);
-    D.text('选一位伙伴，陪你守护小家', g.sheet.x + g.sheet.w / 2, g.subY, 18,
-      col(COLOR.textDim), 1);
+    paper(g.sheet, 26, '选择头像', g.head, true);
+    whiteClose(g.close);
 
     for (var i = 0; i < P.AVATARS.length; i++) {
       var rect = g.rect(i);
       avatarFrame(rect, i, i === UI.draftAvatar);
     }
 
-    var item = P.AVATARS[UI.draftAvatar] || P.AVATARS[0];
-    D.text('当前：' + item.name, g.sheet.x + g.sheet.w / 2, g.currentY, 18,
-      col(COLOR.textDim), 1);
-    primaryButton(g.save, '保存头像', 28);
+    primaryButton(g.save, '保存头像', 28, true);
   }
 
   // ── 修改昵称 ────────────────────────────────────────────────
@@ -317,12 +345,12 @@
     D.strokeRect(f.x, f.y, f.w, f.h, 2, col('#e2c9a4'));
     var text = UI.draftNickname || '';
     var maxTextW = f.w - 70;
-    var tw = D.textWidth(text, A.FontAtlas['28']);
+    var tw = D.textWidth(text, 28);
     var shown = text;
     // 超宽时截掉开头，保留用户正在输入的尾部
     while (shown.length > 1 && tw > maxTextW) {
       shown = shown.slice(1);
-      tw = D.textWidth(shown, A.FontAtlas['28']);
+      tw = D.textWidth(shown, 28);
     }
     if (!shown) {
       D.text('输入昵称', f.x + 14, f.y + (f.h - 28) / 2, 28, col('#c8b6a0'), 0);
@@ -368,7 +396,7 @@
       col('#c0ad95'), 1);
   }
 
-  // ── 英雄收藏：各星级沿用同一静态立绘 ──
+  // ── 萌宠收藏：各星级沿用同一静态立绘 ──
   function heroForm(def, level, cx, cy, size) {
     if (A.HeroForms && A.HeroForms.draw) A.HeroForms.draw(def.id, 2, cx, cy, size);
     else icon(def.icon, cx, cy, size);
@@ -377,9 +405,59 @@
     return S.isHeroUnlocked ? S.isHeroUnlocked(id) :
       (P.data.completedLevel + 1 >= ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[id] || 1));
   }
+  // --- 展示与点击共用排序：已解锁优先，组内沿用配置顺序 ---
+  function collectionHeroes() {
+    return C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); }).concat(
+      C.HEROES.filter(function (hero) { return !heroUnlocked(hero.id); }));
+  }
+  // --- 收藏册立绘、剪影与徽章共用一张静态图集 ---
+  function collectionArt(column, row, cx, cy, size) {
+    var entry = A.Assets.entry('collection-art');
+    if (!entry) return;
+    D.texture(entry.tex, entry.w, entry.h, column * 256, row * 256, 256, 256,
+      cx - size / 2, cy - size / 2, size, size);
+  }
+  function collectionCard(hero, cell) {
+    var unlocked = heroUnlocked(hero.id), cx = cell.x + cell.w / 2;
+    var art = A.Assets.entry('collection-scene-' + hero.id);
+    if (art) {
+      // ┌─ 263:161：场景图只负责角色；卡框、波浪和标题均由代码绘制 ─┐
+      var radius = cell.w * (45.636 / 329.521);
+      var frameInset = cell.w * (10.4424 / 329.521);
+      var photoRadius = cell.w * ((48.7324 - 10.4424) / 329.521);
+      // Figma: 0 0 4.641 rgba(46,37,16,.48)，用两层软边逼近其中心阴影。
+      D.roundRect(cell.x - 2.3, cell.y - 2.3, cell.w + 4.6, cell.h + 4.6, radius + 2.3, col('#2e2510', 0.06));
+      D.roundRect(cell.x - 1.1, cell.y - 1.1, cell.w + 2.2, cell.h + 2.2, radius + 1.1, col('#2e2510', 0.12));
+      // Union 的照片槽从四边各缩进 10.442px；这是 Figma 卡框可见的米金边。
+      D.roundRect(cell.x, cell.y, cell.w, cell.h, radius, col('#fff7da'), col('#ffd59e'));
+      D.roundTexture(art.tex, cell.x + frameInset, cell.y + frameInset,
+        cell.w - frameInset * 2, cell.h - frameInset * 2, photoRadius);
+      D.wavePanel(cell.x, cell.y, cell.w, cell.h, radius,
+        col('#fff7da'), col('#ffd59e'));
+      D.figmaCardBorder(cell.x, cell.y, cell.w, cell.h, radius);
+      if (!unlocked) {
+        D.roundRect(cell.x, cell.y, cell.w, cell.h, radius, col('#dbcbb8', 1));
+        collectionArt(2, 2, cx, cell.y + cell.h * 0.43, cell.w * 0.32);
+      }
+      var caption = unlocked ? hero.name : '第 ' + hero.unlockLevel + ' 关解锁';
+      fittedText(caption, cx, cell.y + cell.h * (414.22 / 502.404), cell.w * (41.77 / 329.521),
+        cell.w * 0.84, '#591f00', 1);
+      return;
+    }
+    var radius = Math.min(22, cell.w * 0.13);
+    D.roundRect(cell.x, cell.y, cell.w, cell.h, radius, col(unlocked ? '#655740' : '#b79e83'));
+    D.roundRect(cell.x + 0.8, cell.y + 0.8, cell.w - 1.6, cell.h - 1.6, radius - 0.8, col(unlocked ? '#ebcfa5' : '#dfccb4'));
+    var size = Math.min(cell.w * 0.95, cell.h * 0.69);
+    var column = ['tank', 'war', 'arch', 'mage', 'healer'].indexOf(hero.id);
+    collectionArt(column, unlocked ? 0 : 1, cx, cell.y + cell.h * 0.40, size);
+    if (!unlocked) collectionArt(2, 2, cx, cell.y + cell.h * 0.43, size * 0.34);
+    var label = unlocked ? hero.name : '第 ' + hero.unlockLevel + ' 关解锁';
+    fittedText(label, cx, cell.y + cell.h * 0.80, unlocked ? 28 : 18, cell.w - 20, unlocked ? '#19140e' : COLOR.brownDeep, 1);
+  }
   function drawCollection(detail) {
     var u = L.ui, g = u.collection;
-    D.vGradient(0, 0, u.w, u.h, col(COLOR.pageTop), col(COLOR.pageBottom), 18);
+    var book = A.Assets.entry('collection-book');
+    if (book) D.texture(book.tex, book.w, book.h, 0, 0, book.w, book.h, 0, 0, u.w, u.h);
     backButton(g.back);
     if (detail) {
       var def = S.heroById(UI.collectionHero);
@@ -411,18 +489,12 @@
       }
       return;
     }
-    D.text('英雄收藏', u.safeLeft + (u.safeRight - u.safeLeft) / 2, g.titleY, 28, col(COLOR.brownDeep), 1);
-    for (var i = 0; i < C.HEROES.length; i++) {
-      var h = C.HEROES[i], cell = g.rect(i), unlocked = heroUnlocked(h.id);
-      D.roundRect(cell.x, cell.y, cell.w, cell.h, 16, col(unlocked ? COLOR.paper : '#e2d8ca'));
-      if (!unlocked) {
-        D.text('?', cell.x + cell.w / 2, cell.y + cell.h * 0.2, 48, col(COLOR.textDim), 1);
-        var unlockLevel = h.unlockLevel || ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[h.id] || 1);
-        D.text('第 ' + unlockLevel + ' 关解锁', cell.x + cell.w / 2, cell.y + cell.h - 28, 18, col(COLOR.textDim), 1);
-      } else {
-        heroForm(h, 1, cell.x + cell.w / 2, cell.y + cell.h * 0.39, Math.min(80, cell.h * 0.62));
-        D.text(h.name, cell.x + cell.w / 2, cell.y + cell.h - 28, 18, col(COLOR.brownDeep), 1);
-      }
+    var collected = C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); }).length;
+    fittedText('萌宠收藏', u.w / 2, g.titleY, 28, g.back.x > 0 ? u.w * 0.43 : 180, COLOR.brownDeep, 1);
+    D.text(collected + '/' + C.HEROES.length, g.countX, g.titleY + 6, 18, col(COLOR.brownDeep), 2);
+    var heroes = collectionHeroes();
+    for (var i = 0; i < heroes.length; i++) {
+      collectionCard(heroes[i], g.rect(i));
     }
   }
 
@@ -595,9 +667,10 @@
     if (name === 'collection' || name === 'heroDetail') {
       if (pointIn(u.collection.back, x, y, 0)) { play('click'); back(); return true; }
       if (name === 'collection') {
-        for (var hi = 0; hi < C.HEROES.length; hi++) {
-          if (pointIn(u.collection.rect(hi), x, y, 0) && heroUnlocked(C.HEROES[hi].id)) {
-            UI.collectionHero = C.HEROES[hi].id; play('click'); open('heroDetail'); return true;
+        var heroes = collectionHeroes();
+        for (var hi = 0; hi < heroes.length; hi++) {
+          if (pointIn(u.collection.rect(hi), x, y, 0) && heroUnlocked(heroes[hi].id)) {
+            UI.collectionHero = heroes[hi].id; play('click'); open('heroDetail'); return true;
           }
         }
       }

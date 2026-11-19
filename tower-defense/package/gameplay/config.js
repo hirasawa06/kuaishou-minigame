@@ -150,7 +150,7 @@
     firstWaveDelay: 5.0,
 
     // 用户确认的冰箱砸地：三帧共享冰裂圆心，末帧残光渐隐。
-    BOSS_IMPACT: { src: 'res/Image/boss-ground-impact.png?v=1',
+    BOSS_IMPACT: { src: 'res/Image/ingame/effects/boss-ground-impact.png?v=1',
       cell: 256, frames: 3, timeline: [0, 0.10, 0.30], duration: 0.70, drawSize: 260,
       offsetYRatio: 0.08 },
 

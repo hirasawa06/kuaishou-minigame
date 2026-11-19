@@ -113,7 +113,7 @@
     var D = A.Render.draw, out = [], line = '';
     for (var i = 0; i < text.length; i++) {
       var next = line + text.charAt(i);
-      if (line && D.textWidth(next, A.FontAtlas['18']) > maxWidth) { out.push(line); line = text.charAt(i); }
+      if (line && D.textWidth(next, 18) > maxWidth) { out.push(line); line = text.charAt(i); }
       else line = next;
     }
     if (line) out.push(line);

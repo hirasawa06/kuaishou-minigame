@@ -52,7 +52,6 @@
     if (hitControl(m.collection, x, y, 0)) return 'collection';
     if (hitControl(m.settings, x, y, 6)) return 'settings';
     if (hitControl(m.avatar, x, y, 6)) return 'avatar';
-    if (hitControl(m.bossLab, x, y, 4)) return 'bossLab';
     return null;
   }
 
@@ -378,7 +377,6 @@
         return;
       }
       if (key === 'stamina') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('stamina'); return; }
-      if (key === 'bossLab') { A.Game.openBossLab(); return; }
       if (key === 'collection') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('collection'); return; }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
       if (key === 'avatar') { A.ProfileUI.open('profile'); return; }

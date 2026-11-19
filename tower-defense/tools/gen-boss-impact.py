@@ -7,7 +7,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'tools/src/vfx/冰箱Boss/冰箱Boss砸地-用户确认-v6.png'
-OUT = ROOT / 'package/res/Image/boss-ground-impact.png'
+OUT = ROOT / 'package/res/Image/ingame/effects/boss-ground-impact.png'
 
 
 def normalize(path):

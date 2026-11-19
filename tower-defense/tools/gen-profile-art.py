@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "tools/src/avatars"
-MENU = ROOT / "package/res/Image"
+MENU = ROOT / "package/res/Image/outgame/avatars"
 DATA = ROOT / "package/gameplay/data"
 SIZE = 256
 CELL = SIZE + 8
@@ -75,7 +75,7 @@ def build_sheet():
     atlas.quantize(colors=256, method=Image.Quantize.FASTOCTREE).save(
         MENU / "avatars.png", optimize=True)
     (ROOT / "package/res/Menu/avatars.png").unlink(missing_ok=True)
-    return {"src": "res/Image/avatars.png", "texW": CELL * 3, "texH": CELL * 3,
+    return {"src": "res/Image/outgame/avatars/avatars.png", "texW": CELL * 3, "texH": CELL * 3,
             "grid": 3, "size": 128, "frames": frames, "items": items}
 
 

@@ -340,11 +340,17 @@
     ui.menu.stamina = figmaRect(navLeft + navSize + 10, navTop, 142, 44);
     ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
     ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
-    ui.menu.bossLab = figmaRect(112, 706, 166, 42);
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
-    ui.menu.levelStatus = { x: ui.menu.card.x + 48, y: ui.menu.card.y + ui.menu.card.h - 82,
-      w: ui.menu.card.w - 96, h: 78 };
+    // ── 容器连续两次缩小15%，文字保持原字号 ──────────────
+    var statusBaseW = ui.menu.card.w - 96;
+    var statusBaseH = statusBaseW * 319 / 1024;
+    var statusScale = 0.85 * 0.85;
+    ui.menu.levelStatus = {
+      x: ui.menu.card.x + 48 + statusBaseW * (1 - statusScale) / 2,
+      y: ui.menu.card.y - statusBaseH * statusScale / 2,
+      w: statusBaseW * statusScale, h: statusBaseH * statusScale,
+    };
 
     // ── Boss 动作场：预览区和六枚动作键共用安全区布局 ─────────
     var labW = safeW - pad * 2;
@@ -465,23 +471,25 @@
       nickBtn: profNickBtn,
     };
 
-    // 选择头像：标题 + 3×3 网格 + 当前名称 + 保存
-    var pickH = Math.round(Math.min(452, contentH * 0.76));
-    var pickY = contentTop + Math.round(Math.max(16, (contentH - pickH) * 0.28));
+    // 选择头像：标题 + 3×3 网格 + 保存
     var pickHead = Math.max(38, Math.round(rowH * 0.74));
     var gridPad = 18;
-    var subLineY = pickY + pickHead + 12;
-    var gridTop = subLineY + 30;
-    var btnH = Math.round(Math.max(38, Math.min(48, pickH * 0.12)));
+    var pickMaxH = Math.round(Math.min(452, contentH - 32));
+    var btnH = Math.round(Math.max(38, Math.min(48, pickMaxH * 0.12)));
     var cellMax = Math.floor((sheetW - gridPad * 2 - 2 * 12) / 3);
-    var cellSize = Math.round(Math.min(cellMax, (pickH * 0.5) / 3 - 8));
     var cellGap = 12;
+    // ── 标题至头像、头像至按钮、按钮至底边均留20逻辑像素 ──
+    var cellSize = Math.floor(Math.min(cellMax,
+      (pickMaxH - pickHead - btnH - 60 - cellGap * 2) / 3));
+    var pickH = pickHead + cellSize * 3 + cellGap * 2 + btnH + 60;
+    var pickY = contentTop + Math.round(Math.max(16, (contentH - pickH) * 0.28));
+    var gridTop = pickY + pickHead + 20;
     var gridW = cellSize * 3 + cellGap * 2;
     var gridX = Math.round(sheetX + (sheetW - gridW) / 2);
-    var pickCurY = gridTop + cellSize * 3 + cellGap * 2 + 12;
+    var gridBottom = gridTop + cellSize * 3 + cellGap * 2;
     var pickSave = {
       x: sheetX + 22,
-      y: Math.round(Math.min(pickY + pickH - btnH - 14, pickCurY + 34)),
+      y: gridBottom + 20,
       w: sheetW - 44,
       h: btnH,
     };
@@ -490,9 +498,7 @@
       head: pickHead,
       close: { x: sheetX + sheetW - 38, y: pickY + 6, w: 32, h: 32 },
       grid: { x: gridX, y: gridTop, cell: cellSize, gap: cellGap, cols: 3, rows: 3 },
-      currentY: pickCurY,
       save: pickSave,
-      subY: subLineY,
     };
     ui.avatarPick.rect = function (i) {
       var g = ui.avatarPick.grid;
@@ -549,17 +555,26 @@
       noteY: invCopyY + invCopyH + 12,
     };
 
-    // 英雄收藏：同一立绘，仅星章与数值不同。
-    var collectionX = metrics.safeLeft + pad;
-    var collectionW = safeW - pad * 2;
-    var collectionTop = contentTop + 98;
-    var collectionGap = 10;
-    var collectionCellW = (collectionW - collectionGap) / 2;
-    var collectionCellH = Math.min(150, (contentBottom - 14 - collectionTop - collectionGap * 2) / 3);
+    // ┌─ 萌宠收藏：Figma 263:161 的固定竖卡比例，网格从可用高度反推宽度 ─┐
+    var collectionX = metrics.safeLeft + Math.max(pad, safeW * 0.11);
+    var collectionW = safeW - (collectionX - metrics.safeLeft) * 2;
+    var collectionTop = contentTop + 80;
+    var collectionGap = 12;
+    var collectionAspect = 329.521 / 502.404;
+    var collectionCellH = Math.min(200, (contentBottom - 64 - collectionTop - collectionGap * 2) / 3);
+    var collectionCellW = collectionCellH * collectionAspect;
+    var collectionMaxW = (safeW - pad * 2 - collectionGap) / 2;
+    if (collectionCellW > collectionMaxW) {
+      collectionCellW = collectionMaxW;
+      collectionCellH = collectionCellW / collectionAspect;
+    }
+    var collectionGridW = collectionCellW * 2 + collectionGap;
+    var collectionGridX = metrics.safeLeft + (safeW - collectionGridW) / 2;
     ui.collection = {
       back: { x: collectionX, y: contentTop + 8, w: 44, h: 44 },
-      titleY: contentTop + 60,
-      rect: function (i) { return { x: collectionX + (i % 2) * (collectionCellW + collectionGap),
+      titleY: contentTop + 16,
+      countX: collectionX + collectionW - 2,
+      rect: function (i) { return { x: collectionGridX + (i % 2) * (collectionCellW + collectionGap),
         y: collectionTop + Math.floor(i / 2) * (collectionCellH + collectionGap),
         w: collectionCellW, h: collectionCellH }; },
       detailNameY: contentTop + 66,

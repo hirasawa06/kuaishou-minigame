@@ -8,8 +8,8 @@ gen-assets.py — 塔防小游戏离线资源生成器
 同时生成单位/敌人/UI 图标精灵图与 yoola 平台素材。
 
 输出：
-  package/res/Image/font-{48,28,18}[-N].png                   (2x 多页位图，每页 <=2048)
-  package/res/Image/sprites.png                               (2x 位图)
+  package/res/Image/ui/fonts/font-{48,28,18}[-N].png          (2x 多页位图，每页 <=2048)
+  package/res/Image/ui/icons/sprites.png                       (2x 位图)
   package/gameplay/data/font-atlas.js
   package/gameplay/data/sprites.js
   package/yoola-assets/icon.png / share-image.png / loading-image.png
@@ -25,12 +25,14 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PKG = os.path.join(ROOT, "package")
 IMG_DIR = os.path.join(PKG, "res", "Image")
+UI_FONT_DIR = os.path.join(IMG_DIR, "ui", "fonts")
+UI_ICON_DIR = os.path.join(IMG_DIR, "ui", "icons")
 DATA_DIR = os.path.join(PKG, "gameplay", "data")
 YOOLA_DIR = os.path.join(PKG, "yoola-assets")
 
 FONT_PATH = "/System/Library/Fonts/STHeiti Medium.ttc"
 FONT_INDEX = 1  # Heiti SC
-UI_CJK_FONT = os.path.join(ROOT, "tools", "fonts", "ZCOOLKuaiLe-Regular.ttf")
+UI_CJK_FONT = os.path.join(ROOT, "tools", "fonts", "AlimamaFangYuanTiVF.ttf")
 UI_LATIN_FONT = os.path.join(ROOT, "tools", "fonts", "Fredoka.ttf")
 
 SUPERSAMPLE = 2  # 纹理按 2 倍烘焙
@@ -107,6 +109,8 @@ def charset():
 def build_font(size, out_png, pad=3, width=None):
     px = size * SUPERSAMPLE
     cjk_font = ImageFont.truetype(UI_CJK_FONT, px)
+    # --- 方圆体：真实 Bold 700，圆体轴 BEVL 100 ---
+    cjk_font.set_variation_by_axes([700, 100])
     latin_font = ImageFont.truetype(UI_LATIN_FONT, px)
     latin_font.set_variation_by_axes([600, 100])
     def font_for(ch):
@@ -178,7 +182,7 @@ def build_font(size, out_png, pad=3, width=None):
         indexed = Image.frombytes("P", img.size, img.tobytes())
         indexed.putpalette([255, 255, 255] * 256)
         indexed.save(page_png, transparency=bytes(range(256)), optimize=True)
-        pages.append({"src": "res/Image/" + os.path.basename(page_png),
+        pages.append({"src": "res/Image/ui/fonts/" + os.path.basename(page_png),
                       "texW": width, "texH": img.height})
     return {
         "src": pages[0]["src"],
@@ -493,7 +497,7 @@ def build_sprites(out_png):
         atlas.paste(get_icon(k), (cx, cy))
         table[k] = [cx, cy, OUT, OUT]
     atlas.save(out_png)
-    return {"src": "res/Image/" + os.path.basename(out_png),
+    return {"src": "res/Image/ui/icons/" + os.path.basename(out_png),
             "texW": w, "texH": h, "size": S, "icons": table}
 
 
@@ -551,12 +555,12 @@ def build_yoola():
 def generate_fonts():
     global DATA_DIR_ROOT
     DATA_DIR_ROOT = os.path.join(PKG, "gameplay")
-    os.makedirs(IMG_DIR, exist_ok=True)
+    os.makedirs(UI_FONT_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
 
     fonts = {}
     for size, name in ((48, "font-48.png"), (28, "font-28.png"), (18, "font-18.png")):
-        fonts[size] = build_font(size, os.path.join(IMG_DIR, name))
+        fonts[size] = build_font(size, os.path.join(UI_FONT_DIR, name))
 
     with open(os.path.join(DATA_DIR, "font-atlas.js"), "w", encoding="utf-8") as f:
         f.write("/* 由 tools/gen-assets.py 生成，请勿手改 */\n")
@@ -568,7 +572,8 @@ def generate_fonts():
 
 def main():
     fonts = generate_fonts()
-    sprites = build_sprites(os.path.join(IMG_DIR, "sprites.png"))
+    os.makedirs(UI_ICON_DIR, exist_ok=True)
+    sprites = build_sprites(os.path.join(UI_ICON_DIR, "sprites.png"))
 
     with open(os.path.join(DATA_DIR, "sprites.js"), "w", encoding="utf-8") as f:
         f.write("/* 由 tools/gen-assets.py 生成，请勿手改 */\n")

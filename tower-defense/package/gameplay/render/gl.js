@@ -1,6 +1,6 @@
 /* gameplay/render/gl.js — 极简 WebGL 1.0 精灵批渲染器 */
 // 只用 gl.* API：单纹理 + 顶点色 + 四边形批处理。
-// mode 0 = 实心圆角矩形/圆，mode 1 = 纹理，mode 2 = 圆环，mode 3 = 高 alpha 纹理遮罩
+// mode 0 = 实心圆角矩形/圆，1 = 纹理，2 = 圆环，3 = 遮罩，5/6 = 彩色/灰度圆角纹理
 (function () {
   var A = window.AIGCUtils;
 
@@ -42,13 +42,43 @@
     '  vec4 c = vColor;',
     '  vec2 h = vShape.xy;',
     // 宽中心柔边椭圆：地面阴影不依赖图集光斑。
-    '  if (vMode > 4.5) {',
+    // ┌─ Figma 收藏卡：代码绘制下半部波浪面板，并沿圆角卡片裁切 ─┐
+    // ┌─ Figma 263:161：最外层 1.16px #874600 描边必须在所有内容之上 ─┐
+    '  if (vMode > 7.5) {',
+    '    float t = h.x * 2.0 * (1.16 / 329.521);',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float outer = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    vec2 ih = h - vec2(t);',
+    '    float ir = max(0.0, r - t);',
+    '    vec2 iq = abs(p) - (ih - ir);',
+    '    float inner = length(max(iq, 0.0)) + min(max(iq.x, iq.y), 0.0) - ir;',
+    '    float a = (1.0 - smoothstep(-0.7, 0.7, outer)) * smoothstep(-0.7, 0.7, inner);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 6.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    float wave = 0.735 + 0.045 * pow(sin(vUV.x * 6.2831853), 2.0);',
+    '    if (dist > 0.0 || vUV.y < wave) discard;',
+    // Figma Union 内阴影：dy 2.32057、blur 1.91447、白色 70%。
+    '    float depth = vUV.y - wave;',
+    '    float dy = 2.32057 / 502.404;',
+    '    float blur = 1.91447 / 502.404;',
+    '    float innerLight = 0.70 * exp(-0.5 * pow((depth - dy) / blur, 2.0));',
+    '    c.rgb = mix(c.rgb, vec3(1.0), innerLight);',
+    '  } else if (vMode > 4.5) {',
     '    vec2 p = (vUV - 0.5) * 2.0 * h;',
     '    float r = vShape.z;',
     '    vec2 q = abs(p) - (h - r);',
     '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
     '    float a = 1.0 - smoothstep(-0.9, 0.9, dist);',
     '    vec4 t = texture2D(uTex, vUV);',
+    // --- 锁定封面实时去色，共用原图，不增加图片资源 ---
+    '    t.rgb = mix(t.rgb, vec3(dot(t.rgb, vec3(0.299, 0.587, 0.114))), step(5.5, vMode));',
     '    if (a < 0.004 || t.a < 0.004) discard;',
     '    c = vec4(c.rgb * t.rgb, c.a * t.a * a);',
     '  } else if (vMode > 3.5) {',
@@ -273,12 +303,13 @@
     var r = o0.r || 0;
     var mode = o0.mode || 0;
     if (!color) color = { r: 1, g: 1, b: 1, a: 1 };
-    var cr = color.r, cg = color.g, cb = color.b, ca = color.a;
     var x1 = x + w, y1 = y + h;
 
     function v(sx, sy, uu, vv) {
+      // --- 圆角渐变：沿局部纵轴插值，复用几何裁切 ---
+      var tint = o0.bottomColor ? mix(color, o0.bottomColor, vv) : color;
       b[o] = sx; b[o + 1] = sy; b[o + 2] = uu; b[o + 3] = vv;
-      b[o + 4] = cr; b[o + 5] = cg; b[o + 6] = cb; b[o + 7] = ca;
+      b[o + 4] = tint.r; b[o + 5] = tint.g; b[o + 6] = tint.b; b[o + 7] = tint.a;
       b[o + 8] = hw; b[o + 9] = hh; b[o + 10] = r; b[o + 11] = mode;
       o += FLOATS_PER_VERT;
     }

@@ -6,8 +6,8 @@
 (function () {
   var A = window.AIGCUtils;
   var IDS = ['tank', 'war', 'arch', 'mage', 'healer'];
-  var SRC = 'res/Image/hero-levels.png';
-  var BACK_SRC = 'res/Image/hero-levels-back.png';
+  var SRC = 'res/Image/outgame/hero-forms/hero-levels.png';
+  var BACK_SRC = 'res/Image/outgame/hero-forms/hero-levels-back.png';
   var COLS = 5, ROWS = 3, CELL = 200;
   // Back atlas is independent: never use collection front portraits in battle.
   var BACK_AVAILABLE = true;
