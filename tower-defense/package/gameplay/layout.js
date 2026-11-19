@@ -53,18 +53,26 @@
     var metricKey = [w, h, st, metrics.safeLeft, metrics.safeRight, contentBottom].join(':');
     if (ui.ready && ui.metricKey === metricKey) return ui;
 
-    var pad = Math.round(Math.max(10, Math.min(22, w * 0.033)));
-    var hudH = adaptationError ? Math.max(1, Math.floor(contentH * 0.16)) : 52;
-    var trayH = adaptationError
-      ? Math.max(1, contentH - hudH - Math.max(1, Math.floor(contentH * 0.43)))
-      : Math.round(Math.max(272, Math.min(304, contentH * 0.38)));
-    if (!adaptationError) {
-      var maxTrayH = Math.max(138, contentH - hudH - 180);
-      trayH = Math.min(trayH, maxTrayH);
-    }
-    var fieldTop = contentTop + hudH;
-    var fieldBottom = contentBottom - trayH;
     var safeW = metrics.safeRight - metrics.safeLeft;
+    // ┌──────────────────────────────────────────────────────────────┐
+    // │ 战斗页以 Figma 414×896 为唯一基准；横向按安全区等比缩放。     │
+    // │ 交互热区与画面共用同一套几何，避免“看着对、点不到”。          │
+    // └──────────────────────────────────────────────────────────────┘
+    // 779 是 Figma 顶部控件到第二排卡片底部的有效高度。
+    // 标准 414×896 不缩放；有刘海/底部安全区时只等比收紧整套战斗 UI。
+    var battleScale = Math.min(safeW / 414, Math.max(0.01, (contentH - 0.5) / 779));
+    var battleTop = Math.max(contentTop - 96 * battleScale,
+      contentBottom - 896 * battleScale);
+    var pad = Math.round(Math.max(10, Math.min(22, w * 0.033)));
+    var hudH = Math.max(36, 40 * battleScale);
+    var fieldTop = Math.max(contentTop + hudH, battleTop + 136 * battleScale);
+    var trayY = battleTop + 636 * battleScale;
+    // 极短屏幕优先保证 160px 战场和 136px 托盘，正常机型完全命中 Figma 坐标。
+    var fieldReserve = adaptationError ? 1 : 160;
+    var trayReserve = adaptationError ? 1 : 136;
+    trayY = Math.max(fieldTop + fieldReserve, Math.min(trayY, contentBottom - trayReserve));
+    var trayH = Math.max(1, contentBottom - trayY);
+    var fieldBottom = trayY;
     var fieldW = safeW - Math.round(pad * 1.2);
     var field = {
       x: Math.round(metrics.safeLeft + (safeW - fieldW) / 2),
@@ -84,18 +92,7 @@
       h: 20,
     };
 
-    var gap = Math.round(Math.max(7, Math.min(11, w * 0.022)));
-    var cardTopOffset = Math.min(52, Math.max(28, Math.round(trayH * 0.24)));
-    var cardFooter = Math.min(34, Math.max(20, Math.round(trayH * 0.16)));
-    var cardTop = tray.y + cardTopOffset;
-    var cardsArea = {
-      x: metrics.safeLeft + pad,
-      y: cardTop,
-      w: safeW - pad * 2,
-      h: Math.max(1, trayH - cardTopOffset - cardFooter),
-    };
-    var cardW = (cardsArea.w - gap * (C.cardCount - 1)) / C.cardCount;
-    var cardH = cardsArea.h;
+    var gap = 12 * battleScale;
 
     ui.w = w;
     ui.h = h;
@@ -112,6 +109,8 @@
     ui.contentTop = contentTop;
     ui.contentBottom = contentBottom;
     ui.contentH = contentH;
+    ui.battleScale = battleScale;
+    ui.battleTop = battleTop;
     // 唯一的交互边界：渲染层可使用整屏，输入层必须先通过这里。
     ui.interactiveRect = { x: metrics.safeLeft, y: contentTop, w: safeW, h: contentH };
     ui.adaptationError = adaptationError;
@@ -123,57 +122,44 @@
     ui.baseStopY = base.y + Math.round(baseH * 0.16);
     ui.tray = tray;
     ui.trayH = trayH;
-    ui.cardTopOffset = cardTopOffset;
-    ui.cardFooter = cardFooter;
     ui.energyBar = energyBar;
-    ui.cards = cardsArea;
-    ui.cardW = cardW;
-    ui.cardH = cardH;
     ui.cardGap = gap;
 
-    // ── 商店托盘：金币条 + 两块功能按钮 + 4 格英雄卡池 ──
-    var shopTop = tray.y + Math.max(8, Math.round(trayH * 0.045));
-    var headH = Math.max(36, Math.round(trayH * 0.14));
+    // ── Figma 275:246 底部托盘：金币、两个操作键与 2×2 卡池 ──
     var goldBar = {
-      x: metrics.safeLeft + pad,
-      y: shopTop,
-      w: Math.round(safeW * 0.44),
-      h: headH,
+      x: metrics.safeLeft + 20 * battleScale,
+      y: tray.y + 22 * battleScale,
+      w: 71 * battleScale,
+      h: 38 * battleScale,
     };
-    var btnGap = Math.round(Math.max(6, pad * 0.55));
-    var btnW2 = Math.round((safeW - pad * 2 - btnGap) / 2);
-    ui.shopBtnH = headH;
+    ui.shopBtnH = 48 * battleScale;
     ui.refreshBtn = {
-      x: metrics.safeLeft + pad,
-      y: goldBar.y + headH + 6,
-      w: btnW2,
-      h: headH,
+      x: metrics.safeLeft + 160 * battleScale,
+      y: tray.y + 18 * battleScale,
+      w: 114 * battleScale,
+      h: 48 * battleScale,
     };
     ui.capBtn = {
-      x: ui.refreshBtn.x + btnW2 + btnGap,
-      y: ui.refreshBtn.y,
-      w: safeW - pad * 2 - btnW2 - btnGap,
-      h: headH,
+      x: metrics.safeLeft + 286 * battleScale,
+      y: tray.y + 18 * battleScale,
+      w: 114 * battleScale,
+      h: 48 * battleScale,
     };
-    var gridTop = ui.refreshBtn.y + headH + 10;
-    var cardGap2 = Math.round(Math.max(6, pad * 0.6));
-    var gridW = safeW - pad * 2;
-    var cellW = Math.round((gridW - cardGap2) / 2);
-    // 底部留一行提示的位置，2 行卡片均分剩余高度
-    var shopFooter = 24;
-    var cellH = Math.max(44, Math.round((contentBottom - shopFooter - gridTop - cardGap2) / 2));
     ui.goldBar = goldBar;
     ui.shop = {
-      x: metrics.safeLeft + pad,
-      y: gridTop,
-      w: gridW,
-      h: cellH * 2 + cardGap2,
-      cellW: cellW,
-      cellH: cellH,
-      gap: cardGap2,
+      x: metrics.safeLeft + 14 * battleScale,
+      y: tray.y + 83 * battleScale,
+      w: 386 * battleScale,
+      h: 156 * battleScale,
+      cellW: 187 * battleScale,
+      cellH: 72 * battleScale,
+      gap: 12 * battleScale,
       cols: 2,
-      footer: shopFooter,
+      footer: 0,
     };
+    ui.cards = ui.shop;
+    ui.cardW = ui.shop.cellW;
+    ui.cardH = ui.shop.cellH;
     // 卡池 4 格（2×2），供绘制与命中共用
     L.shopRect = function (i) {
       var s = ui.shop;
@@ -188,26 +174,24 @@
     };
     L.shopCardParts = function (i, drawnRect) {
       var r = drawnRect || L.shopRect(i);
-      var inset = Math.max(4, Math.min(7, Math.round(r.h * 0.08)));
-      var portraitW = Math.min(48, r.h - inset * 2, Math.round(r.w * 0.29));
-      var portrait = { x: r.x + inset, y: r.y + inset,
-        w: portraitW, h: r.h - inset * 2 };
-      var costR = Math.max(10, Math.min(14, Math.round(r.h * 0.18)));
-      var cost = { x: r.x + r.w - inset - costR,
-        y: r.y + inset + costR, r: costR };
-      var lockSize = Math.max(16, Math.min(24, Math.round(r.h * 0.31)));
-      var lock = { x: r.x + r.w - inset - lockSize,
-        y: r.y + r.h - inset - lockSize, w: lockSize, h: lockSize };
-      return { rect: r, inset: inset, portrait: portrait,
-        textX: portrait.x + portrait.w + 7, cost: cost, lock: lock };
+      var s = ui.battleScale;
+      var portrait = { x: r.x + 3 * s, y: r.y + 3 * s,
+        w: 80 * s, h: r.h - 5 * s };
+      // ── 锁底板与卡片右下圆角同心，底板自然落在卡内 ──
+      var lockCenterX = r.x + r.w - 20 * s;
+      var lockCenterY = r.y + r.h - 20 * s;
+      var lock = { x: lockCenterX - 9 * s, y: lockCenterY - 12 * s,
+        w: 18 * s, h: 24 * s };
+      return { rect: r, inset: 2 * s, portrait: portrait,
+        textX: r.x + 86 * s,
+        cost: { x: r.x + 86 * s, y: r.y + 33 * s, r: 0 }, lock: lock,
+        lockBackground: { x: lockCenterX - 18 * s, y: lockCenterY - 18 * s,
+          w: 36 * s, h: 36 * s } };
     };
     L.shopLockRect = function (i) {
       var parts = L.shopCardParts(i);
       var r = parts.rect;
-      var size = Math.min(32, r.h - parts.inset * 2);
-      return { x: r.x + r.w - parts.inset - size,
-        y: r.y + r.h - parts.inset - size,
-        w: size, h: size };
+      return parts.lock;
     };
     L.shopDragRect = function (i, x, y, startX, startY) {
       var base = L.shopRect(i);
@@ -231,13 +215,11 @@
     ui.placeBottom = base.y - Math.round(baseH * 0.5);
     ui.placeLeft = field.x + 26;
     ui.placeRight = field.x + field.w - 26;
-    ui.pauseBtn = {
-      x: metrics.safeRight - pad - 44,
-      y: contentTop + Math.round((hudH - 44) / 2),
-      w: 44,
-      h: 44,
-    };
-    ui.speedBtn = { x: metrics.safeLeft + pad, y: fieldTop + 6, w: 44, h: 44 };
+    ui.wavePlate = { x: metrics.safeLeft + 12 * battleScale,
+      y: battleTop + 96 * battleScale, w: 99 * battleScale, h: 40 * battleScale };
+    ui.pauseBtn = { x: metrics.safeLeft + 360 * battleScale,
+      y: battleTop + 96 * battleScale, w: 40 * battleScale, h: 40 * battleScale };
+    ui.speedBtn = ui.wavePlate;
     ui.hudCenterX = metrics.safeLeft + safeW * 0.47;
     // 主按钮几何：按钮实际绘制在 h*btnY 处，点击判定复用同一份数据
     ui.btnW = 184;
@@ -253,9 +235,9 @@
     var pauseBtnW = Math.min(260, pausePanelW - 36);
     var pauseBtnH = pauseCompact ? 40 : 48;
     var pauseGap = pauseCompact ? 8 : 12;
-    var pauseHeaderH = pauseCompact ? 84 : 110;
-    var pauseHeaderGap = pauseCompact ? 18 : 26;
-    var pauseBottomPad = pauseCompact ? 20 : 26;
+    var pauseHeaderH = pauseCompact ? 54 : 62;
+    var pauseHeaderGap = 20;
+    var pauseBottomPad = 20;
     var pauseList = ['resume', 'settings', 'restart', 'home'];
     var pauseButtonsH = pauseBtnH * pauseList.length + pauseGap * (pauseList.length - 1);
     var pausePanelH = pauseHeaderH + pauseHeaderGap + pauseButtonsH + pauseBottomPad;
@@ -282,20 +264,20 @@
     };
     ui.sellZone = { x: metrics.safeLeft + pad, y: contentBottom - 44,
       w: safeW - pad * 2, h: 44 };
-    // 结算页使用一张完整的安全区内面板；标题、解锁、战绩、三个按钮顺序排布。
-    var resultPanelH = Math.min(620, Math.max(1, contentH - 16));
+    // ── 结算弹窗：标题、提示和三个按钮按内容收紧，不再预留战绩区 ──
+    var resultPanelH = Math.min(340, Math.max(1, contentH - 16));
     var resultPanelW = Math.min(340, safeW - pad * 2);
     var resultPanel = {
       x: metrics.safeLeft + (safeW - resultPanelW) / 2,
       y: contentTop + (contentH - resultPanelH) / 2 + dialogOffsetY,
       w: resultPanelW, h: resultPanelH,
     };
-    var resultCompact = resultPanelH < 500;
-    var resultHeaderH = resultCompact ? 82 : 116;
-    var resultBtnH = resultCompact ? 40 : 44;
-    var resultGap = resultCompact ? 6 : 8;
-    var resultW = Math.min(240, resultPanelW - 36);
-    var resultTop = resultPanel.y + resultPanel.h - (resultCompact ? 10 : 16) -
+    var resultCompact = resultPanelH < 320;
+    var resultHeaderH = resultCompact ? 54 : 62;
+    var resultBtnH = resultCompact ? 40 : 48;
+    var resultGap = resultCompact ? 8 : 12;
+    var resultW = resultPanelW - 44;
+    var resultTop = resultPanel.y + resultPanel.h - 20 -
       resultBtnH * 3 - resultGap * 2;
     var resultBtnX = resultPanel.x + (resultPanelW - resultW) / 2;
     ui.resultNext = { x: resultBtnX, y: resultTop, w: resultW, h: resultBtnH };
@@ -306,20 +288,15 @@
     ui.resultHome = { x: resultBtnX, y: resultTop + (resultBtnH + resultGap) * 2,
       w: resultW, h: resultBtnH };
     ui.btnY.result = ui.resultReplay.y;
-    var resultInfoTop = resultPanel.y + resultHeaderH + 8;
-    var resultInfoH = Math.max(1, resultTop - 8 - resultInfoTop);
-    var resultNoticeH = resultCompact ? 56 : 78;
-    var resultStatsGap = Math.max(18, Math.min(28,
-      (resultInfoH - resultNoticeH - 8) / 5));
-    var resultGroupH = resultNoticeH + 8 + 5 * resultStatsGap;
-    var resultNoticeY = resultInfoTop + Math.max(0, (resultInfoH - resultGroupH) / 2);
+    var resultInfoTop = resultPanel.y + resultHeaderH + 20;
+    var resultInfoH = Math.max(1, resultTop - 20 - resultInfoTop);
+    var resultNoticeH = Math.min(resultCompact ? 56 : 64, resultInfoH);
+    var resultNoticeY = resultInfoTop + (resultInfoH - resultNoticeH) / 2;
     ui.result = {
       panel: resultPanel, compact: resultCompact, headerH: resultHeaderH,
       infoTop: resultInfoTop, infoH: resultInfoH,
       notice: { x: resultPanel.x + 12, y: resultNoticeY,
         w: resultPanel.w - 24, h: resultNoticeH },
-      statsY: resultNoticeY + resultNoticeH + 8,
-      statsGap: resultStatsGap,
     };
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
@@ -341,7 +318,7 @@
     ui.menu.collection = figmaRect(navLeft, navBottom, navSize, navSize);
     ui.menu.stamina = figmaRect(navLeft + navSize + 10, navTop, 142, 44);
     ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
-    ui.menu.start = figmaRect(64.08, 606.06, 260.92, 85.6);
+    ui.menu.start = figmaRect(83.649, 612.48, 221.782, 72.76);
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
     // ── 容器连续两次缩小15%，文字保持原字号 ──────────────

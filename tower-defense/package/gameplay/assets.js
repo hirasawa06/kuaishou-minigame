@@ -127,9 +127,18 @@
     manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book.jpg']);
     manifest.push(['collection-art', 'res/Image/outgame/collection/collection-art.png']);
     manifest.push(['collection-lock', 'res/Image/ui/icons/collection-lock-v1.png']);
+    manifest.push(['battle-tray', 'res/Image/ui/components/battle/tray-v1.png']);
+    manifest.push(['battle-refresh', 'res/Image/ui/components/battle/refresh-v1.png']);
+    manifest.push(['battle-expand', 'res/Image/ui/components/battle/expand-v1.png']);
+    manifest.push(['battle-paw-token', 'res/Image/ui/icons/battle/paw-token-v1.png']);
+    manifest.push(['battle-white-bone', 'res/Image/ui/icons/battle/white-bone-v1.png']);
+    manifest.push(['battle-star', 'res/Image/ui/icons/battle/star-v1.png']);
+    manifest.push(['battle-lock-closed', 'res/Image/ui/icons/battle/lock-closed-v1.png']);
+    manifest.push(['battle-lock-open', 'res/Image/ui/icons/battle/lock-open-v1.png']);
     ['tank', 'war', 'mage', 'arch', 'healer'].forEach(function (id) {
       manifest.push(['collection-scene-' + id, 'res/Image/outgame/collection/scenes-figma-263-161-hd/' + id + '.jpg']);
       manifest.push(['collection-silhouette-' + id, 'res/Image/outgame/collection/silhouettes/' + id + '-silhouette-b6.png']);
+      manifest.push(['battle-shop-' + id, 'res/Image/ingame/characters/battle-shop/' + id + '-v2.png']);
     });
 
     manifest.push(['shield-dog-front', 'res/Image/ingame/characters/shield-dog-front.png']);

@@ -114,6 +114,11 @@ def build_font(size, out_png, pad=3, width=None):
     cjk_font.set_variation_by_axes([700, 100])
     latin_font = ImageFont.truetype(UI_LATIN_FONT, px)
     latin_font.set_variation_by_axes([600, 100])
+    # --- 混排统一视觉中线：整套拉丁字形共同移动，保留数字与标点基线关系 ---
+    cjk_bounds = cjk_font.getbbox("国")
+    latin_bounds = latin_font.getbbox("0123456789")
+    latin_y = round((cjk_bounds[1] + cjk_bounds[3]
+                     - latin_bounds[1] - latin_bounds[3]) / 2)
     def font_for(ch):
         return latin_font if ord(ch) < 128 else cjk_font
     line_h = max(sum(cjk_font.getmetrics()), sum(latin_font.getmetrics()))
@@ -154,7 +159,8 @@ def build_font(size, out_png, pad=3, width=None):
     images = [Image.new("L", (width, height), 0) for height in page_heights]
     drawers = [ImageDraw.Draw(img) for img in images]
     for ch, (page, gx, gy, gw, gh, adv) in placed.items():
-        drawers[page].text((gx + pad, gy + pad), ch, font=font_for(ch), fill=255)
+        offset_y = latin_y if ord(ch) < 128 else 0
+        drawers[page].text((gx + pad, gy + pad + offset_y), ch, font=font_for(ch), fill=255)
 
     glyphs = {}
     for ch, (page, gx, gy, gw, gh, adv) in placed.items():

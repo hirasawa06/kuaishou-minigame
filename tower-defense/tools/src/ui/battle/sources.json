@@ -1,0 +1,12 @@
+{
+  "status": "现状：用户于 2026-11-19 提供，用于 Figma 275:246 战斗页面。",
+  "generator": "tower-defense/tools/build-battle-ui-assets.py",
+  "items": [
+    {"id": "tray", "source": "tray-source.png", "runtime": "res/Image/ui/components/battle/tray-v1.png"},
+    {"id": "refresh", "source": "refresh-source.png", "runtime": "res/Image/ui/components/battle/refresh-v1.png"},
+    {"id": "expand", "source": "expand-source.png", "runtime": "res/Image/ui/components/battle/expand-v1.png"},
+    {"id": "paw-token", "source": "paw-token-source.png", "runtime": "res/Image/ui/icons/battle/paw-token-v1.png"},
+    {"id": "lock-closed", "source": "lock-closed-source.png", "runtime": "res/Image/ui/icons/battle/lock-closed-v1.png"},
+    {"id": "lock-open", "source": "lock-open-source.png", "runtime": "res/Image/ui/icons/battle/lock-open-v1.png"}
+  ]
+}

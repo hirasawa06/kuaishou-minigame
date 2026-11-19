@@ -13,6 +13,7 @@
     'uniform vec2 uRes;',
     'varying vec2 vUV;',
     'varying float vScreenY;',
+    'varying float vScreenX;',
     'varying vec4 vColor;',
     'varying vec3 vShape;',
     'varying float vMode;',
@@ -21,6 +22,7 @@
     '  gl_Position = vec4(p.x, -p.y, 0.0, 1.0);',
     '  vUV = aUV;',
     '  vScreenY = aPos.y;',
+    '  vScreenX = aPos.x;',
     '  vColor = aColor;',
     '  vShape = aShape;',
     '  vMode = aMode;',
@@ -31,12 +33,15 @@
     'precision mediump float;',
     'varying vec2 vUV;',
     'varying float vScreenY;',
+    'varying float vScreenX;',
     'varying vec4 vColor;',
     'varying vec3 vShape;',
     'varying float vMode;',
     'uniform sampler2D uTex;',
     'uniform sampler2D uMaskTex;',
     'uniform float uAdd;',
+    'uniform vec4 uClipRect;',
+    'uniform float uClipRadius;',
     'uniform vec4 uSceneLight;', // 调色强度、身体中心Y、画布高、顶部光强度
     // ── 密集高斯核：81次采样连续羽化，边缘权重渐减并归一 ──
     'vec4 blurredCover(vec2 uv, vec2 d) {',
@@ -54,11 +59,48 @@
     '}',
     'void main() {',
     '  vec4 c = vColor;',
+    // ── 按屏幕坐标裁切容器，纹理UV保持完整，不依赖源图取景 ──
+    '  if (uClipRect.z > 0.0) {',
+    '    vec2 halfClip = uClipRect.zw * 0.5;',
+    '    vec2 local = vec2(vScreenX, vScreenY) - uClipRect.xy - halfClip;',
+    '    vec2 qClip = abs(local) - (halfClip - uClipRadius);',
+    '    float clipDist = length(max(qClip, 0.0)) + min(max(qClip.x, qClip.y), 0.0) - uClipRadius;',
+    '    float clipAlpha = 1.0 - smoothstep(-0.7, 0.7, clipDist);',
+    '    if (clipAlpha < 0.004) discard;',
+    '    c.a *= clipAlpha;',
+    '  }',
     '  vec2 h = vShape.xy;',
     // 宽中心柔边椭圆：地面阴影不依赖图集光斑。
     // ┌─ Figma 收藏卡：代码绘制下半部波浪面板，并沿圆角卡片裁切 ─┐
     // ┌─ Figma 263:161：最外层 1.16px #874600 描边必须在所有内容之上 ─┐
-    '  if (vMode > 7.5) {',
+    // ── 星级底板：仅左上、右下圆角，另外两角保持直角 ──
+    // ── 主按钮：纯色填充，浅黄色柔光只沿顶部内缘分布 ──
+    '  if (vMode > 9.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    float a = 1.0 - smoothstep(-0.7, 0.7, dist);',
+    '    float top = 1.0 - smoothstep(-h.y * 0.5, 0.0, p.y);',
+    '    float light = 0.90 * top * exp(-0.5 * pow((dist + 1.8) / 2.5, 2.0));',
+    '    float bottom = smoothstep(0.0, h.y * 0.5, p.y);',
+    '    float shade = 0.45 * bottom * exp(-0.5 * pow((dist + 1.5) / 2.0, 2.0));',
+    '    c.rgb = mix(c.rgb, vec3(0.91, 0.45, 0.0), shade);',
+    '    c.rgb = mix(c.rgb, vec3(1.0, 0.902, 0.639), light);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 8.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 local = p + h;',
+    '    vec2 remaining = h - p;',
+    '    float dist = max(abs(p.x) - h.x, abs(p.y) - h.y);',
+    '    if (local.x < r && local.y < r) dist = length(local - vec2(r)) - r;',
+    '    if (remaining.x < r && remaining.y < r) dist = length(remaining - vec2(r)) - r;',
+    '    float a = 1.0 - smoothstep(-0.7, 0.7, dist);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 7.5) {',
     '    float t = h.x * 2.0 * (1.16 / 329.521);',
     '    vec2 p = (vUV - 0.5) * 2.0 * h;',
     '    float r = vShape.z;',
@@ -228,6 +270,8 @@
     loc.uTex = gl.getUniformLocation(prog, 'uTex');
     loc.uMaskTex = gl.getUniformLocation(prog, 'uMaskTex');
     loc.uAdd = gl.getUniformLocation(prog, 'uAdd');
+    loc.uClipRect = gl.getUniformLocation(prog, 'uClipRect');
+    loc.uClipRadius = gl.getUniformLocation(prog, 'uClipRadius');
     loc.uSceneLight = gl.getUniformLocation(prog, 'uSceneLight');
 
     vbo = gl.createBuffer();
@@ -301,6 +345,15 @@
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, t);
     gl.activeTexture(gl.TEXTURE0);
+  }
+
+  // ── 切换容器前提交批次，避免裁切状态影响后续文字与按钮 ──
+  function setClipRect(rect, radius) {
+    if (!gl) return;
+    flush();
+    gl.uniform4f(loc.uClipRect, rect ? rect.x : 0, rect ? rect.y : 0,
+      rect ? rect.w : 0, rect ? rect.h : 0);
+    gl.uniform1f(loc.uClipRadius, rect ? Math.min(radius || 0, rect.w / 2, rect.h / 2) : 0);
   }
 
   // opts: { mode, u0,v0,u1,v1, hw, hh, r }
@@ -455,6 +508,7 @@
   A.Render.setRes = setRes;
   A.Render.setTexture = setTexture;
   A.Render.setMaskTexture = setMaskTexture;
+  A.Render.setClipRect = setClipRect;
   A.Render.invalidateTexture = invalidateTexture;
   A.Render.flush = flush;
   A.Render.beginFrame = beginFrame;

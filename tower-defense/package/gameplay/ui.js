@@ -664,6 +664,8 @@
     handleTap: handleTap,
     draw: draw,
     avatar: drawAvatar,
+    dialogPaper: profilePaper,
+    dialogButton: profileRow,
     shareInvite: shareInvite,
     copyInviteLink: copyInviteLink,
   };

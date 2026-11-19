@@ -37,48 +37,27 @@
 
   function drawHud() {
     var u = L.ui;
-    var h = u.hud;
+    var plate = u.wavePlate;
     var pb = u.pauseBtn;
-    var panelX = u.safeLeft + u.pad;
-    var panelY = h.y;
-    var panelW = Math.max(1, pb.x - panelX - 5);
-    var panel = A.Assets.entry('hud-panel');
-    if (panel) {
-      D.texture(panel.tex, panel.w, panel.h, 0, 0, panel.w, panel.h,
-        panelX, panelY, panelW, h.h);
-    } else {
-      D.roundRect(panelX, panelY, panelW, h.h, 24, D.color('#ffe4bd'));
-    }
-    var brown = D.color('#78432b');
-    // 避开面板两侧爪印；局内 HUD 不重复相框完好度与上场数量。
-    var compact = panelW < 280;
-    var left = panelX + (compact ? 37 : 48);
-    var right = panelX + panelW - (compact ? 25 : 39);
-    var row = panelY + Math.max(10, (h.h - 18) / 2);
+    var s = u.battleScale;
+    var brown = D.color('#80501f');
     var totalWaves = S.getWaves().length;
     var waveNo = Math.min(S.waveIndex + 1, totalWaves);
-    D.text(compact ? '第' + waveNo + '/' + totalWaves + '波'
-      : '第 ' + waveNo + '/' + totalWaves + ' 波', left, row, 18, brown, 0);
-    var remain = A.Battle.remainingEnemies();
-    D.text(compact ? '剩余' + remain : '剩余敌人 ' + remain,
-      right, row, 18, brown, 2);
+    D.roundRect(plate.x, plate.y, plate.w, plate.h, 20 * s, D.color('#fff9ef', 0.96));
+    D.ring(plate.x + plate.w / 2, plate.y + plate.h / 2, plate.h / 2 - s,
+      s, D.color('#f3c88f', 0.75));
+    D.fittedText('第' + waveNo + '/' + totalWaves + '波 ×' + S.battleSpeed,
+      plate.x + plate.w / 2, plate.y + 11 * s, 16 * s, plate.w - 12 * s, brown, 1);
 
-    // 暂停按钮的绘制与命中区同用 Layout.ui.pauseBtn。
-    D.roundRect(pb.x, pb.y, pb.w, pb.h, pb.h / 2, D.color('#ad6732'));
-    D.roundRect(pb.x + 3, pb.y + 3, pb.w - 6, pb.h - 6, (pb.h - 6) / 2,
-      D.color('#ffdeb0'));
+    // 暂停按钮与热区共用 Layout.ui.pauseBtn，保留 Figma 的轻色圆牌。
+    D.roundRect(pb.x, pb.y, pb.w, pb.h, 20 * s, D.color('#fff9ef', 0.96));
+    D.ring(pb.x + pb.w / 2, pb.y + pb.h / 2, pb.h / 2 - s, s, D.color('#f3c88f', 0.75));
     if (S.phase === 'paused') {
-      D.roundRect(pb.x + 14, pb.y + 11, 18, 22, 6, brown);
-      icon('ui-play', pb.x + pb.w / 2, pb.y + pb.h / 2, 16);
+      icon('ui-play', pb.x + pb.w / 2, pb.y + pb.h / 2, 16 * s);
     } else {
-      D.roundRect(pb.x + 15, pb.y + 13, 5, 18, 2, brown);
-      D.roundRect(pb.x + 25, pb.y + 13, 5, 18, 2, brown);
+      D.roundRect(pb.x + 13 * s, pb.y + 11 * s, 5 * s, 18 * s, 2 * s, brown);
+      D.roundRect(pb.x + 22 * s, pb.y + 11 * s, 5 * s, 18 * s, 2 * s, brown);
     }
-    var speed = u.speedBtn;
-    D.roundRect(speed.x, speed.y, speed.w, speed.h, 12,
-      D.color(S.battleSpeed === 2 ? '#b57925' : '#283b53', 0.95));
-    D.text(S.battleSpeed + 'x', speed.x + speed.w / 2, speed.y + 13, 18, D.color('#ffe5ac'), 1);
-
   }
 
   // ── 金币条 ────────────────────────────────────────────────
@@ -288,7 +267,7 @@
     // 阴影只从底边露出 5px，布局已给安全边界预留对应空间。
     D.roundRect(rect.x + 2, rect.y + 5, rect.w - 4, rect.h, 12,
       D.color('#5e3524', 0.38));
-    drawHeroCell(drag.def, rect, 0.98, drag.index, true);
+    A.BattleShopUI.drawDragCard(drag.def, rect, drag.index);
   }
 
   function drawInspect() {
@@ -326,20 +305,8 @@
 
   function drawToast() {
     var u = L.ui;
-    if (!S.toast) {
-      if (S.phase === 'playing' && S.cardsPlaced === 0) {
-        var hintY = u.field.y + u.field.h * 0.42;
-        D.roundRect(u.w / 2 - 127, hintY, 254, 58, 20,
-          D.color('#fff0d9', 0.9));
-        D.strokeRect(u.w / 2 - 127, hintY, 254, 58, 2,
-          D.color('#ae7548', 0.85));
-        D.text('点头像看详情 · 点卡牌上场', u.w / 2, hintY + 7, 18,
-          D.color('#704026'), 1);
-        D.text('自动落在下方 · 拖动可选位置', u.w / 2, hintY + 31, 18,
-          D.color('#704026'), 1);
-      }
-      return;
-    }
+    // Figma 战场默认保持干净；只在产生真实操作反馈时显示轻提示。
+    if (!S.toast) return;
     var a = Math.min(1, S.toast.life / 0.3);
     var w = 244;
     var y = u.field.y + u.field.h * 0.3;
@@ -397,52 +364,23 @@
     D.centeredText(str, cx, cy, size || 20, col);
   }
 
-  function menuPaw(cx, cy, unit) {
-    var art = A.Assets.entry('home-start-paw');
-    if (!art) return;
-    var size = 20 * unit;
-    D.texture(art.tex, art.w, art.h, 321, 256, 667, 672,
-      cx - size / 2, cy - size / 2, size, size);
+  // ── 代码绘制：深橙厚边、纯色面板和顶部柔和内高光 ──
+  function drawStartSurface(x, y, w, h) {
+    var inset = 1.5, depth = 4;
+    D.roundRect(x, y, w, h, h / 2, D.color('#D87A09'));
+    var faceW = w - inset * 2, faceH = h - depth - inset;
+    A.Render.push(x + inset, y + inset, faceW, faceH, D.color('#FFA400'),
+      { mode: 10, hw: faceW / 2, hh: faceH / 2, r: faceH / 2 });
   }
 
+  // ── 首页主按钮：参考图金橙色材质，白字独立居中 ──
   function drawMenuStartButton(target, scale, disabled, label) {
     var w = target.w * scale, h = target.h * scale;
-    var x = target.x + (target.w - w) / 2;
-    var y = target.y + (target.h - h) / 2;
-    var unit = Math.min(w / 260.92, h / 85.6);
-    var rim = disabled ? '#8c786d' : '#a95617';
-    var edge = disabled ? '#b5aba5' : '#dc7817';
-    var face = disabled ? '#d3cbc4' : '#ffac2c';
-    var light = disabled ? '#e5ddd4' : '#ffd771';
-    var ink = disabled ? '#756a63' : '#fff3dc';
-    var labelSize = disabled ? 24 : 40;
-    var centerY = y + h * 0.49;
-    var radius = h * 0.48;
-
-    D.roundRect(x, y, w, h - 5 * unit, radius, D.color(rim));
-    D.roundRect(x + 2 * unit, y + 2 * unit, w - 4 * unit, h - 10 * unit,
-      radius - 2 * unit, D.color(edge));
-    D.roundRect(x + 5 * unit, y + 5 * unit, w - 10 * unit, h - 16 * unit,
-      radius - 5 * unit, D.color(face));
-    // 高光只落在胶囊顶部直边内，不越过圆角肩部。
-    var shineX = x + radius + 5 * unit;
-    var shineW = w - 2 * (radius + 5 * unit);
-    D.roundRect(shineX, y + 7 * unit, shineW, 5 * unit,
-      2.5 * unit, D.color(light, disabled ? 0.35 : 0.63));
-    D.roundRect(shineX + 9 * unit, y + 8 * unit, 32 * unit, 1.5 * unit,
-      0.75 * unit, D.color('#fff6db', disabled ? 0.20 : 0.76));
-
-    if (!disabled) {
-      var textWidth = D.textWidth(label, labelSize);
-      var pawGap = 13 * unit, pawW = 20 * unit;
-      var groupW = textWidth + 2 * (pawGap + pawW);
-      var groupX = x + (w - groupW) / 2;
-      menuPaw(groupX + pawW / 2, centerY, unit);
-      menuText(label, x + w / 2, centerY, D.color(ink), labelSize);
-      menuPaw(groupX + groupW - pawW / 2, centerY, unit);
-    } else {
-      menuText(label, x + w / 2, centerY, D.color(ink), labelSize);
-    }
+    var x = target.x + (target.w - w) / 2, y = target.y + (target.h - h) / 2;
+    if (disabled) D.roundRect(x, y, w, h, h / 2, D.color('#ded6cc'));
+    else drawStartSurface(x, y, w, h);
+    menuText(label, x + w / 2, y + h / 2,
+      D.color(disabled ? '#756a63' : '#ffffff'), disabled ? 24 : 32);
   }
 
   function menuPlate(r, pill) {
@@ -558,7 +496,7 @@
         drawMenuControl(key, target, scale);
         continue;
       }
-      drawMenuStartButton(target, scale, false, '开始游戏');
+      drawMenuStartButton(target, scale, false, '开始保卫');
     }
     // 背景和卡片是两张独立纹理；选关只移动透明卡片与其动态文案。
     var card = m.card;
@@ -702,7 +640,7 @@
     var u = L.ui;
     D.roundRect(0, 0, u.w, u.h, 0, D.color('#f6ead8', 1));
     D.text('塔防小游戏', u.w / 2, u.contentTop + u.contentH * 0.3, 48, D.color('#5b4126'), 1);
-    drawButton('开始游戏', u.btnY.menu, true);
+    drawButton('开始保卫', u.btnY.menu, true);
   }
 
   function drawStartButton(r) {
@@ -711,61 +649,39 @@
     D.roundRect(r.x + 4, r.y + 4, r.w - 8, r.h * 0.44, r.h / 2, D.color('#ffd07a', 0.9));
     D.strokeRect(r.x, r.y, r.w, r.h, 2, D.color('#c07a18'));
     icon('ui-coin', r.x + 26, r.y + r.h / 2, 26, 0.0);
-    D.text('开始游戏', r.x + r.w / 2, r.y + (r.h - 32) / 2, 48, D.color('#5a3208'), 1);
+    D.text('开始保卫', r.x + r.w / 2, r.y + (r.h - 32) / 2, 48, D.color('#5a3208'), 1);
   }
 
   function drawPaused() {
     var u = L.ui, pause = u.pausePanel, panel = pause.panel;
     D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
-    D.creamPanel(panel, 1, 22);
-    D.roundRect(panel.x + 7, panel.y + 7, panel.w - 14,
-      pause.headerH - 11, 17, D.color('#f5d29f'));
-    resultText('已暂停', panel.x + panel.w / 2,
-      panel.y + (pause.compact ? 24 : 31), panel.w - 40,
-      pause.compact ? 28 : 48, '#704026', 1);
-    // 四枚按钮与触摸共用 pausePanel.btn；短屏收紧字号与间距。
-    var buttonFont = pause.compact ? 18 : 28;
-    drawResultButton('继续游戏', pause.btn('resume'), true, buttonFont);
-    drawResultButton('设置', pause.btn('settings'), false, buttonFont);
-    drawResultButton('重新开始', pause.btn('restart'), false, buttonFont);
-    drawResultButton('返回主页', pause.btn('home'), false, buttonFont);
+    A.ProfileUI.dialogPaper(panel, pause.headerH, '已暂停');
+    // --- 复用局外弹窗的字体、渐变与阴影，四个按钮共用命中布局 ---
+    A.ProfileUI.dialogButton(pause.btn('resume'), '继续游戏');
+    A.ProfileUI.dialogButton(pause.btn('settings'), '设置');
+    A.ProfileUI.dialogButton(pause.btn('restart'), '重新开始');
+    A.ProfileUI.dialogButton(pause.btn('home'), '返回主页');
   }
 
   function resultText(value, x, y, maxW, size, color, align) {
     D.fittedText(value, x, y, size, maxW, D.color(color), align);
   }
 
-  function drawResultButton(label, rect, primary, fontSize) {
-    var r = rect.h / 2;
-    D.roundRect(rect.x, rect.y + 2, rect.w, rect.h - 2, r,
-      D.color(primary ? '#a95316' : '#a96e44'));
-    D.roundRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 6, r - 2,
-      D.color(primary ? '#ef8d18' : '#e4b987'));
-    D.roundRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 10, r - 4,
-      D.color(primary ? '#ffb234' : '#fff0d9'));
-    D.roundRect(rect.x + r, rect.y + 5, rect.w - 2 * r, 2, 1,
-      D.color('#ffffff', primary ? 0.65 : 0.4));
-    var size = fontSize || (primary && rect.h >= 44 ? 28 : 18);
-    resultText(label, rect.x + rect.w / 2, rect.y + (rect.h - size) / 2 - 1,
-      rect.w - 20, size, '#704026', 1);
-  }
-
   function drawResult(win) {
     var u = L.ui, result = u.result, panel = result.panel;
     var cx = panel.x + panel.w / 2;
-    D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.5));
-    D.creamPanel(panel, 1, 22);
-    D.roundRect(panel.x + 7, panel.y + 7, panel.w - 14,
-      result.headerH - 11, 17, D.color('#f5d29f'));
+    D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
+    A.ProfileUI.dialogPaper(panel, result.headerH, win ? '胜利' : '合照被毁了');
     var nextUnlocked = win && S.currentLevel < C.LEVELS.length;
-    var chapter = '第 ' + S.currentLevel + ' 关' + (nextUnlocked ? ' · 下一关已解锁' : '');
-    resultText(chapter, cx, panel.y + 10, panel.w - 32, 18, '#8a6248', 1);
-    var titleSize = result.compact ? 28 : 48;
-    resultText(win ? '胜利' : '失败', cx, panel.y + (result.compact ? 29 : 31),
-      panel.w - 32, titleSize, win ? '#aa671f' : '#b04f4c', 1);
-    resultText(win ? '合照守住了！' : '合照被毁了', cx,
-      panel.y + (result.compact ? 58 : 83), panel.w - 32,
-      result.compact ? 18 : 28, '#704026', 1);
+    var hasNotice = win && S.unlockNotice && S.unlockNotice.length;
+    // ── 提示区单独占一段，删除失败时的关卡与重复说明，避免上下留白失衡 ──
+    if (win && !hasNotice) {
+      var chapter = '第 ' + S.currentLevel + ' 关' + (nextUnlocked ? ' · 下一关已解锁' : '');
+      resultText(chapter, cx, result.notice.y + (result.notice.h - 42) / 2,
+        panel.w - 44, 18, '#73482a', 1);
+      resultText('合照守住了！', cx, result.notice.y + (result.notice.h - 42) / 2 + 24,
+        panel.w - 44, 18, '#73482a', 1);
+    }
 
     if (!win) {
       var reviveNotice = result.notice;
@@ -773,17 +689,13 @@
         cx, reviveNotice.y + (reviveNotice.h - 18) / 2,
         reviveNotice.w - 16, 18, '#8a6248', 1);
     }
-    var hasNotice = win && S.unlockNotice && S.unlockNotice.length;
     if (hasNotice) {
       var notice = result.notice;
-      D.roundRect(notice.x, notice.y, notice.w, notice.h, 12, D.color('#dba36b'));
-      D.roundRect(notice.x + 2, notice.y + 2, notice.w - 4, notice.h - 4,
-        10, D.color('#fff2df'));
       resultText('新伙伴已解锁', notice.x + notice.w / 2, notice.y + 5,
         notice.w - 20, 18, '#a86a24', 1);
       var itemW = notice.w / S.unlockNotice.length;
       var iconSize = result.compact ? 22 : 28;
-      var itemY = notice.y + (result.compact ? 39 : 51);
+      var itemY = notice.y + notice.h - iconSize / 2 - 5;
       for (var ni = 0; ni < S.unlockNotice.length; ni++) {
         var hero = S.heroById(S.unlockNotice[ni]);
         if (!hero) continue;
@@ -796,38 +708,21 @@
       }
     }
 
-    var totalWaves = S.getWaves().length;
-    var cleared = win ? totalWaves : S.waveIndex;
-    var stats = [
-      ['抵达波次', Math.max(1, Math.min(cleared, totalWaves)) + '/' + totalWaves],
-      ['击杀数量', String(S.kills)],
-      ['累计金币', String(S.goldEarned)],
-      ['上阵英雄', String(S.cardsPlaced)],
-      ['合照完好', Math.max(0, Math.ceil(S.baseHp)) + '/' + C.BASE_HP],
-    ];
-    var statsY = hasNotice || !win ? result.statsY :
-      result.infoTop + Math.max(0, (result.infoH - stats.length * result.statsGap) / 2);
-    var left = panel.x + 27, right = panel.x + panel.w - 27;
-    for (var i = 0; i < stats.length; i++) {
-      var rowY = statsY + i * result.statsGap;
-      resultText(stats[i][0], left, rowY, panel.w * 0.48, 18, '#76513c', 0);
-      resultText(stats[i][1], right, rowY, panel.w * 0.36, 18, '#704026', 2);
-    }
-
-    if (nextUnlocked) drawResultButton('下一关', u.resultNext, true);
+    // ── 结算按钮共用头像选择弹窗样式，命中与复活状态仍由原逻辑管理 ──
+    if (nextUnlocked) A.ProfileUI.dialogButton(u.resultNext, '下一关');
     else if (!win) {
       var busy = S.adBusy || (A.Rewards && A.Rewards.isBusy());
       var used = S.revivesUsed > 0;
-      drawResultButton(used ? '本局复活次数已用' : busy ? '广告加载中' : '看广告复活',
-        u.resultRevive, !used && !busy, result.compact ? 18 : 28);
+      A.ProfileUI.dialogButton(u.resultRevive,
+        used ? '本局复活次数已用' : busy ? '广告加载中' : '看广告复活');
       if (used || busy) D.roundRect(u.resultRevive.x + 3, u.resultRevive.y + 3,
         u.resultRevive.w - 6, u.resultRevive.h - 6, u.resultRevive.h / 2 - 3,
         D.color('#b5a18a', 0.22));
     } else resultText('全部关卡已通关',
       cx, u.resultNext.y + (u.resultNext.h - 18) / 2,
       panel.w - 36, 18, '#8a6248', 1);
-    drawResultButton('再玩一次', u.resultReplay, !win);
-    drawResultButton('返回选关', u.resultHome, false);
+    A.ProfileUI.dialogButton(u.resultReplay, '再玩一次');
+    A.ProfileUI.dialogButton(u.resultHome, '返回主页');
   }
 
   // 字体纹理尚未就绪时，用七段几何显示真实整数百分比；不依赖图片。
@@ -911,7 +806,7 @@
   A.Hud = {
     CLS_COLOR: CLS_COLOR,
     drawHud: drawHud,
-    drawTray: drawShop,
+    drawTray: function () { A.BattleShopUI.draw(); },
     drawInspect: drawInspect,
     drawToast: drawToast,
     drawMenu: drawMenu,

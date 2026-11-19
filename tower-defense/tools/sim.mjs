@@ -180,6 +180,7 @@ const FILES = [
   'gameplay/play/battle.js',
   'gameplay/input.js',
   'gameplay/render/scene.js',
+  'gameplay/render/battle-shop.js',
   'gameplay/ui.js',
   'gameplay/render/hud.js',
   'gameplay/game.js',

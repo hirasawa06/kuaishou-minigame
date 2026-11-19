@@ -221,19 +221,29 @@ function toggleOrientation() {
 <script src="kwaiOpenApi/kwai-device.js?v=2"></script>
 <script src="kwaiOpenApi/kwai-storage.js?v=2"></script>
 <!-- 在下方按依赖顺序追加游戏 js 文件；kwaiStandard/main.js 保持最后 -->
-<script src="gameplay/data/font-atlas.js?v=confirm-glyphs-1119-1426"></script>
+<script src="gameplay/data/font-atlas.js?v=start-defend-1119-1517"></script>
 <script src="gameplay/data/sprites.js?v=art-paths-2140"></script>
 <script src="gameplay/data/rigs.js?v=art-paths-2140"></script>
 <script src="gameplay/data/character-animations.js?v=bedside-normal-1"></script>
 <script src="gameplay/data/avatars.js?v=home-radius12-1119-1127"></script>
 <script src="gameplay/config.js?v=art-paths-2140"></script>
-<script src="gameplay/layout.js?v=dialogs-up24-1119-1449"></script>
+<script src="gameplay/layout.js?v=portrait-half-1119-1748"></script>
 <script src="gameplay/state.js?v=reward-loading-1"></script>
 <script src="gameplay/profile.js?v=profile-dialog-style-1119-1412"></script>
-<script src="gameplay/render/gl.js?v=level-soft-gaussian-1450"></script>
+<script>
+// ── 本地预览补满体力：只执行一次，不清除其他存档 ──
+if (_q.get('refill') === 'stamina' &&
+    ['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0) {
+  window.AIGCUtils.Profile.addStamina(window.AIGCUtils.Config.STAMINA_MAX);
+  var refillUrl = new URL(window.location.href);
+  refillUrl.searchParams.delete('refill');
+  window.history.replaceState(null, '', refillUrl.href);
+}
+</script>
+<script src="gameplay/render/gl.js?v=card-container-clip-1119-1754"></script>
 <script src="gameplay/render/draw.js?v=level-soft-gaussian-1450"></script>
 <script src="gameplay/hero-forms.js?v=art-paths-2140"></script>
-<script src="gameplay/assets.js?v=collection-silhouettes-b6-1119"></script>
+<script src="gameplay/assets.js?v=battle-card-fit-1720"></script>
 <script src="gameplay/audio.js?v=user-audio-quiet-6"></script>
 <script src="gameplay/anim/rig.js?v=3"></script>
 
@@ -243,8 +253,9 @@ function toggleOrientation() {
 <script src="gameplay/rewards.js?v=reward-loading-1"></script>
 <script src="gameplay/input.js?v=avatar-direct-1119-1422"></script>
 <script src="gameplay/render/scene.js?v=placement-snap-1"></script>
-<script src="gameplay/ui.js?v=invite-no-link-icon-1119-1451"></script>
-<script src="gameplay/render/hud.js?v=level-soft-gaussian-1450"></script>
+<script src="gameplay/render/battle-shop.js?v=card-container-clip-1119-1754"></script>
+<script src="gameplay/ui.js?v=pause-style-1119-1504"></script>
+<script src="gameplay/render/hud.js?v=start-code-1755"></script>
 <script src="gameplay/render/safe-area-debug.js?v=3"></script>
 <script src="gameplay/game.js?v=reward-loading-1"></script>
 
