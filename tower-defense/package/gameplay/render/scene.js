@@ -219,7 +219,7 @@
       icon(e.def.icon, e.x, e.y + wind, rr * 2.5, spawn);
     }
     A.Render.setSceneLight('off');
-    if (e.hitFlash > 0) {
+    if (!e.dead && e.hitFlash > 0) {
       D.circle(e.x, e.y, rr, D.color('#ffffff', e.hitFlash * 3.2));
     }
     var w = Math.max(24, rr * 2.1);
@@ -713,7 +713,6 @@
     var shadowY = spriteY + previewSize * 0.42;
     var previewAlpha = ok ? 0.88 : 0.56;
     drawGroundShadow(x, shadowY, def.radius * 0.70, ok ? 0.32 : 0.20);
-    D.roundRect(x - 18, shadowY + 3, 36, 4, 2, D.color(col, 0.88));
     if (rig && Assets.tex('game')) {
       A.Anim.draw(rig, { anim: 'idle', animT: S.time, hitFlash: 0 },
         x, spriteY, previewSize, { alpha: previewAlpha });

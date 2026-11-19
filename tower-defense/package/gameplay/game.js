@@ -369,7 +369,6 @@
     // 守卫图底部压在托盘上20px，不能被托盘背景遮掉。
     Scene.drawBase();
     Hud.drawDragGhost();
-    Hud.drawInspect();
     Hud.drawToast();
 
     if (S.phase === 'paused') Hud.drawPaused();

@@ -44,6 +44,10 @@
   };
 
   var AVATAR_COLOR = [];
+  // 只交换九宫格展示位置，保留已有存档的头像索引。
+  function avatarIndexAt(position) {
+    return position === 7 ? 8 : position === 8 ? 7 : position;
+  }
   (function () {
     var items = (A.AvatarAtlas && A.AvatarAtlas.items) || [];
     for (var i = 0; i < items.length; i++) AVATAR_COLOR.push(items[i].color || '#f5a84a');
@@ -277,7 +281,8 @@
 
     for (var i = 0; i < P.AVATARS.length; i++) {
       var rect = g.rect(i);
-      avatarFrame(rect, i, i === UI.draftAvatar);
+      var avatarIndex = avatarIndexAt(i);
+      avatarFrame(rect, avatarIndex, avatarIndex === UI.draftAvatar);
     }
 
     profileRow(g.save, '确认选择');
@@ -423,30 +428,38 @@
     var scene = A.Assets.entry('collection-scene-' + def.id);
     if (scene) drawDetailPortrait(scene, image);
     else heroForm(def, 2, image.x + image.w / 2, image.y + image.h / 2, image.w);
-    D.roundRect(panel.x, panel.y, panel.w, panel.h, 24, col('#fff7df'));
     var forms = [1, 2, 3].map(function (star) { return S.heroAtStar(def.id, star); });
-    var rows = [
-      ['生命', function (f) { return Math.round(f.hp); }],
-      [def.cls === 'healer' ? '回血' : '攻击', function (f) { return Math.round(def.cls === 'healer' ? f.heal : f.atk); }],
-      [def.cls === 'healer' ? '治疗间隔' : '攻击间隔', function (f) { return def.cls === 'tank' ? '--' : Math.round(f.interval * 1000); }],
-      [def.cls === 'healer' ? '治疗距离' : '攻击距离', function (f) { return Math.round(f.range); }],
-      ['嘲讽范围', function (f) { return Math.round(f.taunt || 0); }],
-      ['群攻范围', function (f) { return Math.round(f.splash || 0); }],
-      ['消耗饼干', function (f) { return f.cost; }]
-    ];
+    var rows = collectionStatRows(def, forms);
     var pad = 18, top = panel.y + 16;
-    var font = (panel.h - 36) / 8 < 24 ? 12 : 16;
-    var rowH = (panel.h - 16 - 20 - D.textLineH(font)) / 7;
+    var font = (panel.h - 36) / (rows.length + 1) < 24 ? 12 : 16;
+    var lineH = D.textLineH(font), rowH = lineH + 16;
+    var panelH = 16 + (rows.length + 1) * lineH + rows.length * 16 + 20;
+    D.roundRect(panel.x, panel.y, panel.w, panelH, 24, col('#fff7df'));
     fittedText('1星 / 2星 / 3星', panel.x + panel.w - pad, top,
       font, panel.w - pad * 2, '#a77b55', 2);
     for (var i = 0; i < rows.length; i++) {
       var y = top + (i + 1) * rowH;
-      var value = forms.map(rows[i][1]).join('/');
-      if (i === 2 && def.cls !== 'tank') value += '毫秒';
-      fittedText(rows[i][0], panel.x + pad, y, font, panel.w * 0.32, COLOR.brownDeep, 0);
+      var stat = rows[i];
+      var value = forms.map(function (form) {
+        return Math.round((form[stat.key] || 0) * (stat.scale || 1));
+      }).join('/');
+      var label = def.cls === 'healer' && stat.healerLabel ? stat.healerLabel : stat.label;
+      fittedText(label, panel.x + pad, y, font, panel.w * 0.32, COLOR.brownDeep, 0);
       fittedText(value, panel.x + panel.w - pad, y, font,
         panel.w * 0.58, COLOR.brownDeep, 2);
     }
+  }
+
+  // ── 从统一目录读取实时属性，费用固定末行，三档全零数值隐藏 ──
+  function collectionStatRows(def, forms) {
+    var rows = C.HERO_DETAIL_STATS.filter(function (stat) {
+      if (stat.hiddenClass === def.cls || (stat.onlyClass && stat.onlyClass !== def.cls)) return false;
+      return stat.key === 'cost' || forms.some(function (form) {
+        return typeof form[stat.key] === 'number' && form[stat.key] !== 0;
+      });
+    });
+    return rows.filter(function (stat) { return stat.key !== 'cost'; })
+      .concat(rows.filter(function (stat) { return stat.key === 'cost'; }));
   }
 
   function drawDetailPortrait(scene, image) {
@@ -633,7 +646,7 @@
       if (pointIn(a.close, x, y, 6)) { back(); return true; }
       for (var i = 0; i < P.AVATARS.length; i++) {
         if (pointIn(a.rect(i), x, y, 3)) {
-          UI.draftAvatar = i;
+          UI.draftAvatar = avatarIndexAt(i);
           return true;
         }
       }

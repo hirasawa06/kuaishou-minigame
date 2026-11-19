@@ -482,6 +482,83 @@ if (S.effects.filter(e => e.type === 'boss-ground-impact').length !== 1) {
   throw new Error('Boss砸地特效重复触发')
 }
 console.log('boss ground impact gate: ok')
+// 途中被挡时：三次单体后第四次范围砸地，不能伤到远处守卫物。
+S.reset()
+S.phase = 'playing'
+S.waveTimer = 100
+const roadBoss = { ...boss, y: bossUi.baseStopY - 160, anim: 'idle', animT: 0,
+  atkTimer: 0, pendingHit: -1, pendingKind: '', singleAttackCount: 0 }
+const shield = testUnit(S.heroById('tank'), 9901, roadBoss.x)
+shield.y = roadBoss.y + 45
+shield.homeY = shield.y
+shield.hp = shield.maxHp = 10000
+const nearby = testUnit(S.heroById('tank'), 9902, roadBoss.x + 65)
+nearby.y = roadBoss.y + 30
+nearby.homeY = nearby.y
+nearby.hp = nearby.maxHp = 10000
+S.units.push(shield, nearby)
+S.enemies.push(roadBoss)
+const roadBaseHp = S.baseHp
+const attacks = []
+let previousTimer = 0
+let aoeSeen = false
+for (let frame = 0; frame < 360; frame++) {
+  A.Battle.update(1 / 60)
+  if (roadBoss.atkTimer > previousTimer) attacks.push(roadBoss.anim)
+  previousTimer = roadBoss.atkTimer
+  if (S.effects.some(e => e.type === 'boss-ground-impact')) { aoeSeen = true; break }
+}
+if (attacks.join(',') !== 'atk,atk,atk,aoe' || !aoeSeen ||
+    nearby.hp !== 10000 - 22 || S.baseHp !== roadBaseHp) {
+  throw new Error('Boss途中三次单体一次范围砸地循环异常：' + attacks.join(','))
+}
+console.log('boss road attack cycle: ok')
+// 战士返位不能一直顶住固定队友，必须绕行回home。
+S.reset()
+S.phase = 'playing'
+S.waveTimer = 100
+const returningCat = testUnit(S.heroById('war'), 9951, bossUi.field.x + bossUi.field.w / 2)
+returningCat.y = bossUi.placeTop + 65
+returningCat.homeY = bossUi.placeBottom - 25
+const blockingPet = testUnit(S.heroById('tank'), 9952, returningCat.x)
+blockingPet.y = (returningCat.y + returningCat.homeY) / 2
+blockingPet.homeY = blockingPet.y
+S.units.push(returningCat, blockingPet)
+let wentAround = false
+for (let frame = 0; frame < 1200; frame++) {
+  A.Battle.update(1 / 60)
+  if (Math.abs(returningCat.x - returningCat.homeX) > 25) wentAround = true
+  if (S.dist2(returningCat.x, returningCat.y, returningCat.homeX, returningCat.homeY) < 16) break
+}
+if (!wentAround || S.dist2(returningCat.x, returningCat.y, returningCat.homeX, returningCat.homeY) >= 16) {
+  throw new Error('近战猫被队友挡住后未绕路返位')
+}
+console.log('warrior return obstacle route: ok')
+// 追击同样绕开挡路宠物，进入攻击范围后实际命中敌人。
+S.reset()
+S.phase = 'playing'
+S.waveTimer = 100
+const chasingCat = testUnit(S.heroById('war'), 9961, returningCat.homeX)
+chasingCat.y = bossUi.placeTop + 45
+chasingCat.homeY = chasingCat.y
+const chaseBlocker = testUnit(S.heroById('healer'), 9962, chasingCat.x)
+chaseBlocker.y = chasingCat.y + 65
+chaseBlocker.homeY = chaseBlocker.y
+chaseBlocker.atkTimer = 100
+const chaseEnemyDef = A.Config.ENEMIES.normal
+const chaseEnemy = { ...boss, uid: 9963, def: chaseEnemyDef, rigId: 'normal',
+  x: chasingCat.x, y: chasingCat.y + 135, hp: 10000, maxHp: 10000,
+  speed: 0, atkTimer: 100, pendingHit: -1, anim: 'idle', animT: 0 }
+S.units.push(chasingCat, chaseBlocker)
+S.enemies.push(chaseEnemy)
+let chasedAround = false
+for (let frame = 0; frame < 900; frame++) {
+  A.Battle.update(1 / 60)
+  if (Math.abs(chasingCat.x - chasingCat.homeX) > 25) chasedAround = true
+  if (chaseEnemy.hp < 10000) break
+}
+if (!chasedAround || chaseEnemy.hp >= 10000) throw new Error('近战猫追击未绕开队友并命中敌人 ' + JSON.stringify({x:chasingCat.x,y:chasingCat.y,hp:chaseEnemy.hp,path:chasingCat.returnPath,enemyY:chaseEnemy.y,anim:chasingCat.anim,pending:chasingCat.pendingHit,timer:chasingCat.atkTimer,phase:S.phase}))
+console.log('warrior chase obstacle route: ok')
 // 动作场也按同一0.48秒命中时刻启动特效，不结算实际伤害。
 for (const file of ['gameplay/data/character-animations.js', 'gameplay/anim/defs.js']) {
   vm.runInContext(fs.readFileSync(path.join(PKG, file), 'utf8'), ctx, { filename: file })

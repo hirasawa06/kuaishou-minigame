@@ -317,7 +317,6 @@
       S.gold += g;
       S.goldEarned += g;
       S.addFloat(e.x, e.y - e.def.radius - 20, String(g), '#ffd166', 'kill-reward');
-      S.addEffect({ type: 'pop', x: e.x, y: e.y, r: e.def.radius, life: 0.42, max: 0.42, color: e.def.color });
       if (e.def.tier === 'boss') onBossDeath(e);
       else A.GameAudio && A.GameAudio.play('enemyDeath');
     }
@@ -448,6 +447,7 @@
       x: origin.x, y: origin.y,
       tx: target.x, ty: target.y,
       targetUid: target.uid,
+      sourceUnit: unit,
       speed: def.cls === 'archer' ? 680 : 420,
       kind: def.cls === 'archer' ? 'light' : def.cls === 'mage' ? 'magic' : 'fire',
       dmg: def.atk,
@@ -465,6 +465,7 @@
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
       if (e.dead) continue;
+      if (!attackInFront(p.sourceUnit, e)) continue;
       if (S.dist2(e.x, e.y, cx, cy) > r2) continue;
       if (p.slow) {
         e.slowT = Math.max(e.slowT, p.slow.duration);
@@ -594,11 +595,10 @@
     if ((moveA === 0) !== (moveB === 0)) {
       var movable = moveA > 0 ? a : b;
       var fixed = moveA > 0 ? b : a;
-      // 怪物推进方向是向南。撞上固定宠物时必须先退回北侧排队，不能被挤到
-      // 宠物和基地之间；战士则维持原来的接触方向。
+      // ── 保留接触方向：北侧怪物各自退让，避免反复聚拢到同一点 ──
       var queueNorth = movable.kind === 'enemy' && fixed.kind === 'unit';
-      var direction = queueNorth ? -Math.PI / 2
-        : moveA > 0 ? Math.atan2(-ny, -nx) : Math.atan2(ny, nx);
+      var direction = moveA > 0 ? Math.atan2(-ny, -nx) : Math.atan2(ny, nx);
+      if (queueNorth && movable.actor.y >= fixed.actor.y) direction = -Math.PI / 2;
       return placeOutsideBody(movable, fixed, targetDistance, direction, queueNorth);
     }
 
@@ -714,6 +714,8 @@
       for (var j = 0; j < S.units.length; j++) {
         var un = S.units[j];
         if (un.dead || un.def.cls !== 'tank' || !un.def.taunt) continue;
+        // ── 嘲讽朝上方180度生效，左右水平边界包含 ──
+        if (e.y > un.y) continue;
         var d2 = S.dist2(un.x, un.y, e.x, e.y);
         if (d2 <= un.def.taunt * un.def.taunt && d2 < bestD) {
           bestD = d2;
@@ -733,6 +735,69 @@
         e.taunted -= dt;
       }
     }
+  }
+
+  // 返位路径按宠物碰撞圆绕行，保留原来的home坐标而不是穿过队友。
+  function returnRoute(unit, target) {
+    var goalX = target ? target.x : unit.homeX;
+    var goalY = target ? target.y : unit.homeY;
+    var reach = target ? Math.max(0, attackReach(unit, target) - C.ATTACK_CHASE_INSET) : 0;
+    var distance = Math.sqrt(S.dist2(unit.x, unit.y, goalX, goalY)) || 1;
+    var directX = target ? goalX + (unit.x - goalX) / distance * reach : goalX;
+    var directY = target ? goalY + (unit.y - goalY) / distance * reach : goalY;
+    var ui = L.ui, radius = unit.def.radius, grid = 16;
+    var left = ui.field.x + radius, right = ui.field.x + ui.field.w - radius;
+    var top = ui.placeTop, bottom = ui.placeBottom;
+    var cols = Math.ceil((right - left) / grid) + 1;
+    var rows = Math.ceil((bottom - top) / grid) + 1;
+    var obstacles = S.units.filter(function (other) { return other !== unit && !other.dead; });
+    function clear(ax, ay, bx, by) {
+      var dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
+      for (var i = 0; i < obstacles.length; i++) {
+        var other = obstacles[i];
+        var t = length2 ? S.clamp(((other.x - ax) * dx + (other.y - ay) * dy) / length2, 0, 1) : 0;
+        var clearance = radius + other.def.radius + C.ACTOR_BODY_GAP + 1;
+        if (S.dist2(ax + t * dx, ay + t * dy, other.x, other.y) < clearance * clearance) {
+          // 已贴住队友的起点允许向外脱离，不能因安全余量把自己锁死。
+          if (t === 0 && S.dist2(bx, by, other.x, other.y) > S.dist2(ax, ay, other.x, other.y)) continue;
+          return false;
+        }
+      }
+      return true;
+    }
+    if (clear(unit.x, unit.y, directX, directY)) return [{ x: directX, y: directY }];
+    function point(index) {
+      return { x: Math.min(right, left + (index % cols) * grid),
+        y: Math.min(bottom, top + Math.floor(index / cols) * grid) };
+    }
+    var queue = [], parent = {}, end = -1;
+    // 从角色附近能直达的网格开始，避免把起点强行挪进障碍。
+    for (var index = 0; index < cols * rows; index++) {
+      var p = point(index);
+      if (S.dist2(unit.x, unit.y, p.x, p.y) <= grid * grid * 2 && clear(unit.x, unit.y, p.x, p.y)) {
+        queue.push(index); parent[index] = -1;
+      }
+    }
+    for (var q = 0; q < queue.length; q++) {
+      var current = queue[q], at = point(current);
+      if (target ? S.dist2(at.x, at.y, goalX, goalY) <= reach * reach :
+          S.dist2(at.x, at.y, goalX, goalY) <= grid * grid * 2 &&
+          clear(at.x, at.y, goalX, goalY)) { end = current; break; }
+      for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) {
+        if (!ox && !oy) continue;
+        var nx = current % cols + ox, ny = Math.floor(current / cols) + oy;
+        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+        var next = ny * cols + nx;
+        if (parent[next] !== undefined) continue;
+        var destination = point(next);
+        if (!clear(at.x, at.y, destination.x, destination.y)) continue;
+        parent[next] = current; queue.push(next);
+      }
+    }
+    if (end < 0) return [];
+    var route = target ? [] : [{ x: goalX, y: goalY }];
+    while (end >= 0) { route.unshift(point(end)); end = parent[end]; }
+    return route;
   }
 
   function updateUnits(dt) {
@@ -761,12 +826,25 @@
         var chase = !attacking && !inRange ? nearestEnemy(un, def.aggro || 240) : null;
         var tx = chase ? chase.x : un.homeX;
         var ty = chase ? chase.y : un.homeY;
+        if (!attacking && !inRange) {
+          un.returnRouteT = (un.returnRouteT || 0) - dt;
+          var routeTarget = chase ? chase.uid : 0;
+          if (!un.returnPath || un.returnRouteT <= 0 || un.routeTarget !== routeTarget) {
+            un.returnPath = returnRoute(un, chase);
+            un.routeTarget = routeTarget;
+            un.returnRouteT = 0.35;
+          }
+          while (un.returnPath.length && S.dist2(un.x, un.y,
+            un.returnPath[0].x, un.returnPath[0].y) < (un.returnPath.length === 1 ? 0.25 : 9)) un.returnPath.shift();
+          if (un.returnPath.length) { tx = un.returnPath[0].x; ty = un.returnPath[0].y; }
+          else { tx = un.x; ty = un.y; }
+        } else { un.returnPath = null; un.returnRouteT = 0; }
         var dx = tx - un.x;
         var dy = ty - un.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         // 与 findTarget/命中检查共用中心距口径，不再追到敌人的北侧偏移点。
-        var remaining = chase ? Math.max(0, d - (def.range + chase.def.radius)) : d;
-        if (!attacking && !inRange && remaining > (chase ? 0 : 4)) {
+        var remaining = d;
+        if (!attacking && !inRange && remaining > (chase ? 0 : 1)) {
           selectVerticalRig(un, ty);
           var step = Math.min(remaining, def.moveSpeed * dt);
           un.x += dx / d * step;
@@ -815,8 +893,7 @@
           }
           if (!tgt) tgt = findTarget(un);
           if (tgt) {
-            var reach = def.range + tgt.def.radius;
-            if (S.dist2(un.x, un.y, tgt.x, tgt.y) <= reach * reach) {
+            if (attackInRange(un, tgt, true)) {
               resolveAttack(un, tgt);
             }
           }
@@ -888,8 +965,26 @@
     return best;
   }
 
+  // 攻击距离独立于脚底碰撞；所有阶段共用中心距与目标半径口径。
+  function attackReach(unit, target) {
+    return unit.def.range + target.def.radius;
+  }
+
+  // ── 远程前方180度：朝屏幕上方，左右边界包含，背后不命中 ──
+  function attackInFront(unit, target) {
+    if (!unit || (unit.def.cls !== 'archer' && unit.def.cls !== 'mage')) return true;
+    return target.y <= unit.y;
+  }
+
+  function attackInRange(unit, target, retained) {
+    if (!target || target.dead) return false;
+    if (!attackInFront(unit, target)) return false;
+    var reach = attackReach(unit, target) + C.ATTACK_DISTANCE_EPSILON +
+      (retained ? C.ATTACK_RELEASE_MARGIN : 0);
+    return S.dist2(unit.x, unit.y, target.x, target.y) <= reach * reach;
+  }
+
   function findTarget(un) {
-    var def = un.def;
     var best = null;
     var bestY = -Infinity;
     var bestD = Infinity;
@@ -897,8 +992,9 @@
       var e = S.enemies[j];
       if (e.dead) continue;
       var d2 = S.dist2(un.x, un.y, e.x, e.y);
-      var reach = def.range + e.def.radius;
-      if (d2 > reach * reach) continue;
+      var retained = e.uid === un.pendingTarget;
+      if (!attackInRange(un, e, retained)) continue;
+      if (retained) return e;
       if (e.y > bestY || (e.y === bestY && d2 < bestD)) {
         bestY = e.y;
         bestD = d2;
@@ -942,6 +1038,10 @@
 
   function resolveBossBaseHit(e, goalX, baseY) {
     resolveBaseHit(e, goalX, baseY);
+    resolveBossGroundHit(e);
+  }
+
+  function resolveBossGroundHit(e) {
     S.shake = Math.max(S.shake, 0.35);
     var duration = C.BOSS_IMPACT.duration;
     S.addEffect({ type: 'boss-ground-impact', x: e.x, y: e.y,
@@ -985,6 +1085,9 @@
             e.pendingKind = '';
             if (e.def.tier === 'boss') resolveBossBaseHit(e, goalX, u.base.y);
             else resolveBaseHit(e, goalX, u.base.y);
+          } else if (e.pendingKind === 'boss-aoe') {
+            e.pendingKind = '';
+            resolveBossGroundHit(e);
           } else {
             var hitUnit = null;
             for (var hu = 0; hu < S.units.length; hu++) {
@@ -1036,13 +1139,21 @@
         }
       } else if (blocker) {
         if (e.anim === 'move') enterAnimation(e, 'idle');
-        if (e.atkTimer <= 0) {
+        if (e.atkTimer <= 0 && e.pendingHit < 0) {
           selectAttackRig(e, blocker);
           e.atkTimer = e.def.interval;
-          enterAnimation(e, 'atk');
-          e.pendingKind = '';
-          e.pendingHit = attackHitTime(e, 0.18);
-          e.pendingTarget = blocker.uid;
+          if (e.def.tier === 'boss' && (e.singleAttackCount || 0) >= 3) {
+            e.singleAttackCount = 0;
+            enterAnimation(e, 'aoe');
+            e.pendingKind = 'boss-aoe';
+            e.pendingHit = attackHitTime(e, 0.48, 'aoe');
+          } else {
+            if (e.def.tier === 'boss') e.singleAttackCount = (e.singleAttackCount || 0) + 1;
+            enterAnimation(e, 'atk');
+            e.pendingKind = '';
+            e.pendingHit = attackHitTime(e, 0.18);
+            e.pendingTarget = blocker.uid;
+          }
         }
       } else {
         var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
@@ -1073,6 +1184,7 @@
           break;
         }
       }
+      if (target && !attackInFront(p.sourceUnit, target)) target = null;
       if (target) { p.tx = target.x; p.ty = target.y; }
       var dx = p.tx - p.x, dy = p.ty - p.y;
       var d = Math.sqrt(dx * dx + dy * dy) || 1;

@@ -137,6 +137,7 @@
     var speed = C.HERO_STAR_SPEED_SCALES[star - 1];
     var reach = C.HERO_STAR_RANGE_SCALES[star - 1];
     def.interval = base.interval / speed;
+    def.moveSpeed = (base.moveSpeed || 0) * C.HERO_STAR_MOVE_SPEED_SCALES[star - 1];
     def.range = (base.range || 0) * reach;
     def.taunt = (base.taunt || 0) * reach;
     def.splash = (base.splash || 0) * reach;
@@ -174,7 +175,7 @@
     target.star++;
     target.born = S.time;
     target.age = 0;
-    target.locked = target.locked === true;
+    target.locked = true; // 合成到2星及以上后自动锁定，仍可手动解锁。
     source.cardId = null;
     source.sold = true;
     source.locked = false;

@@ -69,10 +69,7 @@
   }
 
   function showCardDetails(d) {
-    S.inspect = d.def;
-    S.inspectT = 1;
-    S.inspectX = d.rect.x;
-    S.inspectY = d.rect.y - 180;
+    // 点击角色不再展示数值卡片。
   }
 
   function onCardPortrait(d, x, y) {
@@ -249,29 +246,6 @@
     tap(px, py);
   }
 
-  // 单击仍然自动部署；已有射手占中心时寻找空落点，避免教学第二次购买卡住。
-  function buyAtFreePoint(d) {
-    var u = L.ui, radius = d.def.radius || 22;
-    var points = [{ x: u.field.x + u.field.w * 0.5, y: u.placeBottom - 10 }];
-    for (var row = 0; row < 5; row++) {
-      for (var col = 0; col < 5; col++) points.push({
-        x: u.placeLeft + (u.placeRight - u.placeLeft) * col / 4,
-        y: u.placeBottom - 10 - (u.placeBottom - u.placeTop - 10) * row / 4
-      });
-    }
-    var actors = S.units.concat(S.enemies);
-    for (var i = 0; i < points.length; i++) {
-      var p = points[i], clear = true;
-      for (var j = 0; j < actors.length; j++) {
-        var actor = actors[j];
-        if (actor.dead || actor.hp <= 0) continue;
-        var min = Math.max(32, radius + actor.def.radius + 2);
-        if (S.dist2(p.x, p.y, actor.x, actor.y) < min * min) { clear = false; break; }
-      }
-      if (clear) return A.Battle.buyCard(d.index, p.x, p.y);
-    }
-    return A.Battle.buyCardAtCenter(d.index);
-  }
 
   function finishDrag(px, py) {
     var u = L.ui;
@@ -288,10 +262,6 @@
       if (d.active && S.phase === 'playing' && !d.unit.dead && d.unit.hp > 0 &&
         S.units.indexOf(d.unit) >= 0 && d.unit.def.moveSpeed === 0 && allowed('sell', d.unit) && hitControl(u.sellZone, px, py, 0)) {
         A.Battle.sellUnit(d.unit);
-      } else if (!d.active && !d.moved && hitControl(u.interactiveRect, px, py, 0) &&
-        !d.unit.dead && allowed('inspect', d.unit)) {
-        S.inspect = d.unit.def; S.inspectStar = d.unit.star || d.unit.level || 1;
-        S.inspectT = 2.4; S.inspectX = px - 124; S.inspectY = py - 150;
       }
       return;
     }
@@ -322,20 +292,8 @@
     // 拖回商店区域松手：什么都不做
     if (d.active) return;
 
-    // 头像是明确的详情入口；按住卡牌也能查看，不会误购。
-    if (onCardPortrait(d, px, py) ||
-        ((A._now ? A._now() : Date.now()) - d.startedAt) >= LONG_PRESS * 1000) {
-      showCardDetails(d);
-      return;
-    }
-    // 点卡牌文字区：默认放到战场中下方。
-    if (A.Battle.buyCardAtCenter(d.index)) {
-      S.inspect = null;
-      S.inspectT = 0;
-      A.GameAudio && A.GameAudio.play('place');
-    } else {
-      showCardDetails(d);
-    }
+    // 未拖动的点击和长按不部署，只有拖到战场松手才购买上阵。
+    return;
   }
 
   function tap(px, py) {
@@ -385,7 +343,7 @@
     if (S.phase === 'win' || S.phase === 'lose') {
       // 广告期间吞掉结算操作，不能在回调前重开或退出当前对局。
       if (S.adBusy || (A.Rewards && A.Rewards.isBusy())) return;
-      if (S.phase === 'lose' && hitControl(u.resultRevive, px, py, 0)) {
+      if (S.phase === 'lose' && hitControl(u.resultLoseRevive, px, py, 0)) {
         if (S.revivesUsed > 0) { S.toastMsg('本局复活次数已用', 1.4); return; }
         if (A.Rewards && A.Rewards.watchRevive) A.Rewards.watchRevive();
         else S.toastMsg('当前环境不支持广告', 1.4);
@@ -395,7 +353,7 @@
         A.Game.nextLevel();
         return;
       }
-      if (hitControl(u.resultHome, px, py, 0)) { A.Game.goMenu(); return; }
+      if (hitControl(S.phase === 'lose' ? u.resultLoseHome : u.resultHome, px, py, 0)) { A.Game.goMenu(); return; }
       if (hitControl(u.btnRect('result'), px, py, 8)) A.Game.restart();
       return;
     }

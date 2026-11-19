@@ -31,7 +31,7 @@ COLS = 8
 ROWS = 9
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
-ATLAS_VERSION = 17
+ATLAS_VERSION = 18
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICON_BOXES = {
@@ -185,6 +185,12 @@ def normal_bedside_frame(name):
     img = Image.open(os.path.join(NORMAL_BEDSIDE_DIR, frame["file"])).convert("RGBA")
     rgba = np.asarray(img).copy()
     rgba[rgba[:, :, 3] < 128] = (0, 0, 0, 0)
+    if name == "hop":
+        # 原始02.png底部的独立黄色残留；保留清理前画布边界，
+        # 防止去噪后重新fit导致角色尺寸和脚底位置发生变化。
+        bounds = Image.fromarray(rgba, "RGBA").getbbox()
+        rgba[254:256, 118:133] = (0, 0, 0, 0)
+        return fit_cell(Image.fromarray(rgba, "RGBA").crop(bounds), CELL - 2 * PAD)[0]
     return fit_visible(Image.fromarray(rgba, "RGBA"))
 
 
@@ -562,12 +568,12 @@ def build():
 
     # WebGL 上传时还原 RGBA；索引图集为主包留出新增角色余量。
     atlas.quantize(colors=256, method=Image.Quantize.FASTOCTREE).save(
-        os.path.join(CHARACTER_DIR, "game.png"), optimize=True, compress_level=9
+        os.path.join(CHARACTER_DIR, f"game-v{ATLAS_VERSION}.png"), optimize=True, compress_level=9
     )
 
     data = {
         # 图集替换后必须使 H5 和真机重新取纹理，避免沿用同名旧缓存。
-        "src": f"res/Image/ingame/characters/game.png?v={ATLAS_VERSION}",
+        "src": f"res/Image/ingame/characters/game-v{ATLAS_VERSION}.png",
         "texW": ATLAS_W,
         "texH": ATLAS_H,
         "cell": CELL,

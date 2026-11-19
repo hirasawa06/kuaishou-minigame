@@ -279,38 +279,6 @@
     A.BattleShopUI.drawDragCard(drag.def, rect, drag.index);
   }
 
-  function drawInspect() {
-    if (!S.inspect) return;
-    var def = S.inspect;
-    var a = 1;
-    var w = Math.min(300, L.ui.interactiveRect.w - 16);
-    var h = 172;
-    var x = S.inspectX === undefined ? L.ui.safeLeft + 8 : S.inspectX;
-    var y = S.inspectY === undefined ? L.ui.contentTop + 90 : S.inspectY;
-    x = Math.max(L.ui.safeLeft + 8, Math.min(L.ui.safeRight - w - 8, x));
-    y = Math.max(L.ui.contentTop + 6, Math.min(L.ui.tray.y - h - 6, y));
-
-    D.roundRect(x, y, w, h, 14, D.color('#a7663d', 0.96 * a));
-    D.roundRect(x + 3, y + 3, w - 6, h - 6, 12, D.color('#fff0d9', 0.98 * a));
-    Scene.heroArt(def, x + 38, y + 35, 56, a);
-    D.text(def.name, x + 72, y + 10, 28, D.color('#704026', a), 0);
-    D.text((S.inspectStar || 1) + '星 · ' + def.cost + ' 饼干', x + 72, y + 43, 18,
-      D.color(CARD_TEXT_COLOR[def.cls], a), 0);
-    var maxLineW = w - 28;
-    var line = '', line2 = '';
-    for (var i = 0; i < def.desc.length; i++) {
-      var next = line + def.desc.charAt(i);
-      if (!line2 && D.textWidth(next, 18) <= maxLineW) line = next;
-      else line2 += def.desc.charAt(i);
-    }
-    D.text(line, x + 14, y + 70, 18, D.color('#76513c', a), 0);
-    if (line2) D.text(line2, x + 14, y + 91, 18, D.color('#76513c', a), 0);
-    D.text('生命 ' + Math.round(def.hp) + ' · 攻击 ' + Math.round(def.atk),
-      x + 14, y + 119, 18, D.color('#8b634a', a), 0);
-    D.text('射程 ' + Math.round(def.range || 0) + ' · 间隔 ' + Math.round(def.interval * 1000) + '毫秒',
-      x + 14, y + 143, 18, D.color('#8b634a', a), 0);
-
-  }
 
   function drawToast() {
     var u = L.ui;
@@ -373,11 +341,23 @@
 
   // ── 代码绘制：深橙厚边、纯色面板和顶部柔和内高光 ──
   function drawStartSurface(x, y, w, h) {
-    var inset = 1.5, depth = 4;
-    D.roundRect(x, y, w, h, h / 2, D.color('#D87A09'));
+    var unit = h / 64;
+    var inset = 2 * unit, depth = 6 * unit;
+    D.roundRect(x, y, w, h, h / 2, D.color('#C86A08'));
+    D.roundRect(x + inset, y + inset, w - inset * 2, h - inset * 2,
+      h / 2 - inset, D.color('#E9890B'));
     var faceW = w - inset * 2, faceH = h - depth - inset;
-    A.Render.push(x + inset, y + inset, faceW, faceH, D.color('#FFA400'),
+    // 浅金色内边沿，内层依旧为纯色面板。
+    D.roundRect(x + inset, y + inset, faceW, faceH, faceH / 2, D.color('#FFD363'));
+    var faceInset = 1.5 * unit;
+    faceW -= faceInset * 2;
+    faceH -= faceInset * 2;
+    A.Render.push(x + inset + faceInset, y + inset + faceInset, faceW, faceH, D.color('#FFAA08'),
       { mode: 10, hw: faceW / 2, hh: faceH / 2, r: faceH / 2 });
+    D.roundRect(x + h * 0.45, y + 8 * unit, w * 0.22, 3 * unit,
+      1.5 * unit, D.color('#FFF0A6', 0.85));
+    D.roundRect(x + h * 0.45 + w * 0.22 + 5 * unit, y + 8 * unit,
+      9 * unit, 3 * unit, 1.5 * unit, D.color('#FFF0A6', 0.65));
   }
 
   // ── 首页主按钮：参考图金橙色材质，白字独立居中 ──
@@ -683,7 +663,7 @@
   }
 
   function drawResult(win) {
-    var u = L.ui, result = u.result, panel = result.panel;
+    var u = L.ui, result = u.result, panel = win ? result.panel : result.losePanel;
     var cx = panel.x + panel.w / 2;
     D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
     A.ProfileUI.dialogPaper(panel, result.headerH, win ? '胜利' : '合照被毁了');
@@ -698,12 +678,6 @@
         panel.w - 44, 18, '#73482a', 1);
     }
 
-    if (!win) {
-      var reviveNotice = result.notice;
-      resultText(S.toast ? S.toast.text : '复活恢复合照50并击退敌人 · 每局1次',
-        cx, reviveNotice.y + (reviveNotice.h - 18) / 2,
-        reviveNotice.w - 16, 18, '#8a6248', 1);
-    }
     if (hasNotice) {
       var notice = result.notice;
       resultText('新伙伴已解锁', notice.x + notice.w / 2, notice.y + 5,
@@ -728,16 +702,16 @@
     else if (!win) {
       var busy = S.adBusy || (A.Rewards && A.Rewards.isBusy());
       var used = S.revivesUsed > 0;
-      A.ProfileUI.dialogButton(u.resultRevive,
+      A.ProfileUI.dialogButton(u.resultLoseRevive,
         used ? '本局复活次数已用' : busy ? '广告加载中' : '看广告复活');
-      if (used || busy) D.roundRect(u.resultRevive.x + 3, u.resultRevive.y + 3,
-        u.resultRevive.w - 6, u.resultRevive.h - 6, u.resultRevive.h / 2 - 3,
+      if (used || busy) D.roundRect(u.resultLoseRevive.x + 3, u.resultLoseRevive.y + 3,
+        u.resultLoseRevive.w - 6, u.resultLoseRevive.h - 6, u.resultLoseRevive.h / 2 - 3,
         D.color('#b5a18a', 0.22));
     } else resultText('全部关卡已通关',
       cx, u.resultNext.y + (u.resultNext.h - 18) / 2,
       panel.w - 36, 18, '#8a6248', 1);
-    A.ProfileUI.dialogButton(u.resultReplay, '再玩一次');
-    A.ProfileUI.dialogButton(u.resultHome, '返回主页');
+    A.ProfileUI.dialogButton(win ? u.resultReplay : u.resultLoseReplay, '再玩一次');
+    A.ProfileUI.dialogButton(win ? u.resultHome : u.resultLoseHome, '返回主页');
   }
 
   // 字体纹理尚未就绪时，用七段几何显示真实整数百分比；不依赖图片。
@@ -766,6 +740,42 @@
   }
 
   function drawLoading() {
+    if (S.phase === 'error') { drawLoadingError(); return; }
+    if (S.phase !== 'loading') return;
+    var u = L.calc(), scale = Math.min(u.w / 390, u.contentH / 359);
+    var progress = A.Assets.progress();
+    var ratio = isFinite(progress.ratio) ? S.clamp(progress.ratio, 0, 1) : 0;
+    D.rect(0, 0, u.w, u.h, D.color('#ffd000'));
+    loadingImage('loading-background', { x: 0, y: 0, w: u.w, h: u.h }, true);
+    // ── 390×845参考坐标：宽度同比缩放，短屏时整体收进可见区域 ──
+    var top = Math.max(u.contentTop - 99 * scale, Math.min((u.h - 845 * scale) / 2,
+      u.contentBottom - 458 * scale));
+    var logo = { x: 48 * scale, y: top + 99 * scale, w: 294 * scale, h: 95 * scale };
+    loadingImage('loading-logo', logo);
+    loadingImage('loading-biscuit', { x: 130 * scale, y: top + 322 * scale,
+      w: 120 * scale, h: 88 * scale });
+    var bar = { x: 47 * scale, y: top + 432 * scale, w: 292 * scale, h: 26 * scale };
+    D.roundRect(bar.x, bar.y, bar.w, bar.h, bar.h / 2, D.color('#963c00'));
+    var edge = 3.5 * scale;
+    D.roundRect(bar.x + edge, bar.y + edge, bar.w - edge * 2, bar.h - edge * 2,
+      (bar.h - edge * 2) / 2, D.color('#ffe782'));
+    var fillW = bar.w * ratio;
+    if (fillW > 0) D.roundRect(bar.x, bar.y, fillW, bar.h,
+      Math.min(bar.h / 2, fillW / 2), D.color('#963c00'));
+  }
+
+  // ── 用原图比例居中绘制；全屏背景等比铺满 ──
+  function loadingImage(key, rect, cover) {
+    var image = A.Assets.entry(key);
+    if (!image) return;
+    var fit = cover ? Math.max(rect.w / image.w, rect.h / image.h)
+      : Math.min(rect.w / image.w, rect.h / image.h);
+    var w = image.w * fit, h = image.h * fit;
+    D.texture(image.tex, image.w, image.h, 0, 0, image.w, image.h,
+      rect.x + (rect.w - w) / 2, rect.y + (rect.h - h) / 2, w, h);
+  }
+
+  function drawLoadingError() {
     if (S.phase !== 'loading' && S.phase !== 'error') return;
     var u = L.calc();
     var progress = A.Assets && A.Assets.progress ? A.Assets.progress() :
@@ -822,7 +832,6 @@
     CLS_COLOR: CLS_COLOR,
     drawHud: drawHud,
     drawTray: function () { A.BattleShopUI.draw(); },
-    drawInspect: drawInspect,
     drawToast: drawToast,
     drawMenu: drawMenu,
     drawBossLab: drawBossLab,

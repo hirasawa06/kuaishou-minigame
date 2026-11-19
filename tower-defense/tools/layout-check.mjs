@@ -53,10 +53,15 @@ function check(name, input, expected) {
   const centerX = (ui.safeLeft + ui.safeRight) / 2
   const centerY = (ui.contentTop + ui.contentBottom) / 2 - 24
   for (const rect of [ui.settings.sheet, ui.avatarPick.sheet, ui.invite.sheet,
-    ui.stamina.sheet, ui.pausePanel.panel, ui.result.panel]) {
+    ui.stamina.sheet, ui.pausePanel.panel, ui.result.panel, ui.result.losePanel]) {
     assert(Math.abs(rect.x + rect.w / 2 - centerX) <= 0.5 &&
       Math.abs(rect.y + rect.h / 2 - centerY) <= 0.5,
     `${name}: dialog not centered in safe interactive area`)
+  }
+  for (const rect of [ui.resultLoseRevive, ui.resultLoseReplay, ui.resultLoseHome]) {
+    assert(rect.y >= ui.result.losePanel.y + ui.result.headerH &&
+      rect.y + rect.h <= ui.result.losePanel.y + ui.result.losePanel.h,
+    `${name}: lose result button outside panel`)
   }
   assert(ui.systemTop === expected.systemTop, `${name}: systemTop ${ui.systemTop}`)
   assert(ui.contentTop === expected.contentTop, `${name}: contentTop ${ui.contentTop}`)

@@ -301,10 +301,24 @@
     var resultNoticeY = resultInfoTop + (resultInfoH - resultNoticeH) / 2;
     ui.result = {
       panel: resultPanel, compact: resultCompact, headerH: resultHeaderH,
+      // ── 失败内容仅有按钮：白色区域上下各留 20px ──
+      losePanel: { x: resultPanel.x, y: resultTop - 20 - resultHeaderH + 4,
+        w: resultPanel.w,
+        h: resultPanel.y + resultPanel.h - (resultTop - 20 - resultHeaderH + 4) },
       infoTop: resultInfoTop, infoH: resultInfoH,
       notice: { x: resultPanel.x + 12, y: resultNoticeY,
         w: resultPanel.w - 24, h: resultNoticeH },
     };
+    // 失败面板收紧后按自身高度居中，按钮命中区域同步平移。
+    var loseY = contentTop + (contentH - ui.result.losePanel.h) / 2 + dialogOffsetY;
+    var loseShift = loseY - ui.result.losePanel.y;
+    ui.result.losePanel.y = loseY;
+    function loseButton(rect) {
+      return { x: rect.x, y: rect.y + loseShift, w: rect.w, h: rect.h };
+    }
+    ui.resultLoseRevive = loseButton(ui.resultRevive);
+    ui.resultLoseReplay = loseButton(ui.resultReplay);
+    ui.resultLoseHome = loseButton(ui.resultHome);
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;
@@ -523,7 +537,7 @@
     };
 
     ui.btnRect = function (kind) {
-      if (kind === 'result') return ui.resultReplay;
+      if (kind === 'result') return A.State && A.State.phase === 'lose' ? ui.resultLoseReplay : ui.resultReplay;
       if (kind === 'menu') return ui.menu.start;
       if (kind === 'shopRefresh') return ui.refreshBtn;
       if (kind === 'shopCap') return ui.capBtn;

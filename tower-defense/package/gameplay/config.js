@@ -29,11 +29,14 @@
     BISCUIT_INTERVAL: 5, // 战斗有效时间秒数，不随倍速加快
     BASE_HP: 100,
     UNIT_CAP_START: 4,      // 初始可上场英雄数
-    UNIT_CAP_MAX: 10,       // 上限
+    UNIT_CAP_MAX: 20,       // 上限
     UNIT_CAP_STEP: 1,       // 每次购买 +1
     UNIT_MIN_GAP: 32,
     // 单位脚底圆形体积之间保留的最小空气缝；只用于移动中的避让，不改攻击距离。
     ACTOR_BODY_GAP: 2,
+    ATTACK_DISTANCE_EPSILON: 0.5,
+    ATTACK_CHASE_INSET: 1,
+    ATTACK_RELEASE_MARGIN: 1,
 
     // 卡池刷新：每次固定消耗3钱币
     REFRESH_COST: 3,
@@ -49,6 +52,19 @@
     HERO_STAR_SCALES: [1, 1.6, 2.6],
     HERO_STAR_COST_SCALES: [1, 2, 4],
     HERO_STAR_SPEED_SCALES: [1, 1.15, 1.30],
+    // ── 主动位移速度：与攻击速度分别配置，驻守角色保持为 0 ──
+    HERO_STAR_MOVE_SPEED_SCALES: [1, 1.25, 1.5],
+    // ── 收藏数值目录：新属性登记后自动进入档案，消耗固定末行 ──
+    HERO_DETAIL_STATS: [
+      { key: 'hp', label: '生命' },
+      { key: 'atk', label: '攻击', hiddenClass: 'healer' },
+      { key: 'heal', label: '治疗量' },
+      { key: 'range', label: '攻击距离', healerLabel: '治疗距离' },
+      { key: 'taunt', label: '嘲讽范围' },
+      { key: 'splash', label: '群攻范围' },
+      { key: 'moveSpeed', label: '速度' },
+      { key: 'cost', label: '消耗饼干' }
+    ],
     HERO_STAR_RANGE_SCALES: [1, 1.10, 1.20],
     // 解锁所需的可进入关卡；以存档 completedLevel + 1 判断，不以当前选关判断。
     HERO_UNLOCK_LEVELS: { war: 1, arch: 1, tank: 2, mage: 2, healer: 3 },

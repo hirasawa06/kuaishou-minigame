@@ -83,6 +83,10 @@
     total = 0;
     failed.length = 0;
     var manifest = [];
+    // ── 首屏小素材优先发起加载，加载页不依赖角色与战斗大图集 ──
+    manifest.push(['loading-background', 'res/Image/ui/loading/background-v1.png']);
+    manifest.push(['loading-logo', 'res/Image/ui/loading/logo-v1.png']);
+    manifest.push(['loading-biscuit', 'res/Image/ui/loading/biscuit-v1.png']);
     // 字体图集
     var atlas = A.FontAtlas;
     for (var size in atlas) {

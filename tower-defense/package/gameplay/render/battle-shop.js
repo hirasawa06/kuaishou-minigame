@@ -10,11 +10,11 @@
     return A.Assets && A.Assets.entry ? A.Assets.entry(key) : null;
   }
 
-  function image(key, rect, alpha) {
+  function image(key, rect, alpha, tint) {
     var source = art(key);
     if (!source) return false;
     D.texture(source.tex, source.w, source.h, 0, 0, source.w, source.h,
-      rect.x, rect.y, rect.w, rect.h, D.color('#ffffff', alpha === undefined ? 1 : alpha));
+      rect.x, rect.y, rect.w, rect.h, D.color(tint || '#ffffff', alpha === undefined ? 1 : alpha));
     return true;
   }
 
@@ -100,7 +100,8 @@
     var circle = parts.lockBackground;
     D.circle(circle.x + circle.w / 2, circle.y + circle.h / 2, circle.w / 2,
       D.color('#f5dfba', alpha));
-    image(locked ? 'battle-lock-closed' : 'battle-lock-open', parts.lock, alpha);
+    image(locked ? 'battle-lock-closed' : 'battle-lock-open', parts.lock, alpha,
+      locked ? '#ffffff' : '#a07850');
   }
 
   function drawCard(def, rect, alpha, index, dragging) {
@@ -133,9 +134,10 @@
     image('battle-paw-token', { x: parts.cost.x + D.textWidth(String(cost), 20 * s) + 2,
       y: rect.y + 34 * s,
       w: 19 * s, h: 19 * s }, alpha);
-    drawLocked(parts, !!slot.locked, alpha);
+    // 锁按钮最后绘制，不受资源不足置灰层覆盖。
     if (!usable) D.roundRect(rect.x + 2 * s, rect.y + 2 * s, rect.w - 4 * s,
       rect.h - 4 * s, 18 * s, D.color('#d2c8bd', 0.22 * alpha));
+    drawLocked(parts, !!slot.locked, alpha);
     var drag = S.dragging;
     if (!dragging && drag && drag.active && drag.kind !== 'unit' && drag.mergeTarget === index) {
       D.roundRect(rect.x, rect.y, rect.w, rect.h, 20 * s,
