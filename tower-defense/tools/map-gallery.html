@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地图与守卫道具预览</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#fff5e8;color:#73482a;font:16px system-ui,sans-serif}main{max-width:1160px;margin:auto;padding:32px 24px}h1{font-size:28px}h2{margin-top:32px;font-size:22px}p{line-height:1.7}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}figure{margin:0;padding:12px;background:#fffdf8;border:1px solid #dcb48d;border-radius:16px}figure img{width:100%;height:300px;object-fit:contain;display:block;border-radius:10px}figcaption{padding:12px 0 4px;font-weight:700}#props img{height:150px}button{font:inherit;color:inherit;border:1px solid #dcb48d;background:#fffdf8;border-radius:12px;padding:12px;text-align:left;cursor:pointer}button[aria-pressed=true]{background:#f8dfba;border-color:#73482a}.preview{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:24px;align-items:start}.scene{position:relative;width:100%;aspect-ratio:414/896;background-size:cover;background-position:center;border-radius:20px;overflow:hidden;border:2px solid #ac7149}.scene img{position:absolute;width:24.15%;left:1.93%;bottom:26.78%}.scene span{position:absolute;left:31%;bottom:29%;background:#fff0de;padding:8px;border-radius:12px}#levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}@media(max-width:600px){.preview{grid-template-columns:1fr}.scene{max-width:320px;margin:auto}}
+</style>
+<main>
+<h1>地图与守卫道具</h1>
+<p>点击关卡查看地图与道具搭配。下方展示全部原图；关卡配置直接读取当前游戏。此页为素材预览。</p>
+<div class="preview"><div class="scene" id="scene"><img id="guardian" alt="守卫道具"><span id="caption"></span></div><div><h2 id="title">关卡搭配</h2><div id="levels"></div></div></div>
+<h2>全部地图 · 5张</h2><section id="maps"></section>
+<h2>全部守卫道具 · 4种</h2><section id="props"></section>
+</main>
+<script>window.AIGCUtils={};</script>
+<script src="../package/gameplay/config.js?v=map-level-match-1119-1914"></script>
+<script>
+const root='../package/res/Image/ingame/';
+const maps={grass:'草地庭院',wood:'阳光木地板',carpet:'红色地毯',dining:'餐厅瓷砖',corridor:'走廊'};
+const props={bed:'宠物的窝',food:'宠物粮',toy:'宠物玩具',photo:'合照'};
+function gallery(target,entries,folder,ext){for(const [id,name] of Object.entries(entries)){const figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');img.src=root+folder+'/'+id+'-v1.'+ext;img.alt=name;link.href=img.src;link.target='_blank';link.append(img);caption.textContent=name;figure.append(link,caption);document.getElementById(target).append(figure);}}
+gallery('maps',maps,'maps','jpg');gallery('props',props,'guardians','png');
+const levels=window.AIGCUtils.Config.LEVELS;
+function select(index){const level=levels[index];document.getElementById('scene').style.backgroundImage='url('+root+'maps/'+level.map+'-v1.jpg)';document.getElementById('guardian').src=root+'guardians/'+level.guardian+'-v1.png';document.getElementById('caption').textContent=level.guardianName;document.getElementById('title').textContent='第'+(index+1)+'关 · '+level.name;document.querySelectorAll('#levels button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));}
+levels.forEach((level,i)=>{const button=document.createElement('button');button.textContent=(i+1)+'. '+level.name+' · '+maps[level.map]+' / '+props[level.guardian];button.onclick=()=>select(i);document.getElementById('levels').append(button);});select(0);
+</script>
+</html>

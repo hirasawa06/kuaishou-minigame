@@ -20,6 +20,6 @@
 
 ## 收藏册锁定角色剪影（2026-11-19，运行目视待验）
 
-- 用户提供的五张透明 PNG 原图归档在 tools/src/collection/silhouettes/：tank=柴不破、war=锤锤喵、mage=哈利边牧、arch=镭射猫、healer=奶糖喵。
+- 用户提供的五张透明 PNG 原图归档在 tools/src/collection/silhouettes/：tank=柴不破、war=锤锤喵、mage=哈利汪、arch=镭射猫、healer=奶糖喵。
 - 运行图固定输出到 package/res/Image/outgame/collection/silhouettes/&lt;id&gt;-silhouette-b6.png；执行 python3 tools/build-collection-silhouettes.py 可重建。运行图为 512×512 RGBA PNG，非透明像素统一为 #B6B6B6，透明边缘和用户提供的构图原样保留。
 - 资源由 assets.js 按显式角色 ID 预加载；锁定收藏卡只绘制此剪影、浅灰照片槽和锁图标，已解锁卡继续使用场景图。H5 与真机目视待验。

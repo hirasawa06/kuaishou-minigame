@@ -125,7 +125,7 @@ async function main() {
     process.exit(0)
   }
 
-  // 进游戏并给一点金币，看商店全貌
+  // 进游戏并给一点饼干，看商店全貌
   await evaluate(`(function(){
     var A = window.AIGCUtils, S = A.State;
     A.Game.start();

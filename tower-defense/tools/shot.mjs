@@ -233,7 +233,7 @@ async function main() {
   }
   await shot('04-tap-deploy')
 
-  // 4.5) 刷新卡池要扣金币并换一批
+  // 4.5) 刷新卡池要扣饼干并换一批
   const refresh = await evaluate(`(function(){
     var A=window.AIGCUtils, L=A.Layout, S=A.State;
     var before = S.shop.map(function(x){return x.cardId});

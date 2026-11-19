@@ -41,7 +41,7 @@ LEGACY_ICON_BOXES = {
     "ui-play": [796, 796, 256, 256],
 }
 
-# 本脚本自绘的新图标（按四档敌人与金币重做，不依赖旧图集）
+# 本脚本自绘的新图标（按四档敌人与饼干重做，不依赖旧图集）
 NEW_ICONS = [
     "enemy-small", "enemy-normal", "enemy-elite", "ui-coin",
 ]
@@ -194,7 +194,7 @@ def war_frame(name):
 
 
 def mage_frame(name):
-    """哈利边牧动作表：仅背面六帧，统一从 3×2 透明精灵表取帧。"""
+    """哈利汪动作表：仅背面六帧，统一从 3×2 透明精灵表取帧。"""
     frame = MAGE_SPEC["frames"][name]
     sheet = Image.open(os.path.join(MAGE_DOG_DIR, frame["file"])).convert("RGBA")
     width, height = sheet.size
@@ -535,7 +535,7 @@ def build():
     for frame_name, frame in WAR_SPEC["frames"].items():
         cell(frame["icon"], war_frame(frame_name))
 
-    # 哈利边牧：固定背面，蓄能、释放与收势由同一法术攻击时间线驱动。
+    # 哈利汪：固定背面，蓄能、释放与收势由同一法术攻击时间线驱动。
     for frame_name, frame in MAGE_SPEC["frames"].items():
         cell(frame["icon"], mage_frame(frame_name))
 

@@ -389,7 +389,7 @@ for (let i = 0; i < totalFrames; i++) {
           fielded = true
         }
       }
-      // 卡池空了或买不起，就花钱刷新（金币充裕时）
+      // 卡池空了或买不起，就花钱刷新（饼干充裕时）
       if (!fielded && S.gold > S.refreshCost + 10) S.refreshShop()
     }
   }

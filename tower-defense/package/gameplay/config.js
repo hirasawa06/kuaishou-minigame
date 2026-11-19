@@ -1,4 +1,4 @@
-/* gameplay/config.js — 全部数值：英雄、敌人、波次、金币经济
+/* gameplay/config.js — 全部数值：英雄、敌人、波次、饼干经济
  * 单位长度：逻辑像素；速度：逻辑像素/秒；时间：秒
  */
 (function () {
@@ -26,6 +26,7 @@
 
     // ── 经济 ──
     GOLD_START: 30,
+    BISCUIT_INTERVAL: 5, // 战斗有效时间秒数，不随倍速加快
     BASE_HP: 100,
     UNIT_CAP_START: 4,      // 初始可上场英雄数
     UNIT_CAP_MAX: 10,       // 上限
@@ -34,10 +35,8 @@
     // 单位脚底圆形体积之间保留的最小空气缝；只用于移动中的避让，不改攻击距离。
     ACTOR_BODY_GAP: 2,
 
-    // 卡池刷新：每次刷新后价格上浮，形成节奏
-    REFRESH_COST: 2,
-    REFRESH_COST_STEP: 1,
-    REFRESH_COST_MAX: 8,
+    // 卡池刷新：每次固定消耗3钱币
+    REFRESH_COST: 3,
     // 买人口：每次涨价
     CAP_COST: 15,
     CAP_COST_STEP: 10,
@@ -93,7 +92,7 @@
         desc: '射程最远，血量最少，单体高伤',
       },
       {
-        id: 'mage', name: '哈利边牧', cls: 'mage', clsName: '法师',
+        id: 'mage', name: '哈利汪', cls: 'mage', clsName: '法师',
         icon: 'mage-back-idle', cost: 9,
         // 体型扩大后的承伤与输出补偿。
         hp: 180, atk: 64.8, interval: 1.5,
@@ -156,16 +155,16 @@
 
     // 十个独立关卡：首关五波，其余十波；名称与倍率为首轮可调数值。
     LEVELS: [
-      { name: '新手引导', hpScale: 1.00, atkScale: 1.00 },
-      { name: '沙发防线', hpScale: 1.08, atkScale: 1.05 },
-      { name: '窗边警报', hpScale: 1.16, atkScale: 1.10 },
-      { name: '地毯守卫', hpScale: 1.24, atkScale: 1.15 },
-      { name: '书柜反击', hpScale: 1.32, atkScale: 1.20 },
-      { name: '餐厅危机', hpScale: 1.40, atkScale: 1.25 },
-      { name: '走廊突围', hpScale: 1.48, atkScale: 1.30 },
-      { name: '卧室保卫', hpScale: 1.56, atkScale: 1.35 },
-      { name: '家具围攻', hpScale: 1.64, atkScale: 1.40 },
-      { name: '家园决战', hpScale: 1.72, atkScale: 1.45 },
+      { name: '新手引导', hpScale: 1.00, atkScale: 1.00, map: 'grass', guardian: 'bed', guardianName: '宠物的窝' },
+      { name: '沙发防线', hpScale: 1.08, atkScale: 1.05, map: 'carpet', guardian: 'toy', guardianName: '宠物玩具' },
+      { name: '窗边警报', hpScale: 1.16, atkScale: 1.10, map: 'wood', guardian: 'photo', guardianName: '合照' },
+      { name: '地毯守卫', hpScale: 1.24, atkScale: 1.15, map: 'carpet', guardian: 'photo', guardianName: '合照' },
+      { name: '书柜反击', hpScale: 1.32, atkScale: 1.20, map: 'wood', guardian: 'bed', guardianName: '宠物的窝' },
+      { name: '餐厅危机', hpScale: 1.40, atkScale: 1.25, map: 'dining', guardian: 'food', guardianName: '宠物粮' },
+      { name: '走廊突围', hpScale: 1.48, atkScale: 1.30, map: 'corridor', guardian: 'toy', guardianName: '宠物玩具' },
+      { name: '卧室保卫', hpScale: 1.56, atkScale: 1.35, map: 'wood', guardian: 'bed', guardianName: '宠物的窝' },
+      { name: '家具围攻', hpScale: 1.64, atkScale: 1.40, map: 'corridor', guardian: 'toy', guardianName: '宠物玩具' },
+      { name: '家园决战', hpScale: 1.72, atkScale: 1.45, map: 'grass', guardian: 'photo', guardianName: '合照' },
     ],
 
     // ── 波次表 ──
@@ -184,7 +183,7 @@
     ],
   };
 
-  // 旧绘制读取等级字段时也使用新星级数值；不再提供金币升级规则。
+  // 旧绘制读取等级字段时也使用新星级数值；不再提供饼干升级规则。
   C.HERO_MAX_LEVEL = C.HERO_MAX_STAR;
   C.HERO_LEVEL_SCALES = C.HERO_STAR_SCALES;
 

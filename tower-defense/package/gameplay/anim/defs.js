@@ -269,7 +269,7 @@
   var meleeCatFront = meleeCat('front');
   var meleeCatBack = meleeCat('back');
 
-  // 哈利边牧：法师位固定使用背面，紫色范围法术由运行时投射物与落点光圈表达。
+  // 哈利汪：法师位固定使用背面，紫色范围法术由运行时投射物与落点光圈表达。
   var mageDog = {
     // 20.4 * 3.05 * 0.887 ≈ 55.2。
     scale: 0.887,

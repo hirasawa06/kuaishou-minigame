@@ -11,7 +11,7 @@
   },
   "states": {
     "idle": { "duration": 2.0 },
-    "attack": { "duration": 0.50, "hit": 0.30, "frame": "heal" },
+    "attack": { "duration": 0.80, "hit": 0.30, "frame": "heal" },
     "hurt": { "duration": 0.22, "frame": "hurt" },
     "die": { "duration": 0.48, "frame": "idle" }
   }

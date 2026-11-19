@@ -15,6 +15,7 @@
     phase: 'loading',  // loading / menu / playing / paused / win / lose / vfxLab / error
     time: 0,
     gold: C.GOLD_START,
+    biscuitTimer: 0,
     baseHp: C.BASE_HP,
     waveIndex: 0,
     waveState: 'prep',
@@ -38,7 +39,7 @@
     drag: null,
     dragging: null,
     inspect: null,
-    upgradeUnit: null, // 兼容旧角色详情选中字段；不再允许直接金币升级
+    upgradeUnit: null, // 兼容旧角色详情选中字段；不再允许直接饼干升级
     inspectT: 0,
     shake: 0,
     goalHitT: 0,
@@ -210,7 +211,7 @@
     S.shop.length = C.cardCount;
   };
 
-  // 花金币刷新卡池，价格逐次上浮；全部锁定不扣金币，也不涨刷新费。
+  // 花饼干刷新卡池，固定消耗3钱币；全部锁定不扣饼干。
   S.refreshShop = function () {
     var allLocked = true;
     for (var i = 0; i < C.cardCount; i++) {
@@ -221,12 +222,11 @@
       return false;
     }
     if (S.gold < S.refreshCost) {
-      S.toastMsg('金币不足', 0.9);
+      S.toastMsg('饼干不足', 0.9);
       return false;
     }
     var paid = S.refreshCost;
     S.gold -= paid;
-    S.refreshCost = Math.min(C.REFRESH_COST_MAX, S.refreshCost + C.REFRESH_COST_STEP);
     S.rollShop();
     S.addFloat(S.shopAnchorX || 0, S.shopAnchorY || 0, '刷新 -' + paid, '#ffd166');
     S.notifyAction('refresh', { cost: paid });
@@ -243,7 +243,7 @@
       return false;
     }
     if (S.gold < S.capCost) {
-      S.toastMsg('金币不足', 0.9);
+      S.toastMsg('饼干不足', 0.9);
       return false;
     }
     S.gold -= S.capCost;
@@ -265,8 +265,10 @@
   S.clamp = clamp;
   S.dist2 = dist2;
 
-  S.addFloat = function (x, y, text, color) {
-    S.floats.push({ x: x, y: y, text: text, color: color || '#ffffff', life: 0.85, max: 0.85 });
+  S.addFloat = function (x, y, text, color, kind) {
+    // 战场只显示击败奖励，攻击、治疗及交易不显示数值飘字。
+    if (kind !== 'kill-reward') return;
+    S.floats.push({ x: x, y: y, text: text, color: color || '#ffffff', kind: kind, life: 0.85, max: 0.85 });
     if (S.floats.length > 40) S.floats.shift();
   };
 
@@ -293,6 +295,7 @@
     S.battleSpeed = 1;
     S.time = 0;
     S.gold = C.GOLD_START;
+    S.biscuitTimer = 0;
     S.baseHp = C.BASE_HP;
     S.waveIndex = 0;
     S.waveState = 'prep';

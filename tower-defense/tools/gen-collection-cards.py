@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "package/res/Image/outgame/collection/scenes-figma-263-161-hd"
 CHARACTERS = ROOT / "tools/src/characters/角色"
 ITEMS = [("tank", "柴不破", "柴不破"), ("war", "锤锤喵", "近战猫"),
-         ("mage", "哈利边牧", "法师狗"), ("arch", "镭射喵", "射手猫"),
+         ("mage", "哈利汪", "法师狗"), ("arch", "镭射喵", "射手猫"),
          ("healer", "奶糖喵", "奶糖喵")]
 SCALE = 2
 W, H = 330 * SCALE, 502 * SCALE

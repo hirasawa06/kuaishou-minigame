@@ -221,43 +221,53 @@ function toggleOrientation() {
 <script src="kwaiOpenApi/kwai-device.js?v=2"></script>
 <script src="kwaiOpenApi/kwai-storage.js?v=2"></script>
 <!-- 在下方按依赖顺序追加游戏 js 文件；kwaiStandard/main.js 保持最后 -->
-<script src="gameplay/data/font-atlas.js?v=start-defend-1119-1517"></script>
+<script src="gameplay/data/font-atlas.js?v=collection-cost-2006"></script>
 <script src="gameplay/data/sprites.js?v=art-paths-2140"></script>
 <script src="gameplay/data/rigs.js?v=art-paths-2140"></script>
-<script src="gameplay/data/character-animations.js?v=bedside-normal-1"></script>
-<script src="gameplay/data/avatars.js?v=home-radius12-1119-1127"></script>
-<script src="gameplay/config.js?v=art-paths-2140"></script>
-<script src="gameplay/layout.js?v=portrait-half-1119-1748"></script>
-<script src="gameplay/state.js?v=reward-loading-1"></script>
-<script src="gameplay/profile.js?v=profile-dialog-style-1119-1412"></script>
+<script src="gameplay/data/character-animations.js?v=healer-duration08-1119-1934"></script>
+<script src="gameplay/data/avatars.js?v=mage-name-1927"></script>
+<script src="gameplay/config.js?v=biscuit-income-1942"></script>
+<script src="gameplay/layout.js?v=collection-detail-2003"></script>
+<script src="gameplay/state.js?v=kill-reward-2000"></script>
+<script src="gameplay/profile.js?v=mage-name-1927"></script>
 <script>
-// ── 本地预览补满体力：只执行一次，不清除其他存档 ──
-if (_q.get('refill') === 'stamina' &&
-    ['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0) {
+// ── 本地预览：一次性补满体力或解锁全部，不清除头像等已有存档 ──
+// 本地调试不限开局次数，正式平台继续使用原体力规则。
+if (['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0) {
+  window.AIGCUtils.Profile.addStamina(window.AIGCUtils.Config.STAMINA_MAX);
+  window.AIGCUtils.Profile.consumeStamina = function () { return true; };
+}
+if (['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0 &&
+    (_q.get('refill') === 'stamina' || _q.get('unlock') === 'all')) {
+  if (_q.get('unlock') === 'all') {
+    window.AIGCUtils.Profile.data.completedLevel = window.AIGCUtils.Config.LEVELS.length - 1;
+    window.AIGCUtils.Profile.save();
+  }
   window.AIGCUtils.Profile.addStamina(window.AIGCUtils.Config.STAMINA_MAX);
   var refillUrl = new URL(window.location.href);
   refillUrl.searchParams.delete('refill');
+  refillUrl.searchParams.delete('unlock');
   window.history.replaceState(null, '', refillUrl.href);
 }
 </script>
-<script src="gameplay/render/gl.js?v=card-container-clip-1119-1754"></script>
-<script src="gameplay/render/draw.js?v=level-soft-gaussian-1450"></script>
+<script src="gameplay/render/gl.js?v=rounded-star-1119-1949"></script>
+<script src="gameplay/render/draw.js?v=rounded-star-1119-1949"></script>
 <script src="gameplay/hero-forms.js?v=art-paths-2140"></script>
-<script src="gameplay/assets.js?v=battle-card-fit-1720"></script>
+<script src="gameplay/assets.js?v=rounded-star-1119-1949"></script>
 <script src="gameplay/audio.js?v=user-audio-quiet-6"></script>
 <script src="gameplay/anim/rig.js?v=3"></script>
 
 <script src="gameplay/anim/defs.js?v=boss-lab-1"></script>
 <script src="gameplay/tutorial.js?v=font-size-api-2059"></script>
-<script src="gameplay/play/battle.js?v=placement-snap-1"></script>
+<script src="gameplay/play/battle.js?v=wave-clear-2007"></script>
 <script src="gameplay/rewards.js?v=reward-loading-1"></script>
 <script src="gameplay/input.js?v=avatar-direct-1119-1422"></script>
-<script src="gameplay/render/scene.js?v=placement-snap-1"></script>
-<script src="gameplay/render/battle-shop.js?v=card-container-clip-1119-1754"></script>
-<script src="gameplay/ui.js?v=pause-style-1119-1504"></script>
-<script src="gameplay/render/hud.js?v=start-code-1755"></script>
+<script src="gameplay/render/scene.js?v=kill-reward-2000"></script>
+<script src="gameplay/render/battle-shop.js?v=rounded-star-1119-1949"></script>
+<script src="gameplay/ui.js?v=collection-padding-2006"></script>
+<script src="gameplay/render/hud.js?v=biscuit-copy-1936"></script>
 <script src="gameplay/render/safe-area-debug.js?v=3"></script>
-<script src="gameplay/game.js?v=reward-loading-1"></script>
+<script src="gameplay/game.js?v=biscuit-income-1942"></script>
 
 <script src="kwaiStandard/main.js?v=3"></script>
 </body>

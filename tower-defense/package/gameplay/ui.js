@@ -404,30 +404,7 @@
       var def = S.heroById(UI.collectionHero);
       if (!def || !heroUnlocked(def.id)) { back(); return; }
       D.text(def.name, u.safeLeft + (u.safeRight - u.safeLeft) / 2, g.detailNameY, 28, col(COLOR.brownDeep), 1);
-      for (var lv = 1; lv <= 3; lv++) {
-        var r = g.forms(lv - 1);
-        var starDef = S.heroAtStar(def.id, lv);
-        var edge = lv === 3 ? '#e8b84c' : lv === 2 ? '#88b9dc' : '#e9d8c0';
-        D.roundRect(r.x, r.y, r.w, r.h, 16, col(COLOR.paper));
-        D.strokeRect(r.x, r.y, r.w, r.h, lv > 1 ? 2 : 1, col(edge));
-        var formSize = Math.min(r.w - 8, Math.max(24, r.h - 202));
-        heroForm(def, 2, r.x + r.w / 2, r.y + 10 + formSize / 2, formSize);
-        var textY = r.y + 18 + formSize;
-        var attributes = [
-          lv + '星',
-          '生命 ' + Math.round(starDef.hp),
-          def.cls === 'healer' ? '回血 ' + Math.round(starDef.heal) : '攻击 ' + Math.round(starDef.atk),
-          def.cls === 'tank' ? '攻速 --' : (def.cls === 'healer' ? '治疗间隔 ' : '攻击间隔 ') + Math.round(starDef.interval * 1000) + '毫秒',
-          (def.cls === 'healer' ? '治疗距离 ' : '攻击距离 ') + Math.round(starDef.range),
-          '嘲讽范围 ' + Math.round(starDef.taunt || 0),
-          '群攻范围 ' + Math.round(starDef.splash || 0),
-          starDef.cost + ' 金币'
-        ];
-        for (var ai = 0; ai < attributes.length; ai++) {
-          fittedText(attributes[ai], r.x + r.w / 2, textY + ai * 22, 18, r.w - 10,
-            ai === 0 ? edge : COLOR.text, 1);
-        }
-      }
+      drawCollectionDetail(def, g);
       return;
     }
     var collected = C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); }).length;
@@ -440,6 +417,49 @@
   }
 
   // ── 栈管理 ──────────────────────────────────────────────────
+
+  function drawCollectionDetail(def, g) {
+    var image = g.detailImage, panel = g.detailPanel;
+    var scene = A.Assets.entry('collection-scene-' + def.id);
+    if (scene) drawDetailPortrait(scene, image);
+    else heroForm(def, 2, image.x + image.w / 2, image.y + image.h / 2, image.w);
+    D.roundRect(panel.x, panel.y, panel.w, panel.h, 24, col('#fff7df'));
+    var forms = [1, 2, 3].map(function (star) { return S.heroAtStar(def.id, star); });
+    var rows = [
+      ['生命', function (f) { return Math.round(f.hp); }],
+      [def.cls === 'healer' ? '回血' : '攻击', function (f) { return Math.round(def.cls === 'healer' ? f.heal : f.atk); }],
+      [def.cls === 'healer' ? '治疗间隔' : '攻击间隔', function (f) { return def.cls === 'tank' ? '--' : Math.round(f.interval * 1000); }],
+      [def.cls === 'healer' ? '治疗距离' : '攻击距离', function (f) { return Math.round(f.range); }],
+      ['嘲讽范围', function (f) { return Math.round(f.taunt || 0); }],
+      ['群攻范围', function (f) { return Math.round(f.splash || 0); }],
+      ['消耗饼干', function (f) { return f.cost; }]
+    ];
+    var pad = 18, top = panel.y + 16;
+    var font = (panel.h - 36) / 8 < 24 ? 12 : 16;
+    var rowH = (panel.h - 16 - 20 - D.textLineH(font)) / 7;
+    fittedText('1星 / 2星 / 3星', panel.x + panel.w - pad, top,
+      font, panel.w - pad * 2, '#a77b55', 2);
+    for (var i = 0; i < rows.length; i++) {
+      var y = top + (i + 1) * rowH;
+      var value = forms.map(rows[i][1]).join('/');
+      if (i === 2 && def.cls !== 'tank') value += '毫秒';
+      fittedText(rows[i][0], panel.x + pad, y, font, panel.w * 0.32, COLOR.brownDeep, 0);
+      fittedText(value, panel.x + panel.w - pad, y, font,
+        panel.w * 0.58, COLOR.brownDeep, 2);
+    }
+  }
+
+  function drawDetailPortrait(scene, image) {
+    var scale = Math.max(image.w / scene.w, image.h / scene.h);
+    var w = scene.w * scale, h = scene.h * scale;
+    D.roundRect(image.x, image.y, image.w, image.h, 28, col(COLOR.brownDeep));
+    A.Render.setClipRect({ x: image.x + 3, y: image.y + 3,
+      w: image.w - 6, h: image.h - 6 }, 25);
+    D.texture(scene.tex, scene.w, scene.h, 0, 0, scene.w, scene.h,
+      image.x + (image.w - w) / 2, image.y + (image.h - h) / 2, w, h);
+    A.Render.setClipRect(null);
+  }
+
   function top() {
     return UI.stack.length ? UI.stack[UI.stack.length - 1] : null;
   }

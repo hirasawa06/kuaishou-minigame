@@ -8,7 +8,7 @@
 
   // 头像与地区在美术脚本/本地配置里各有一份，这里只保存索引
   var AVATARS = [
-    { id: 'av-cat-orange', name: '哈利边牧' },
+    { id: 'av-cat-orange', name: '哈利汪' },
     { id: 'av-bear-cream', name: '柴不破' },
     { id: 'av-rabbit-pink', name: '锤锤喵' },
     { id: 'av-cat-gray', name: '镭射喵' },

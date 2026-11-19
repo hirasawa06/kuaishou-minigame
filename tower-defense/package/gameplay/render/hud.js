@@ -1,4 +1,4 @@
-/* gameplay/render/hud.js — HUD、金币、英雄卡池、首页、暂停与结算 */
+/* gameplay/render/hud.js — HUD、饼干、英雄卡池、首页、暂停与结算 */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
@@ -35,6 +35,16 @@
 
   // ── 顶部 HUD：波次 / 剩余敌人 / 暂停；合照状态显示在相框旁 ──────
 
+  // ── 波次、暂停和继续共用奶油底板，保持厚边与内光一致 ──
+  function drawCreamControl(r, s) {
+    D.roundRect(r.x, r.y, r.w, r.h, r.h / 2, D.color('#A96E3C'));
+    D.roundRect(r.x + s, r.y + s, r.w - 2 * s, r.h - 3 * s,
+      (r.h - 3 * s) / 2, D.color('#EBC494'));
+    var w = r.w - 4 * s, h = r.h - 6 * s;
+    A.Render.push(r.x + 2 * s, r.y + 2 * s, w, h, D.color('#FFE4BF'),
+      { mode: 11, hw: w / 2, hh: h / 2, r: h / 2 });
+  }
+
   function drawHud() {
     var u = L.ui;
     var plate = u.wavePlate;
@@ -43,24 +53,23 @@
     var brown = D.color('#80501f');
     var totalWaves = S.getWaves().length;
     var waveNo = Math.min(S.waveIndex + 1, totalWaves);
-    D.roundRect(plate.x, plate.y, plate.w, plate.h, 20 * s, D.color('#fff9ef', 0.96));
-    D.ring(plate.x + plate.w / 2, plate.y + plate.h / 2, plate.h / 2 - s,
-      s, D.color('#f3c88f', 0.75));
-    D.fittedText('第' + waveNo + '/' + totalWaves + '波 ×' + S.battleSpeed,
-      plate.x + plate.w / 2, plate.y + 11 * s, 16 * s, plate.w - 12 * s, brown, 1);
+    // ── 奶油色波次牌：代码厚边与内高光，只保留波次文字 ──
+    drawCreamControl(plate, s);
+    D.centeredText('第' + waveNo + '/' + totalWaves + '波',
+      plate.x + plate.w / 2, plate.y + plate.h / 2, 16 * s, D.color('#78432B'));
 
-    // 暂停按钮与热区共用 Layout.ui.pauseBtn，保留 Figma 的轻色圆牌。
-    D.roundRect(pb.x, pb.y, pb.w, pb.h, 20 * s, D.color('#fff9ef', 0.96));
-    D.ring(pb.x + pb.w / 2, pb.y + pb.h / 2, pb.h / 2 - s, s, D.color('#f3c88f', 0.75));
+    // ── 图标直接绘制，继续箭头不再依赖战斗图集 ──
+    drawCreamControl(pb, s);
     if (S.phase === 'paused') {
-      icon('ui-play', pb.x + pb.w / 2, pb.y + pb.h / 2, 16 * s);
+      A.Render.push(pb.x + pb.w / 2 - 14 * s / 3, pb.y + pb.h / 2 - 9 * s,
+        14 * s, 18 * s, brown, { mode: 12, hw: 7 * s, hh: 9 * s, r: 0 });
     } else {
       D.roundRect(pb.x + 13 * s, pb.y + 11 * s, 5 * s, 18 * s, 2 * s, brown);
       D.roundRect(pb.x + 22 * s, pb.y + 11 * s, 5 * s, 18 * s, 2 * s, brown);
     }
   }
 
-  // ── 金币条 ────────────────────────────────────────────────
+  // ── 饼干条 ────────────────────────────────────────────────
   function drawGoldBar() {
     var u = L.ui;
     var gb = u.goldBar;
@@ -70,7 +79,7 @@
     D.roundRect(gb.x + 2, gb.y + 2, statusW - 4, gb.h - 4,
       (gb.h - 4) / 2, D.color('#ffe8c7'));
     icon('ui-coin', gb.x + gb.h * 0.55, gb.y + gb.h / 2, gb.h * 0.74);
-    D.text('金币 ' + fmt(S.gold), gb.x + gb.h * 1.08, gb.y + (gb.h - 18) / 2,
+    D.text('饼干 ' + fmt(S.gold), gb.x + gb.h * 1.08, gb.y + (gb.h - 18) / 2,
       18, D.color('#78432b'), 0);
   }
 
@@ -150,7 +159,7 @@
         S.dragging.y >= sell.y && S.dragging.y <= sell.y + sell.h;
       D.roundRect(sell.x, sell.y, sell.w, sell.h, 12,
         D.color(inside ? '#306f49' : '#4d3521', 0.96));
-      D.text(price ? '松手出售 +' + price + ' 金币' : '角色已退场，无法出售',
+      D.text(price ? '松手出售 +' + price + ' 饼干' : '角色已退场，无法出售',
         sell.x + sell.w / 2, sell.y + 12, 18, D.color('#ffe5ac'), 1);
     } else {
       D.text('点卡上阵 · 同星同卡互拖合成',
@@ -285,7 +294,7 @@
     D.roundRect(x + 3, y + 3, w - 6, h - 6, 12, D.color('#fff0d9', 0.98 * a));
     Scene.heroArt(def, x + 38, y + 35, 56, a);
     D.text(def.name, x + 72, y + 10, 28, D.color('#704026', a), 0);
-    D.text((S.inspectStar || 1) + '星 · ' + def.cost + ' 金币', x + 72, y + 43, 18,
+    D.text((S.inspectStar || 1) + '星 · ' + def.cost + ' 饼干', x + 72, y + 43, 18,
       D.color(CARD_TEXT_COLOR[def.cls], a), 0);
     var maxLineW = w - 28;
     var line = '', line2 = '';
@@ -310,10 +319,8 @@
     var a = Math.min(1, S.toast.life / 0.3);
     var w = 244;
     var y = u.field.y + u.field.h * 0.3;
-    D.roundRect(u.w / 2 - w / 2, y, w, 42, 21, D.color('#a96638', 0.94 * a));
-    D.roundRect(u.w / 2 - w / 2 + 2, y + 2, w - 4, 38, 19,
-      D.color('#ffe7c2', 0.98 * a));
-    D.text(S.toast.text, u.w / 2, y + 10, 18, D.color('#704026', a), 1);
+    D.roundRect(u.w / 2 - w / 2, y, w, 42, 21, D.color('#000000', 0.25 * a));
+    D.centeredText(S.toast.text, u.w / 2, y + 21, 18, D.color('#ffffff', a));
   }
 
   function drawButton(label, rectOrY, primary, fontSize, subtle) {
@@ -607,7 +614,15 @@
       drawMenuStartButton(m.start, 1, true, '尚未解锁');
     }
     if (S.toast) {
-      D.text(S.toast.text, m.card.x + m.card.w / 2, m.card.y + 12, 18, D.color('#fff0d4'), 1);
+      var toastAlpha = Math.min(1, S.toast.life / 0.3);
+      var toastW = Math.min(m.card.w - 24, Math.max(120, D.textWidth(S.toast.text, 18) + 32));
+      var toastX = m.card.x + m.card.w / 2;
+      D.roundRect(toastX - toastW / 2, m.card.y + 2, toastW, 42, 21,
+        D.color('#000000', 0.25 * toastAlpha));
+      var toastSize = D.fitTextSize(S.toast.text, 18, toastW - 24);
+      var toastText = D.fitTextContent(S.toast.text, toastSize, toastW - 24);
+      D.centeredText(toastText, toastX, m.card.y + 23, toastSize,
+        D.color('#ffffff', toastAlpha));
     }
   }
 

@@ -100,7 +100,8 @@
   function drawBackground() {
     var u = L.ui;
     // 环境层覆盖整个画布，按中心裁切保持原图比例；不受交互安全区约束。
-    var bg = Assets.entry('in-game-background');
+    var level = C.LEVELS[S.currentLevel - 1] || C.LEVELS[0];
+    var bg = Assets.entry('battle-map-' + level.map) || Assets.entry('in-game-background');
     if (bg) {
       var targetRatio = u.w / u.h;
       var sourceRatio = bg.w / bg.h;
@@ -148,40 +149,29 @@
 
   function drawBase(dt) {
     var u = L.ui;
-    var b = u.base;
     var ratio = Math.max(0, S.baseHp) / C.BASE_HP;
-    // 与战斗中的受击锚点共用 Layout.ui.base，避免敌人攻击血条。
-    var photo = Assets.entry('guardian-photo');
-    var fw = Math.min(112, b.w * 0.29), fh = fw;
-    var fx = b.x + (b.w - fw) / 2, fy = b.y - fh * 0.92;
+    // 守卫物只展示状态；受击闪色限制在血条内部。
+    var level = C.LEVELS[S.currentLevel - 1] || C.LEVELS[0];
+    var photo = Assets.entry('battle-guardian-' + level.guardian);
+    var fw = u.guardian.w, fh = u.guardian.h;
+    var fx = u.guardian.x, fy = u.guardian.y;
     if (photo) {
       A.Render.setSceneLight('character', fy + fh / 2, fh);
       D.texture(photo.tex, photo.w, photo.h, 0, 0, photo.w, photo.h,
         fx, fy, fw, fh);
       A.Render.setSceneLight('off');
     }
-    if (ratio <= 0.5) {
-      D.roundRect(fx + fw * 0.67, fy + fh * 0.20, 2, fh * 0.40, 1, D.color('#fff8ed', 0.9));
-      D.roundRect(fx + fw * 0.55, fy + fh * 0.60, fw * 0.12, 2, 1, D.color('#fff8ed', 0.9));
-    }
-    if (S.goalHitT > 0) {
-      var flash = Math.min(0.55, S.goalHitT * 1.9);
-      D.roundRect(fx + fw * 0.14, fy + fh * 0.16, fw * 0.72, fh * 0.69,
-        12, D.color('#ff6b68', flash));
-    }
-    var bx = b.x + b.w * 0.16, bw = b.w * 0.68;
-    var barY = b.y + b.h * 0.69;
-    D.roundRect(bx - 4, barY - 4, bw + 8, 18, 9, D.color('#784436', 0.95));
-    D.roundRect(bx, barY, bw, 10, 5, COL.hpBack);
+    var bar = u.guardianBar, s = u.battleScale;
+    var bx = bar.x, bw = bar.w, barY = bar.y;
+    D.roundRect(bx, barY, bw, bar.h, bar.h / 2, D.color('#fff4df'));
+    D.roundRect(bx + 3*s, barY + 3*s, bw - 6*s, bar.h - 6*s, 4*s, COL.hpBack);
     var hpCol = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
-    D.roundRect(bx + 1, barY + 1, Math.max(0, (bw - 2) * ratio), 8, 4, hpCol);
-    D.text('合照', bx, barY - 21, 18, COL.textMain, 0);
-    D.text(String(Math.ceil(Math.max(0, S.baseHp))), bx + bw - 2, barY - 21, 18, COL.textMain, 2);
-    // 守护物受击范围提示
-    if (S.shake > 0.05) {
-      var a = S.shake * 1.6;
-      D.roundRect(b.x, b.y, b.w, b.h, 12, D.color('#ff5a6e', Math.min(0.35, a)));
+    D.roundRect(bx + 3*s, barY + 3*s, Math.max(0, (bw - 6*s) * ratio), bar.h - 6*s, 4*s, hpCol);
+    if (S.goalHitT > 0) {
+      D.roundRect(bx + 3*s, barY + 3*s, bw - 6*s, bar.h - 6*s, 4*s,
+        D.color('#ff5a6e', Math.min(0.85, S.goalHitT * 2.5)));
     }
+    D.text(level.guardianName, u.guardianLabel.x, u.guardianLabel.y, 16, D.color('#ffffff'), 0);
   }
 
   function hpBar(x, y, w, ratio, col) {
@@ -462,11 +452,9 @@
     var spriteY = rig ? un.y - r * 0.15 : un.y;
     var shadowY = spriteY + size * 0.42;
 
-    // 星级不改变立绘或动作，治疗猫统一沿用同一背面形象。
+    // ── 战斗角色统一走动作Rig；星级展示图不能覆盖治疗、受伤等动态状态 ──
     A.Render.setSceneLight('character', spriteY, size);
-    var levelIdle = A.HeroForms && d.cls === 'healer' && !un.dead &&
-      A.HeroForms.drawBattleIdle(d.id, 2, un.x, spriteY + size * 0.10, size * 0.68, 0.3 + 0.7 * spawn);
-    if (rig && !levelIdle) {
+    if (rig) {
       A.Anim.draw(rig, un, un.x, spriteY, size, {
         alpha: 0.3 + 0.7 * spawn,
       });
@@ -475,7 +463,7 @@
         additiveGlow(un.x, un.y, r * 2.4, '#ffffff', un.hitFlash * 2.2, 0);
         A.Render.setAdditive(false);
       }
-    } else if (!levelIdle) {
+    } else {
       var alpha = 0.25 + 0.75 * spawn;
 
       var poseSize = r * 3.4 * (0.8 + 0.2 * spawn);
@@ -488,11 +476,25 @@
     }
 
     A.Render.setSceneLight('off');
-    var w = Math.max(22, r * 2.1);
-    var ratio = Math.max(0, un.hp / un.maxHp);
+    if (!un.dead) drawUnitStatus(un, spriteY, size);
+  }
+
+  function drawUnitStatus(un, spriteY, size) {
+    var ratio = Math.max(0, Math.min(1, un.hp / un.maxHp));
     var col = ratio > 0.5 ? COL.hpGreen : ratio > 0.25 ? COL.hpOrange : COL.hpRed;
-    hpBar(un.x - w / 2, un.y - r - 10, w, ratio, col);
-    D.text((un.star || 1) + '星', un.x + w / 2 + 3, un.y - r - 18, 18, COL.gold, 0);
+    var w = 6, h = size * 0.46;
+    var x = un.x + size * 0.40 + 3, y = spriteY - h / 2;
+    D.roundRect(x, y, w, h, w / 2, D.color('#fff4df'));
+    D.roundRect(x + 1, y + 1, w - 2, h - 2, 2, COL.hpBack);
+    var fill = (h - 2) * ratio;
+    if (fill > 0) D.roundRect(x + 1, y + h - 1 - fill, w - 2, fill, 2, col);
+    var count = un.star || 1, starSize = 8, gap = 3;
+    var left = un.x - (count * starSize + (count - 1) * gap) / 2;
+    if (count === 1) return;
+    for (var i = 0; i < count; i++) {
+      D.star(left + i * (starSize + gap), spriteY - size * 0.46 - 12,
+        starSize, D.color('#fff8ce'));
+    }
   }
 
   function drawProjectiles() {
@@ -571,7 +573,7 @@
         var smokeIndex = smokeFrame(t);
         var sp = Assets.sprite(smokeFrames[smokeIndex]);
         if (sp) {
-          var size = (e.r || 10) * 6 * smokeScales[smokeIndex];
+          var size = (e.r || 10) * 4.2 * smokeScales[smokeIndex];
           D.sprite(sp.tex, sp.texW, sp.texH, sp.x, sp.y, sp.w, sp.h,
             e.x, e.y - size / 2, size, { alpha: 0.9, tint: D.color(e.color, 1) });
         }
@@ -609,8 +611,17 @@
   function drawFloats() {
     for (var i = 0; i < S.floats.length; i++) {
       var f = S.floats[i];
+      if (f.kind !== 'kill-reward') continue;
       var a = Math.min(1, f.life / f.max * 2);
-      D.text(f.text, f.x, f.y - 10, 18, D.color(f.color, a), 1);
+      var icon = Assets.entry('battle-paw-token');
+      var textWidth = D.textWidth(f.text, 18);
+      var iconH = 18;
+      var iconW = icon && icon.tex ? iconH * icon.w / icon.h : 0;
+      var left = f.x - (iconW + textWidth) / 2;
+      var cy = f.y - 10;
+      if (iconW) D.texture(icon.tex, icon.w, icon.h, 0, 0, icon.w, icon.h,
+        left, cy - iconH / 2, iconW, iconH, D.color('#ffffff', a));
+      D.centeredText(f.text, left + iconW + textWidth / 2, cy, 18, D.color(f.color, a));
     }
   }
 
@@ -624,15 +635,10 @@
         : '';
       if (label) {
         D.roundRect(u.field.x + u.field.w / 2 - 80, u.field.y + 10, 160, 32, 16,
-          D.color('#a96638', 0.94));
-        D.roundRect(u.field.x + u.field.w / 2 - 78, u.field.y + 12, 156, 28, 14,
-          D.color('#ffe7c2', 0.97));
-        D.text(label, u.field.x + u.field.w / 2, u.field.y + 17, 18,
-          D.color('#704026'), 1);
+          D.color('#000000', 0.25));
+        D.centeredText(label, u.field.x + u.field.w / 2, u.field.y + 26, 18,
+          D.color('#ffffff'));
       }
-    } else if (S.waveState === 'spawning') {
-      var a = 0.35 + Math.sin(S.time * 6) * 0.15;
-      D.rect(u.field.x + 2, u.field.y + 1, u.field.w - 4, 3, D.color('#ff5a6e', a));
     }
   }
 
@@ -641,18 +647,6 @@
     var u = L.ui;
     var field = u.field;
     var drag = S.dragging || (A.Input && A.Input.getDrag && A.Input.getDrag());
-    if (S.waveState === 'prep' || S.waveState === 'spawning') {
-      var pulse = 0.52 + 0.18 * Math.sin(S.time * 5);
-      for (var i = 0; i < u.lanes.length; i++) {
-        var x = u.lanes[i], y = field.y + 55;
-        D.circle(x, y, 13, D.color('#fff0cf', 0.62 * pulse));
-        D.ring(x, y, 13, 2, D.color('#ab6438', pulse));
-        // 三路入口的向下箭头；仅提示敌人方向，不改变生成点。
-        D.roundRect(x - 2, y - 7, 4, 10, 2, D.color('#a95136', pulse));
-        D.roundRect(x - 7, y + 2, 14, 3, 1.5, D.color('#a95136', pulse));
-        D.roundRect(x - 4, y + 5, 8, 3, 1.5, D.color('#a95136', pulse));
-      }
-    }
     if (!drag || !drag.active || !drag.def || drag.y >= u.tray.y) return;
     var top = Math.max(field.y - 24, u.interactiveRect.y);
     var bottom = Math.min(u.base.y + 10, u.tray.y - 4,
@@ -684,7 +678,7 @@
       } else {
         icon(def.icon, drag.x, ghostY, ghostSize, 0.7);
       }
-      D.text('+' + A.Battle.sellPrice(unit) + ' 金币', drag.x, drag.y + def.radius + 12,
+      D.text('+' + A.Battle.sellPrice(unit) + ' 饼干', drag.x, drag.y + def.radius + 12,
         18, COL.gold, 1);
       return;
     }
@@ -736,7 +730,7 @@
     }
 
     if (!ok) {
-      D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '金币不足' :
+      D.text(reason === 'cap' ? '席位已满' : reason === 'gold' ? '饼干不足' :
         reason === 'occupied' ? '附近位置已占用' : '请拖到战场', x, y + def.radius + 12, 18,
         D.color('#ff9aa8', 0.95), 1);
     }

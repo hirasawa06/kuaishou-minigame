@@ -274,7 +274,7 @@
       // 2× 使用两个固定步长推进，避免加大 dt 漏过命中帧或碰撞。
       var steps = S.phase === 'playing' && S.battleSpeed === 2 ? 2 : 1;
       for (var si = 0; si < steps; si++) {
-        A.Battle.update(dt);
+        A.Battle.update(dt, dt / steps);
         if (S.phase !== 'playing') break;
       }
     }
@@ -312,16 +312,10 @@
       if (actors[i].isEnemy) Scene.drawEnemy(actors[i].actor);
       else Scene.drawUnit(actors[i].actor);
     }
-    // 守护物位于战场前景，命中和血量反馈覆盖到合照本体。
-    Scene.drawBase();
     Scene.drawProjectiles();
     Scene.drawEffects();
     Scene.drawFloats();
 
-    if (S.shake > 0.05) {
-      var f = L.ui.field;
-      D.roundRect(f.x, f.y, f.w, f.h, 16, A.Render.color('#ff5a6e', S.shake * 0.14));
-    }
   }
 
   // 菜单态：只画静态战场做背景，不画 HUD / 卡槽
@@ -372,6 +366,8 @@
     // 战斗中打开排行榜等页面时，仍然显示 HUD，但页面盖在最上层
     Hud.drawHud();
     Hud.drawTray();
+    // 守卫图底部压在托盘上20px，不能被托盘背景遮掉。
+    Scene.drawBase();
     Hud.drawDragGhost();
     Hud.drawInspect();
     Hud.drawToast();

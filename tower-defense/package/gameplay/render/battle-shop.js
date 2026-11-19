@@ -38,10 +38,14 @@
   function drawGold() {
     var bar = L.ui.goldBar;
     var s = L.ui.battleScale;
-    var token = { x: bar.x, y: bar.y, w: 38 * s, h: 38 * s };
-    if (!image('battle-paw-token', token)) D.circle(bar.x + 19 * s, bar.y + 19 * s, 16 * s, D.color('#f7a93b'));
-    D.text(String(Math.floor(S.gold)), bar.x + 40 * s, bar.y + 7 * s,
+    var y = bar.y - 6 * s;
+    var token = { x: bar.x, y: y, w: 38 * s, h: 38 * s };
+    if (!image('battle-paw-token', token)) D.circle(bar.x + 19 * s, y + 19 * s, 16 * s, D.color('#f7a93b'));
+    D.text(String(Math.floor(S.gold)), bar.x + 40 * s, y + 7 * s,
       24 * s, D.color('#80501f'), 0);
+    // ── 成员占用共用战斗实时数量，字号与刷新、扩建文字一致 ──
+    D.text('成员 ' + S.liveUnits() + '/' + S.heroCap, bar.x + 4 * s,
+      y + 38 * s, 16 * s, D.color('#80501f'), 0);
   }
 
   function pressScale(key, enabled) {
@@ -80,8 +84,7 @@
     A.Render.push(x, y, w, h, D.color('#BA6F19', alpha),
       { mode: 9, hw: w / 2, hh: h / 2, r: 20 * s });
     for (var i = 0; i < count; i++) {
-      image('battle-star', { x: x + (12 + i * 12) * s,
-        y: y + 9 * s, w: 10 * s, h: 10 * s }, alpha);
+      D.star(x + (12 + i * 12) * s, y + 9 * s, 10 * s, D.color('#fff8ce', alpha));
     }
   }
 
@@ -175,7 +178,7 @@
     var inside = drag.x >= sell.x && drag.x <= sell.x + sell.w && drag.y >= sell.y && drag.y <= sell.y + sell.h;
     D.roundRect(sell.x, sell.y, sell.w, sell.h, 12, D.color(inside ? '#306f49' : '#4d3521', 0.96));
     var price = A.Battle.sellPrice(drag.unit);
-    D.text(price ? '松手出售 +' + price + ' 金币' : '角色已退场，无法出售',
+    D.text(price ? '松手出售 +' + price + ' 饼干' : '角色已退场，无法出售',
       sell.x + sell.w / 2, sell.y + 12, 18, D.color('#ffe5ac'), 1);
   }
 

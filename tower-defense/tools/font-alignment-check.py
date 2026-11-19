@@ -40,7 +40,7 @@ for size, font in atlas.items():
 
 canvas = Image.new("RGB", (1000, 330), "#fff0de")
 draw = ImageDraw.Draw(canvas)
-for row, (text, size) in enumerate([("版本 1.0.0", 18), ("金币 30", 28), ("刷新 2  扩建 +1 15", 28)]):
+for row, (text, size) in enumerate([("版本 1.0.0", 18), ("饼干 30", 28), ("刷新 2  扩建 +1 15", 28)]):
     y = 28 + row * 100
     render(canvas, text, 35, y, size, True)
     render(canvas, text, 530, y, size)

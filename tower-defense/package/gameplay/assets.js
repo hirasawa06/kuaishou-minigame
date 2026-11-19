@@ -124,6 +124,12 @@
     manifest.push(['home-start-paw', 'res/Image/ui/icons/home-start-paw-v1.png']);
     manifest.push(['in-game-background', 'res/Image/ingame/backgrounds/in-game-background-topdown.jpg']);
     manifest.push(['guardian-photo', 'res/Image/outgame/home/guardian-photo-v1.png']);
+    ['grass', 'wood', 'carpet', 'dining', 'corridor'].forEach(function (id) {
+      manifest.push(['battle-map-' + id, 'res/Image/ingame/maps/' + id + '-v1.jpg']);
+    });
+    ['bed', 'food', 'toy', 'photo'].forEach(function (id) {
+      manifest.push(['battle-guardian-' + id, 'res/Image/ingame/guardians/' + id + '-v1.png']);
+    });
     manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book.jpg']);
     manifest.push(['collection-art', 'res/Image/outgame/collection/collection-art.png']);
     manifest.push(['collection-lock', 'res/Image/ui/icons/collection-lock-v1.png']);
@@ -132,7 +138,6 @@
     manifest.push(['battle-expand', 'res/Image/ui/components/battle/expand-v1.png']);
     manifest.push(['battle-paw-token', 'res/Image/ui/icons/battle/paw-token-v1.png']);
     manifest.push(['battle-white-bone', 'res/Image/ui/icons/battle/white-bone-v1.png']);
-    manifest.push(['battle-star', 'res/Image/ui/icons/battle/star-v1.png']);
     manifest.push(['battle-lock-closed', 'res/Image/ui/icons/battle/lock-closed-v1.png']);
     manifest.push(['battle-lock-open', 'res/Image/ui/icons/battle/lock-open-v1.png']);
     ['tank', 'war', 'mage', 'arch', 'healer'].forEach(function (id) {

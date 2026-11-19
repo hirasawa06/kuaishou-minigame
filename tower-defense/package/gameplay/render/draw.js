@@ -8,6 +8,12 @@
   draw.white = WHITE;
   draw.color = function (hex, a) { return GL.color(hex, a); };
 
+  // ── 圆润四角星：统一代码轮廓，不依赖切图 ──
+  draw.star = function (x, y, size, col) {
+    if (size <= 0) return;
+    GL.push(x, y, size, size, col, { mode: 13, hw: size / 2, hh: size / 2, r: 0 });
+  };
+
   // ── 正上方光源的地面软影 ────────────────────────────────
   draw.softEllipse = function (cx, cy, w, h, col) {
     if (w <= 0 || h <= 0) return;

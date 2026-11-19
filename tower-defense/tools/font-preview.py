@@ -10,5 +10,5 @@ for row, filename in enumerate(["ZCOOLKuaiLe-Regular.ttf", "AlimamaFangYuanTiVF.
     if row == 1:
         font.set_variation_by_axes([700, 100])
     draw.text((30, 20 + row * 145), "英雄收藏  锤锤喵  柴不破", font=font, fill="#74451f")
-    draw.text((30, 80 + row * 145), "镭射喵  哈利边牧  奶糖喵", font=font, fill="#74451f")
+    draw.text((30, 80 + row * 145), "镭射喵  哈利汪  奶糖喵", font=font, fill="#74451f")
 image.save(ROOT / "tools/src/font-comparison.png")

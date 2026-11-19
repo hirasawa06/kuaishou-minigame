@@ -121,11 +121,18 @@
     ui.base = base;
     ui.baseStopY = base.y + Math.round(baseH * 0.16);
     ui.tray = tray;
+    // 图1：100方框，左8；底边在托盘顶下20，距896屏底240。
+    ui.guardian = { x: metrics.safeLeft + 8 * battleScale,
+      y: tray.y - 80 * battleScale, w: 100 * battleScale, h: 100 * battleScale };
+    ui.guardianLabel = { x: metrics.safeLeft + 126 * battleScale,
+      y: tray.y - 46 * battleScale };
+    ui.guardianBar = { x: metrics.safeLeft + 122 * battleScale,
+      y: tray.y - 28 * battleScale, w: safeW - 144 * battleScale, h: 14 * battleScale };
     ui.trayH = trayH;
     ui.energyBar = energyBar;
     ui.cardGap = gap;
 
-    // ── Figma 275:246 底部托盘：金币、两个操作键与 2×2 卡池 ──
+    // ── Figma 275:246 底部托盘：饼干、两个操作键与 2×2 卡池 ──
     var goldBar = {
       x: metrics.safeLeft + 20 * battleScale,
       y: tray.y + 22 * battleScale,
@@ -489,6 +496,9 @@
     }
     var collectionGridW = collectionCellW * 2 + collectionGap;
     var collectionGridX = metrics.safeLeft + (safeW - collectionGridW) / 2;
+    var detailImageH = Math.min(collectionW * 1.33, Math.max(40, (contentH - 120) * 0.44));
+    var detailImageW = detailImageH * 0.752;
+    var detailPanelY = contentTop + 72 + detailImageH + 20;
     ui.collection = {
       back: { x: collectionX, y: contentTop + 8, w: 44, h: 44 },
       titleY: contentTop + 16,
@@ -496,7 +506,11 @@
       rect: function (i) { return { x: collectionGridX + (i % 2) * (collectionCellW + collectionGap),
         y: collectionTop + Math.floor(i / 2) * (collectionCellH + collectionGap),
         w: collectionCellW, h: collectionCellH }; },
-      detailNameY: contentTop + 66,
+      detailNameY: contentTop + 16,
+      detailImage: { x: metrics.safeLeft + (safeW - detailImageW) / 2,
+        y: contentTop + 72, w: detailImageW, h: detailImageH },
+      detailPanel: { x: collectionX, y: detailPanelY, w: collectionW,
+        h: Math.max(1, Math.min(contentBottom - 24, h - 80) - detailPanelY) },
       forms: function (i) { var fw = collectionW / 3; return {
         x: collectionX + fw * i + 3, y: contentTop + 112,
         w: fw - 6, h: Math.min(340, contentH - 138) }; }

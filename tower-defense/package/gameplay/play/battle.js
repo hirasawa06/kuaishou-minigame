@@ -1,4 +1,4 @@
-/* gameplay/play/battle.js — 核心玩法：金币、卡池、英雄、敌人、投射物、波次 */
+/* gameplay/play/battle.js — 核心玩法：饼干、卡池、英雄、敌人、投射物、波次 */
 (function () {
   var A = window.AIGCUtils;
   var C = A.Config;
@@ -119,7 +119,7 @@
       hp: card.hp,
       maxHp: card.hp,
       purchaseCost: card.cost,
-      spentGold: card.cost, // 兼容字段；只记录真实购入价，没有局内金币升级。
+      spentGold: card.cost, // 兼容字段；只记录真实购入价，没有局内饼干升级。
       atkTimer: card.cls === 'healer' ? card.interval : 0.3,
       hitFlash: 0,
       slowT: 0,
@@ -136,7 +136,7 @@
 
   function canAfford(def) { return S.gold >= def.cost; }
 
-  // 旧 UI 兼容出口：直接金币升级已移除，不提供可用升级预览。
+  // 旧 UI 兼容出口：直接饼干升级已移除，不提供可用升级预览。
   function getUpgradePreview() { return null; }
   function upgradeUnit() { return false; }
 
@@ -251,12 +251,12 @@
       return false;
     }
     if (reason === 'gold') {
-      S.toastMsg('金币不足', 0.9);
+      S.toastMsg('饼干不足', 0.9);
       return false;
     }
     // 死亡动画中的英雄不算占位
     if (reason === 'cap') {
-      S.toastMsg('上场席位已满（' + S.heroCap + '），可花金币扩建', 1.3);
+      S.toastMsg('上场席位已满（' + S.heroCap + '），可花饼干扩建', 1.3);
       return false;
     }
     var unit = placeHero(card, x, y, star);
@@ -316,7 +316,7 @@
       var g = e.def.gold || 2;
       S.gold += g;
       S.goldEarned += g;
-      S.addFloat(e.x, e.y - e.def.radius - 20, '+' + g, '#ffd166');
+      S.addFloat(e.x, e.y - e.def.radius - 20, String(g), '#ffd166', 'kill-reward');
       S.addEffect({ type: 'pop', x: e.x, y: e.y, r: e.def.radius, life: 0.42, max: 0.42, color: e.def.color });
       if (e.def.tier === 'boss') onBossDeath(e);
       else A.GameAudio && A.GameAudio.play('enemyDeath');
@@ -427,10 +427,6 @@
       return;
     }
     S.addEffect({
-      type: 'slash', x: enemy.x, y: enemy.y + enemy.def.radius * 0.5,
-      tx: target.x, ty: target.y, life: 0.16, max: 0.16, color: color,
-    });
-    S.addEffect({
       type: 'glow', x: target.x, y: target.y - 2, r: 7,
       life: 0.14, max: 0.14, color: color,
     });
@@ -495,7 +491,7 @@
   }
 
   // ── 帧更新 ─────────────────────────────────────────────────
-  function update(dt) {
+  function update(dt, elapsedDt) {
     if (S.adBusy) return;
     if (S.phase === 'paused') {
       updateEffects(dt);
@@ -506,6 +502,7 @@
       return;
     }
     S.time += dt;
+    updateBiscuits(elapsedDt === undefined ? dt : elapsedDt);
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt);
     if (S.goalHitT > 0) S.goalHitT = Math.max(0, S.goalHitT - dt);
     if (S.hitstop > 0) S.hitstop = Math.max(0, S.hitstop - dt);
@@ -533,6 +530,14 @@
   }
 
   // ── 角色体积 ──────────────────────────────────────────────
+  function updateBiscuits(dt) {
+    S.biscuitTimer += dt;
+    var count = Math.floor((S.biscuitTimer + 1e-9) / C.BISCUIT_INTERVAL);
+    S.biscuitTimer = Math.max(0, S.biscuitTimer - count * C.BISCUIT_INTERVAL);
+    S.gold += count;
+    S.goldEarned += count;
+  }
+
   // 现有 radius 是“脚底占地”的逻辑半径。这里把它落实为圆形体积：
   // 固定部署的宠物不被挤走；移动中的怪物、主动出击的战士负责退让。
   // 这不会影响攻击距离、嘲讽距离或贴图尺寸。
@@ -694,7 +699,7 @@
       S.waveTimer = C.waveGap;
       S.gold += C.WAVE_GOLD_BONUS;
       S.goldEarned += C.WAVE_GOLD_BONUS;
-      S.toastMsg('波次清除  +' + C.WAVE_GOLD_BONUS + ' 金币', 1.5);
+      S.toastMsg('波次清除', 1.5);
     }
   }
 
@@ -927,19 +932,24 @@
     A.GameAudio && A.GameAudio.play(def.cls === 'archer' ? 'arrow' : def.cls === 'mage' ? 'magic' : 'hit');
   }
 
-  function resolveBossBaseHit(e, goalX, baseY) {
+  function resolveBaseHit(e, goalX, baseY) {
     S.baseHp -= e.def.baseDamage;
-    S.shake = Math.max(S.shake, 0.35);
+    S.shake = Math.max(S.shake, 0.2);
     S.goalHitT = 0.3;
+    S.addFloat(goalX, baseY - 72, '-' + e.def.baseDamage, '#ff7a8a');
+    A.GameAudio && A.GameAudio.play('base');
+  }
+
+  function resolveBossBaseHit(e, goalX, baseY) {
+    resolveBaseHit(e, goalX, baseY);
+    S.shake = Math.max(S.shake, 0.35);
     var duration = C.BOSS_IMPACT.duration;
     S.addEffect({ type: 'boss-ground-impact', x: e.x, y: e.y,
       life: duration, max: duration });
-    S.addFloat(goalX, baseY - 72, '-' + e.def.baseDamage, '#ff7a8a');
     for (var i = 0; i < S.units.length; i++) {
       var unit = S.units[i];
       if (!unit.dead && S.dist2(unit.x, unit.y, e.x, e.y) <= 95 * 95) damageUnit(unit, 22);
     }
-    A.GameAudio && A.GameAudio.play('base');
   }
 
   function updateEnemies(dt) {
@@ -964,7 +974,8 @@
       }
       if (e.atkTimer > 0) e.atkTimer -= dt;
 
-      var goalX = u.base.x + u.base.w * 0.5;
+      var goalBar = u.guardianBar;
+      var goalX = S.clamp(e.x, goalBar.x, goalBar.x + goalBar.w);
 
       if (e.pendingHit >= 0) {
         e.pendingHit -= dt;
@@ -972,7 +983,8 @@
           e.pendingHit = -1;
           if (e.pendingKind === 'base') {
             e.pendingKind = '';
-            resolveBossBaseHit(e, goalX, u.base.y);
+            if (e.def.tier === 'boss') resolveBossBaseHit(e, goalX, u.base.y);
+            else resolveBaseHit(e, goalX, u.base.y);
           } else {
             var hitUnit = null;
             for (var hu = 0; hu < S.units.length; hu++) {
@@ -1002,8 +1014,8 @@
         if (dy < bestDy) { bestDy = dy; blocker = un; }
       }
 
-      // 三路在底部汇向合照。敌人必须靠近相框本体才可造成伤害。
-      var atBase = e.y >= u.baseStopY && Math.abs(e.x - goalX) <= Math.max(16, e.def.radius * 0.55);
+      // 整条守卫血条均可命中；范围外家具走向最近的血条边缘。
+      var atBase = e.y >= u.baseStopY && e.x >= goalBar.x && e.x <= goalBar.x + goalBar.w;
       if (atBase && e.def.tier === 'boss') {
         if (e.anim === 'move') enterAnimation(e, 'idle');
         if (e.atkTimer <= 0 && e.pendingHit < 0) {
@@ -1015,13 +1027,12 @@
       } else if (atBase) {
         if (e.anim === 'move') enterAnimation(e, 'idle');
         e.y = u.baseStopY;
-        if (e.atkTimer <= 0) {
+        if (e.atkTimer <= 0 && e.pendingHit < 0) {
+          selectAttackRig(e, { x: goalX, y: u.base.y });
           e.atkTimer = e.def.interval;
-          S.baseHp -= e.def.baseDamage;
-          S.shake = Math.max(S.shake, 0.2);
-          S.goalHitT = 0.3;
-          S.addFloat(goalX, u.base.y - 72, '-' + e.def.baseDamage, '#ff7a8a');
-          A.GameAudio && A.GameAudio.play('base');
+          enterAnimation(e, 'atk');
+          e.pendingKind = 'base';
+          e.pendingHit = attackHitTime(e, 0.18);
         }
       } else if (blocker) {
         if (e.anim === 'move') enterAnimation(e, 'idle');
@@ -1126,7 +1137,7 @@
     S.floats = fl;
   }
 
-  // 只恢复本局合照；不重建波次、不治疗/复活宠物、不结算击杀金币。
+  // 只恢复本局合照；不重建波次、不治疗/复活宠物、不结算击杀饼干。
   function revive(runToken) {
     if (S.phase !== 'lose' || (runToken !== undefined && runToken !== S.runToken) ||
         S.revivesUsed >= C.REVIVES_PER_RUN) return false;
