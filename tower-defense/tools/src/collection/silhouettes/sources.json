@@ -1,0 +1,47 @@
+{
+  "status": "现状：用户于 2026-11-19 提供；用于收藏册未解锁卡的角色剪影。",
+  "generator": "tower-defense/tools/build-collection-silhouettes.py",
+  "runtimeColor": "#B6B6B6",
+  "items": [
+    {
+      "id": "tank",
+      "name": "柴不破",
+      "userAttachment": "/Users/dengyanyu/Desktop/柴不破剪影.png",
+      "source": "tank-source.png",
+      "sha256": "9f853cb151048f86a00a1b5a249bed3ad197b1d968d9b4dc0379e0fba0391c7c",
+      "runtime": "res/Image/outgame/collection/silhouettes/tank-silhouette-b6.png"
+    },
+    {
+      "id": "war",
+      "name": "锤锤喵",
+      "userAttachment": "/Users/dengyanyu/Desktop/锤锤喵剪影.png",
+      "source": "war-source.png",
+      "sha256": "f80d786c3a3a51a622877b4e8fec9d832290d0aa078e5e426cf4d35e25931c96",
+      "runtime": "res/Image/outgame/collection/silhouettes/war-silhouette-b6.png"
+    },
+    {
+      "id": "mage",
+      "name": "哈利边牧",
+      "userAttachment": "/Users/dengyanyu/Desktop/哈利边牧剪影.png",
+      "source": "mage-source.png",
+      "sha256": "e60acd5733abc2d7742daa9561fd7dc2d89d387889b42dd1b313912d3954293c",
+      "runtime": "res/Image/outgame/collection/silhouettes/mage-silhouette-b6.png"
+    },
+    {
+      "id": "arch",
+      "name": "镭射猫",
+      "userAttachment": "/Users/dengyanyu/Desktop/镭射猫剪影.png",
+      "source": "arch-source.png",
+      "sha256": "756beaad2edca746cff3d249eece5c8e007a702cb3ba33600029670ec65155c2",
+      "runtime": "res/Image/outgame/collection/silhouettes/arch-silhouette-b6.png"
+    },
+    {
+      "id": "healer",
+      "name": "奶糖喵",
+      "userAttachment": "/Users/dengyanyu/Desktop/奶糖喵剪影.png",
+      "source": "healer-source.png",
+      "sha256": "238d1d50bf301dbd6b8e3aae63048cef4819f1fe7d4ec915fc48cde8f6183511",
+      "runtime": "res/Image/outgame/collection/silhouettes/healer-silhouette-b6.png"
+    }
+  ]
+}

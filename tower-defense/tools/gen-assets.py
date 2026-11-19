@@ -15,6 +15,7 @@ gen-assets.py — 塔防小游戏离线资源生成器
   package/yoola-assets/icon.png / share-image.png / loading-image.png
 """
 
+import hashlib
 import json
 import math
 import os
@@ -176,12 +177,17 @@ def build_font(size, out_png, pad=3, width=None):
     pages = []
     stem, ext = os.path.splitext(out_png)
     for page, img in enumerate(images):
-        page_png = out_png if page == 0 else stem + "-" + str(page) + ext
+        legacy_png = out_png if page == 0 else stem + "-" + str(page) + ext
+        # --- 字形变更使用新文件名，避免新坐标读取旧缓存图片 ---
+        digest = hashlib.sha256(img.tobytes()).hexdigest()[:10]
+        page_png = os.path.splitext(legacy_png)[0] + "-" + digest + ext
         # Every palette entry is white; its index is the exact 8-bit alpha.
         # Unlike quantization this preserves all antialiasing coverage values.
         indexed = Image.frombytes("P", img.size, img.tobytes())
         indexed.putpalette([255, 255, 255] * 256)
         indexed.save(page_png, transparency=bytes(range(256)), optimize=True)
+        if os.path.exists(legacy_png):
+            os.unlink(legacy_png)
         pages.append({"src": "res/Image/ui/fonts/" + os.path.basename(page_png),
                       "texW": width, "texH": img.height})
     return {

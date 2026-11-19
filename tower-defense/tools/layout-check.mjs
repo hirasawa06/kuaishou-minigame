@@ -49,6 +49,15 @@ function assert(condition, message) {
 
 function check(name, input, expected) {
   const ui = loadLayout(input)
+  // ── 全部弹窗共享安全可用区域中心，允许像素取整误差 ──
+  const centerX = (ui.safeLeft + ui.safeRight) / 2
+  const centerY = (ui.contentTop + ui.contentBottom) / 2 - 24
+  for (const rect of [ui.settings.sheet, ui.avatarPick.sheet, ui.invite.sheet,
+    ui.stamina.sheet, ui.pausePanel.panel, ui.result.panel]) {
+    assert(Math.abs(rect.x + rect.w / 2 - centerX) <= 0.5 &&
+      Math.abs(rect.y + rect.h / 2 - centerY) <= 0.5,
+    `${name}: dialog not centered in safe interactive area`)
+  }
   assert(ui.systemTop === expected.systemTop, `${name}: systemTop ${ui.systemTop}`)
   assert(ui.contentTop === expected.contentTop, `${name}: contentTop ${ui.contentTop}`)
   assert(ui.contentBottom === expected.contentBottom, `${name}: contentBottom ${ui.contentBottom}`)
@@ -66,7 +75,7 @@ function check(name, input, expected) {
   assert(ui.field.y + ui.field.h <= ui.tray.y, `${name}: field overlaps tray`)
   const pause = ui.pausePanel.panel
   assert(pause.x >= ui.safeLeft && pause.x + pause.w <= ui.safeRight &&
-    pause.y >= ui.contentTop && pause.y + pause.h <= ui.contentBottom,
+    pause.y >= ui.contentTop - 24 && pause.y + pause.h <= ui.contentBottom - 24,
   `${name}: pause panel outside interactive area`)
   let previousPauseButton = null
   for (const key of ['resume', 'settings', 'restart', 'home']) {
@@ -81,7 +90,7 @@ function check(name, input, expected) {
   }
   const rp = ui.result.panel
   assert(rp.x >= ui.safeLeft && rp.x + rp.w <= ui.safeRight &&
-    rp.y >= ui.contentTop && rp.y + rp.h <= ui.contentBottom,
+    rp.y >= ui.contentTop - 24 && rp.y + rp.h <= ui.contentBottom - 24,
   `${name}: result panel outside interactive area`)
   for (const button of [ui.resultNext, ui.resultReplay, ui.resultHome]) {
     assert(button.x >= rp.x + 8 && button.x + button.w <= rp.x + rp.w - 8 &&
@@ -113,7 +122,7 @@ function check(name, input, expected) {
   const settings = ui.settings
   const sheet = settings.sheet
   assert(sheet.x >= ui.safeLeft && sheet.x + sheet.w <= ui.safeRight &&
-    sheet.y >= ui.contentTop && sheet.y + sheet.h <= ui.contentBottom,
+    sheet.y >= ui.contentTop - 24 && sheet.y + sheet.h <= ui.contentBottom - 24,
   `${name}: settings sheet outside interactive area`)
   for (const control of [settings.close, settings.musicRow, settings.sfxRow, settings.shareBtn]) {
     assert(control.x >= sheet.x + 6 && control.x + control.w <= sheet.x + sheet.w - 6 &&

@@ -47,6 +47,8 @@
     var contentTop = st + TOP_GAP + PLATFORM_H;
     var contentBottom = metrics.safeBottom;
     var contentH = Math.max(1, contentBottom - contentTop);
+    // --- 弹窗统一相对居中位置上移，内部控件由弹窗坐标派生 ---
+    var dialogOffsetY = -24;
     var adaptationError = contentH < 322;
     var metricKey = [w, h, st, metrics.safeLeft, metrics.safeRight, contentBottom].join(':');
     if (ui.ready && ui.metricKey === metricKey) return ui;
@@ -260,7 +262,7 @@
     pausePanelH = Math.min(pausePanelH, Math.max(1, contentH - 16));
     var pausePanel = {
       x: metrics.safeLeft + (safeW - pausePanelW) / 2,
-      y: contentTop + (contentH - pausePanelH) / 2,
+      y: contentTop + (contentH - pausePanelH) / 2 + dialogOffsetY,
       w: pausePanelW, h: pausePanelH,
     };
     var pauseTop = pausePanel.y + pauseHeaderH + pauseHeaderGap;
@@ -285,7 +287,7 @@
     var resultPanelW = Math.min(340, safeW - pad * 2);
     var resultPanel = {
       x: metrics.safeLeft + (safeW - resultPanelW) / 2,
-      y: contentTop + (contentH - resultPanelH) / 2,
+      y: contentTop + (contentH - resultPanelH) / 2 + dialogOffsetY,
       w: resultPanelW, h: resultPanelH,
     };
     var resultCompact = resultPanelH < 500;
@@ -389,7 +391,7 @@
     // 设置弹窗按内部内容定高；其他资料页继续沿用 rowH 的原尺寸体系。
     var rowH = Math.round(Math.max(68, Math.min(78, contentH * 0.14)));
     var setCompact = contentH < 500;
-    var setHead = setCompact ? 64 : 80;
+    var setHead = Math.round(Math.max(40, rowH * 0.8));
     var setRowH = setCompact ? 56 : 68;
     var setTopGap = setCompact ? 12 : 18;
     var setRowGap = setCompact ? 8 : 12;
@@ -399,7 +401,7 @@
     var setBottomPad = setCompact ? 14 : 18;
     var setH = setHead + setTopGap + setRowH * 2 + setRowGap +
       setShareGap + setBtnH + setVersionGap + 18 + setBottomPad;
-    var setY = Math.round(contentTop + (contentH - setH) / 2);
+    var setY = Math.round(contentTop + (contentH - setH) / 2) + dialogOffsetY;
     var setInnerY = setY + setHead + setTopGap;
     var musicRow = { x: sheetX + 14, y: setInnerY, w: sheetW - 28, h: setRowH };
     var sfxRow = { x: musicRow.x, y: musicRow.y + setRowH + setRowGap, w: musicRow.w, h: setRowH };
@@ -415,13 +417,13 @@
       musicRow: musicRow,
       sfxRow: sfxRow,
       shareBtn: shareBtn,
-      close: { x: sheetX + sheetW - 44, y: setY + (setHead - 32) / 2, w: 32, h: 32 },
+      close: { x: sheetX + sheetW - 44, y: setY + 12, w: 32, h: 32 },
       versionY: shareBtn.y + shareBtn.h + setVersionGap,
     };
 
     // 体力弹窗：安全区居中，倒计时与广告入口各占独立一行。
     var staminaH = Math.min(300, Math.max(1, contentH - 16));
-    var staminaY = contentTop + (contentH - staminaH) / 2;
+    var staminaY = contentTop + (contentH - staminaH) / 2 + dialogOffsetY;
     var staminaHead = staminaH < 280 ? 64 : 80;
     ui.stamina = {
       sheet: { x: sheetX, y: staminaY, w: sheetW, h: staminaH },
@@ -433,46 +435,8 @@
       ad: { x: sheetX + 20, y: staminaY + staminaH - 94, w: sheetW - 40, h: 48 },
     };
 
-    // 名片：整页卡片，标题带 + 头像 + 昵称 + ID + 两个入口
-    var cardH = Math.round(Math.min(470, contentH * 0.78));
-    var cardY = contentTop + Math.round(Math.max(14, contentH * 0.16));
-    var profHead = Math.round(Math.max(40, rowH * 0.8));
-    var avatarSize = Math.round(Math.max(64, Math.min(92, cardH * 0.22)));
-    var profRowH = Math.round(Math.max(42, Math.min(52, cardH * 0.12)));
-    var profRowX = sheetX + 26;
-    var profRowW = sheetW - 52;
-    var profAvatar = {
-      x: Math.round(sheetX + (sheetW - avatarSize) / 2),
-      y: cardY + profHead + Math.round(cardH * 0.06),
-      w: avatarSize,
-      h: avatarSize,
-    };
-    var profNameY = profAvatar.y + avatarSize + Math.round(cardH * 0.06);
-    var profAvatarBtn = {
-      x: profRowX,
-      y: profNameY + Math.round(cardH * 0.16),
-      w: profRowW,
-      h: profRowH,
-    };
-    var profNickBtn = {
-      x: profRowX,
-      y: profAvatarBtn.y + profRowH + Math.round(rowH * 0.22),
-      w: profRowW,
-      h: profRowH,
-    };
-    ui.profile = {
-      card: { x: sheetX, y: cardY, w: sheetW, h: cardH },
-      head: profHead,
-      close: { x: sheetX + sheetW - 38, y: cardY + 6, w: 32, h: 32 },
-      avatar: profAvatar,
-      nameY: profNameY,
-      idY: profNameY + 36,
-      avatarBtn: profAvatarBtn,
-      nickBtn: profNickBtn,
-    };
-
     // 选择头像：标题 + 3×3 网格 + 保存
-    var pickHead = Math.max(38, Math.round(rowH * 0.74));
+    var pickHead = Math.round(Math.max(40, rowH * 0.8));
     var gridPad = 18;
     var pickMaxH = Math.round(Math.min(452, contentH - 32));
     var btnH = Math.round(Math.max(38, Math.min(48, pickMaxH * 0.12)));
@@ -482,7 +446,7 @@
     var cellSize = Math.floor(Math.min(cellMax,
       (pickMaxH - pickHead - btnH - 60 - cellGap * 2) / 3));
     var pickH = pickHead + cellSize * 3 + cellGap * 2 + btnH + 60;
-    var pickY = contentTop + Math.round(Math.max(16, (contentH - pickH) * 0.28));
+    var pickY = contentTop + Math.round((contentH - pickH) / 2) + dialogOffsetY;
     var gridTop = pickY + pickHead + 20;
     var gridW = cellSize * 3 + cellGap * 2;
     var gridX = Math.round(sheetX + (sheetW - gridW) / 2);
@@ -496,7 +460,7 @@
     ui.avatarPick = {
       sheet: { x: sheetX, y: pickY, w: sheetW, h: pickH },
       head: pickHead,
-      close: { x: sheetX + sheetW - 38, y: pickY + 6, w: 32, h: 32 },
+      close: { x: sheetX + sheetW - 44, y: pickY + 12, w: 32, h: 32 },
       grid: { x: gridX, y: gridTop, cell: cellSize, gap: cellGap, cols: 3, rows: 3 },
       save: pickSave,
     };
@@ -512,47 +476,25 @@
       };
     };
 
-    // 修改昵称：输入框 + 计数 + 提示 + 保存
-    var nickH = Math.round(Math.min(330, contentH * 0.56));
-    var nickY = contentTop + Math.round(Math.max(16, (contentH - nickH) * 0.3));
-    var nickHead = Math.max(38, Math.round(rowH * 0.74));
-    var nickFieldY = nickY + nickHead + Math.round(nickH * 0.12);
-    var nickFieldH = Math.round(Math.max(40, Math.min(50, nickH * 0.17)));
-    ui.nickname = {
-      sheet: { x: sheetX, y: nickY, w: sheetW, h: nickH },
-      head: nickHead,
-      close: { x: sheetX + sheetW - 38, y: nickY + 6, w: 32, h: 32 },
-      labelY: nickY + nickHead + Math.round(nickH * 0.06),
-      field: { x: sheetX + 20, y: nickFieldY, w: sheetW - 40, h: nickFieldH },
-      hintY: nickFieldY + nickFieldH + 8,
-      save: {
-        x: sheetX + 22,
-        y: Math.round(Math.min(nickY + nickH - 14 - Math.max(40, nickH * 0.15),
-          nickFieldY + nickFieldH + Math.round(nickH * 0.3))),
-        w: sheetW - 44,
-        h: Math.round(Math.max(40, Math.min(50, nickH * 0.15))),
-      },
-    };
-
-    // 邀请好友：两只伙伴 + 标题 + 文案 + 复制按钮 + 说明
-    var invH = Math.round(Math.min(430, contentH * 0.74));
-    var invY = contentTop + Math.round(Math.max(16, (contentH - invH) * 0.24));
-    var invHead = Math.max(38, Math.round(rowH * 0.74));
-    var invBodyY = invY + invHead + 12;
-    var invBodyH = Math.round(invH * 0.38);
-    var invTitleY = invBodyY + invBodyH + 8;
-    var invSubY = invTitleY + 38;
-    var invCopyH = Math.round(Math.max(42, Math.min(50, invH * 0.115)));
-    var invCopyY = invSubY + Math.round(invH * 0.1);
+    // 邀请好友：图片区、主标题、按钮统一间距，弹窗按内容收紧
+    var invMaxH = Math.min(360, contentH - 32);
+    var invHead = Math.round(Math.max(40, rowH * 0.8));
+    var invGap = Math.round(Math.max(8, Math.min(20, invMaxH * 0.06)));
+    var invCopyH = 44;
+    var invBodyH = Math.round(Math.max(32, Math.min(140,
+      invMaxH - invHead - 36 - invCopyH - invGap * 4)));
+    var invH = invHead + invBodyH + 36 + invCopyH + invGap * 4;
+    var invY = contentTop + Math.round((contentH - invH) / 2) + dialogOffsetY;
+    var invBodyY = invY + invHead + invGap;
+    var invTitleY = invBodyY + invBodyH + invGap;
+    var invCopyY = invTitleY + 36 + invGap;
     ui.invite = {
       sheet: { x: sheetX, y: invY, w: sheetW, h: invH },
       head: invHead,
-      close: { x: sheetX + sheetW - 38, y: invY + 6, w: 32, h: 32 },
+      close: { x: sheetX + sheetW - 44, y: invY + 12, w: 32, h: 32 },
       body: { x: sheetX + 24, y: invBodyY, w: sheetW - 48, h: invBodyH },
       titleY: invTitleY,
-      subY: invSubY,
       copy: { x: sheetX + 22, y: invCopyY, w: sheetW - 44, h: invCopyH },
-      noteY: invCopyY + invCopyH + 12,
     };
 
     // ┌─ 萌宠收藏：Figma 263:161 的固定竖卡比例，网格从可用高度反推宽度 ─┐

@@ -102,7 +102,8 @@
     manifest.push(['heal-aura', 'res/Image/ingame/effects/heal-aura.png']);
     manifest.push(['heal-cross', 'res/Image/ingame/effects/heal-cross.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
-    manifest.push(['avatars', 'res/Image/outgame/avatars/avatars.png']);
+    manifest.push(['avatars', 'res/Image/outgame/avatars/avatars-fill.png']);
+    manifest.push(['avatars-home', 'res/Image/outgame/avatars/avatars-home-r12.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
     if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
     if (A.HeroForms) {
@@ -125,8 +126,10 @@
     manifest.push(['guardian-photo', 'res/Image/outgame/home/guardian-photo-v1.png']);
     manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book.jpg']);
     manifest.push(['collection-art', 'res/Image/outgame/collection/collection-art.png']);
+    manifest.push(['collection-lock', 'res/Image/ui/icons/collection-lock-v1.png']);
     ['tank', 'war', 'mage', 'arch', 'healer'].forEach(function (id) {
       manifest.push(['collection-scene-' + id, 'res/Image/outgame/collection/scenes-figma-263-161-hd/' + id + '.jpg']);
+      manifest.push(['collection-silhouette-' + id, 'res/Image/outgame/collection/silhouettes/' + id + '-silhouette-b6.png']);
     });
 
     manifest.push(['shield-dog-front', 'res/Image/ingame/characters/shield-dog-front.png']);

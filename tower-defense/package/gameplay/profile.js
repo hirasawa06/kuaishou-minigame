@@ -31,8 +31,6 @@
   ];
 
   var NICK_DEFAULT = '暖阳小橘';
-  var NICK_MIN = 2;
-  var NICK_MAX = 8;
 
   var S = {};
 
@@ -182,8 +180,6 @@
 
   S.AVATARS = AVATARS;
   S.REGIONS = REGIONS;
-  S.NICK_MIN = NICK_MIN;
-  S.NICK_MAX = NICK_MAX;
   S.NICK_DEFAULT = NICK_DEFAULT;
 
   S.data = defaults();
@@ -252,41 +248,6 @@
     var r = S.regionDef();
     var towns = r.towns || [];
     return towns[S.data.town] || towns[0] || r.name;
-  };
-
-  // 昵称清洗：去掉首尾空白，只保留中文 / 字母 / 数字，最长 8 个 Unicode 字符
-  S.cleanNickname = function (raw) {
-    var str = typeof raw === 'string' ? raw : '';
-    str = str.replace(/[\s　]+/g, ' ');
-    str = str.replace(/^\s+|\s+$/g, '');
-    str = str.replace(/[^一-龥A-Za-z0-9]/g, '');
-    var out = '';
-    var n = 0;
-    for (var i = 0; i < str.length; i++) {
-      var ch = str.charAt(i);
-      out += ch;
-      n++;
-      if (n >= NICK_MAX) break;
-    }
-    return out;
-  };
-
-  // 校验返回 { ok, reason, value }，界面按 reason 给提示
-  S.validateNickname = function (raw) {
-    var value = S.cleanNickname(raw);
-    if (!value) return { ok: false, reason: 'empty', value: value };
-    var len = 0;
-    for (var i = 0; i < value.length; i++) len++;
-    if (len < NICK_MIN) return { ok: false, reason: 'short', value: value };
-    return { ok: true, reason: '', value: value };
-  };
-
-  S.setNickname = function (raw) {
-    var res = S.validateNickname(raw);
-    if (!res.ok) return res;
-    S.data.nickname = res.value;
-    S.save();
-    return res;
   };
 
   S.setAvatar = function (index) {

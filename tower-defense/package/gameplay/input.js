@@ -379,7 +379,7 @@
       if (key === 'stamina') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('stamina'); return; }
       if (key === 'collection') { A.GameAudio && A.GameAudio.play('click'); A.ProfileUI.open('collection'); return; }
       if (key === 'settings') { A.ProfileUI.open('settings'); return; }
-      if (key === 'avatar') { A.ProfileUI.open('profile'); return; }
+      if (key === 'avatar') { A.ProfileUI.open('avatars'); return; }
       return;
     }
     if (S.phase === 'win' || S.phase === 'lose') {

@@ -34,10 +34,10 @@
     });
   };
 
-  // ┌─ 263:161 的 1.16px 描边单独后绘，禁止由底图边缘“顺带”提供 ─┐
-  draw.figmaCardBorder = function (x, y, w, h, r) {
+  // ┌─ 263:161 的 1.16px 描边单独后绘；解锁卡默认棕金，锁定卡可传浅灰 ─┐
+  draw.figmaCardBorder = function (x, y, w, h, r, borderColor) {
     if (w <= 0 || h <= 0) return;
-    GL.push(x, y, w, h, draw.color('#874600'), {
+    GL.push(x, y, w, h, borderColor || draw.color('#874600'), {
       mode: 8, hw: w / 2, hh: h / 2, r: Math.min(r, w / 2, h / 2),
     });
   };
@@ -96,11 +96,11 @@
   };
 
   // --- 完整图片放进圆角容器，圆角不写入素材 ---
-  draw.roundTexture = function (tex, x, y, w, h, radius, grayscale) {
+  draw.roundTexture = function (tex, x, y, w, h, radius, grayscale, blur) {
     if (!tex || w <= 0 || h <= 0) return;
     GL.setTexture(tex);
     GL.push(x, y, w, h, WHITE, {
-      mode: grayscale ? 6 : 5, hw: w / 2, hh: h / 2,
+      mode: grayscale ? 6 + (blur ? 0.25 : 0) : 5, hw: w / 2, hh: h / 2,
       r: Math.min(radius, w / 2, h / 2),
     });
   };

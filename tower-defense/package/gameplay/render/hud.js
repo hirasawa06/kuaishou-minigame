@@ -464,7 +464,6 @@
     var r = { x: target.x + (target.w - w) / 2,
       y: target.y + (target.h - h) / 2, w: w, h: h };
     if (key === 'stamina') {
-      menuPlate(r, true);
       var barUnit = h / 44;
       var boltW = 19 * barUnit, boltH = 25 * barUnit;
       var gap = 5 * barUnit;
@@ -477,13 +476,16 @@
         Math.floor(seconds / 60) + ':' + ('0' + (seconds % 60)).slice(-2) + ' +1';
       var timerFontSize = 12;
       var timerGap = timer ? 7 * barUnit : 0;
-      var availableW = Math.max(1, w - 18 * barUnit - boltW - gap - timerGap);
-      valueFontSize = D.fitTextSize(value, valueFontSize, availableW - D.textWidth(timer, timerFontSize));
-      timer = D.fitTextContent(timer, timerFontSize, availableW - D.textWidth(value, valueFontSize));
       var valueW = D.textWidth(value, valueFontSize);
       var timerWidth = D.textWidth(timer, timerFontSize);
       var rowW = boltW + gap + valueW + timerGap + timerWidth;
-      var rowX = r.x + (w - rowW) / 2;
+      // --- 左侧锚点固定，按内容宽度加左右12设计像素，同步点击区域 ---
+      var padding = 12 * barUnit;
+      r.x = target.x;
+      r.w = rowW + padding * 2;
+      target.w = r.w / scale;
+      menuPlate(r, true);
+      var rowX = r.x + padding;
       menuIconInBox('bolt', { x: rowX, y: r.y + (h - boltH) / 2, w: boltW, h: boltH });
       var valueX = rowX + boltW + gap;
       menuText(value, valueX + valueW / 2,
@@ -492,16 +494,16 @@
         r.y + h / 2, D.color('#916b50'), timerFontSize);
       return;
     }
-    menuPlate(r, false);
     var unit = w / 78;
     if (key === 'avatar') {
-      D.roundRect(r.x + 5 * unit, r.y + 5 * unit, w - 10 * unit, h - 13 * unit,
-        14 * unit,
-        D.color('#dcc1d1'));
+      // --- 首页头像：奶油色厚框保留，无紫色夹层，四边等距 ---
+      menuPlate(r, false);
+      var avatarSize = Math.min(w, h) - 12 * unit;
       A.ProfileUI.avatar(A.Profile.data.avatarIndex,
-        r.x + w / 2, r.y + (h - 3 * unit) / 2, Math.min(w - 14 * unit, h - 15 * unit));
+        r.x + w / 2, r.y + h / 2, avatarSize, true);
       return;
     }
+    menuPlate(r, false);
     var label = key === 'settings' ? '设置' : '收藏';
     var showLabel = w >= 64;
     var labelCenterY = r.y + h - 22;
@@ -605,8 +607,9 @@
         radius: card.w * 85 / 1107 + 10,
       };
       var unlocked = A.Profile.isLevelUnlocked(levelNo);
+      var blur = levelNo >= A.Profile.data.completedLevel + 3;
       if (cover) D.roundTexture(cover.tex, container.x, container.y,
-        container.w, container.h, container.radius, !unlocked);
+        container.w, container.h, container.radius, !unlocked, blur);
       if (!unlocked) {
         // 锁定遮罩由 WebGL 圆角几何绘制；略伸入框内，再以原卡图像素重绘画框。
         // 这样场景四角被遮住，外部背景不会出现随卡片移动的黑色矩形。

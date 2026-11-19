@@ -1,5 +1,7 @@
 # UI美术素材规范
 
+2026-11-19收藏锁（决定/运行目视待验）：来源为用户附件 Downloads/lock.png；归档tools/src/ui/icons/collection-lock.png，运行图package/res/Image/ui/icons/collection-lock-v1.png（204×256透明PNG）。运行python3 tools/build-collection-lock.py重建；收藏卡待解锁状态使用，等比居中。
+
 2026-11-18 21:38用户决定：首页去掉投影。当前已移除开始按钮外部投影、文字投影与头像/体力/设置/收藏共用底板投影，保留控件边框和材质高光。原图片中烘焙的投影尚未处理；不能把代码投影移除宣称为所有素材投影已经清除。语法和菜单交互检查通过，运行画面待验。
 
 状态：分类决定已落地；逐文件盘点、运行路径和生成器已同步迁移。

@@ -38,6 +38,20 @@
     'uniform sampler2D uMaskTex;',
     'uniform float uAdd;',
     'uniform vec4 uSceneLight;', // 调色强度、身体中心Y、画布高、顶部光强度
+    // ── 密集高斯核：81次采样连续羽化，边缘权重渐减并归一 ──
+    'vec4 blurredCover(vec2 uv, vec2 d) {',
+    '  vec4 t = vec4(0.0);',
+    '  float total = 0.0;',
+    '  for (int y = -4; y <= 4; y++) {',
+    '    for (int x = -4; x <= 4; x++) {',
+    '      vec2 offset = vec2(float(x), float(y));',
+    '      float weight = exp(-dot(offset, offset) / 11.52);',
+    '      t += texture2D(uTex, clamp(uv + offset * d, 0.0, 1.0)) * weight;',
+    '      total += weight;',
+    '    }',
+    '  }',
+    '  return t / total;',
+    '}',
     'void main() {',
     '  vec4 c = vColor;',
     '  vec2 h = vShape.xy;',
@@ -77,7 +91,9 @@
     '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
     '    float a = 1.0 - smoothstep(-0.9, 0.9, dist);',
     '    vec4 t = texture2D(uTex, vUV);',
-    // --- 锁定封面实时去色，共用原图，不增加图片资源 ---
+    // ── 模式6：未解锁关卡封面去色，保留透明度与圆角 ──
+    // ── 模式6.25：远期关卡先模糊，再去色；不影响模式7/8 ──
+    '    if (vMode > 6.1) t = blurredCover(vUV, vec2(3.0) / (2.0 * h));',
     '    t.rgb = mix(t.rgb, vec3(dot(t.rgb, vec3(0.299, 0.587, 0.114))), step(5.5, vMode));',
     '    if (a < 0.004 || t.a < 0.004) discard;',
     '    c = vec4(c.rgb * t.rgb, c.a * t.a * a);',

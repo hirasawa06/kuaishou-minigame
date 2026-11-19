@@ -1,6 +1,6 @@
 # outgame 美术素材清单
 
-状态：2026-11-18 21:48已迁移运行图片、资源清单和生成器输出；制作源、平台图和参考图保留原位。静态引用只提供线索，不代表未使用或可删除。
+状态：2026-11-19新增收藏册锁定角色剪影：5 张用户原图归档在 tools/src/collection/silhouettes/，由 build-collection-silhouettes.py 生成 5 张 512×512 RGBA 运行图至 package/res/Image/outgame/collection/silhouettes/；角色 ID、来源路径、SHA256 与运行路径记录在该目录 sources.json。静态引用只提供线索，不代表未使用或可删除。
 
 共151个美术文件。原图、工具输入、平台资产与参考材料分开标记；音频和开发规范模板不属于此清单。
 
