@@ -226,7 +226,8 @@
       y: battleTop + 96 * battleScale, w: 99 * battleScale, h: 40 * battleScale };
     ui.pauseBtn = { x: metrics.safeLeft + 360 * battleScale,
       y: battleTop + 96 * battleScale, w: 40 * battleScale, h: 40 * battleScale };
-    ui.speedBtn = ui.wavePlate;
+    ui.speedBtn = { x: metrics.safeLeft + 12 * battleScale,
+      y: battleTop + 144 * battleScale, w: 40 * battleScale, h: 40 * battleScale };
     ui.hudCenterX = metrics.safeLeft + safeW * 0.47;
     // 主按钮几何：按钮实际绘制在 h*btnY 处，点击判定复用同一份数据
     ui.btnW = 184;
@@ -434,13 +435,13 @@
     };
 
     // 体力弹窗：安全区居中，倒计时与广告入口各占独立一行。
-    var staminaH = Math.min(300, Math.max(1, contentH - 16));
+    var staminaH = Math.min(260, Math.max(1, contentH - 16));
     var staminaY = contentTop + (contentH - staminaH) / 2 + dialogOffsetY;
-    var staminaHead = staminaH < 280 ? 64 : 80;
+    var staminaHead = Math.round(Math.max(40, rowH * 0.8));
     ui.stamina = {
       sheet: { x: sheetX, y: staminaY, w: sheetW, h: staminaH },
       head: staminaHead,
-      close: { x: sheetX + sheetW - 44, y: staminaY + (staminaHead - 32) / 2, w: 32, h: 32 },
+      close: { x: sheetX + sheetW - 44, y: staminaY + 12, w: 32, h: 32 },
       valueY: staminaY + staminaHead + 18,
       timerY: staminaY + staminaHead + 56,
       noteY: staminaY + staminaH - 30,
