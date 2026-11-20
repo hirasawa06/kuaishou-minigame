@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """现状/待验证：生成并打包英雄收藏预览；不生成或修改战斗动作。
 Run --generate once for Sunburst i2i; run without arguments to repack existing sources.
-Only writes tools/src/hero-levels and package/res/Image/hero-levels.png.
+Only writes tools/src/hero-levels and package/res/Image/outgame/hero-forms/hero-levels.png.
 """
 import argparse
 import base64
@@ -82,7 +82,7 @@ def fit(img):
 
 def pack_healer_only():
     # Preserve all four existing hero columns byte-for-byte at decoded pixel level.
-    destination = ROOT / 'package/res/Image/hero-levels.png'
+    destination = ROOT / 'package/res/Image/outgame/hero-forms/hero-levels.png'
     atlas = Image.open(destination).convert('RGBA')
     if atlas.size != (1000, 600):
         raise SystemExit('Unexpected atlas dimensions')
@@ -96,6 +96,7 @@ def pack_healer_only():
         cell.save(OUT / ('healer-lv' + str(level) + '.png'))
         atlas.paste(cell, (800, (level - 1) * 200))
         status['healer'][str(level)] = True
+    destination.parent.mkdir(parents=True, exist_ok=True)
     atlas.save(destination, optimize=True, dpi=(72, 72))
     (OUT / 'availability.json').write_text(json.dumps(status, indent=2) + '\n')
     print('atlas=' + str(destination) + ' RGBA 1000x600; all healer levels populated')
@@ -142,7 +143,8 @@ def pack(existing_only=False):
             cell.save(OUT / ('healer-lv' + str(level) + '.png'))
             atlas.alpha_composite(cell, (800, (level - 1) * 200))
             status['healer'][str(level)] = True
-    destination = ROOT / 'package/res/Image/hero-levels.png'
+    destination = ROOT / 'package/res/Image/outgame/hero-forms/hero-levels.png'
+    destination.parent.mkdir(parents=True, exist_ok=True)
     atlas.save(destination, optimize=True, dpi=(72, 72))
     (OUT / 'availability.json').write_text(json.dumps(status, indent=2) + '\n')
     print('atlas=' + str(destination) + ' RGBA 1000x600; healer availability=' + str(status['healer']), flush=True)

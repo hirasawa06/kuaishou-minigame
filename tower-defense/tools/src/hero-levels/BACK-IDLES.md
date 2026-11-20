@@ -4,7 +4,7 @@
 
 ## 交付
 
-`package/res/Image/hero-levels-back.png`，真正透明 RGBA、1000×600、72PPI，5列×3行、每格200×200。
+`package/res/Image/outgame/hero-forms/hero-levels-back.png`，真正透明 RGBA、1000×600、72PPI，5列×3行、每格200×200。
 
 列：tank / war / arch / mage / healer；行：Lv1 / Lv2 / Lv3。
 
@@ -25,7 +25,7 @@
 
 ## 父接入合同
 
-- Assets manifest 增加 `['hero-levels-back', A.HeroForms.backSrc]`，或直接src `res/Image/hero-levels-back.png`。
+- Assets manifest 增加 `['hero-levels-back', A.HeroForms.backSrc]`，或直接src `res/Image/outgame/hero-forms/hero-levels-back.png`。
 - `A.HeroForms.drawBattleIdle(id,level,cx,cy,size,alpha)` 仅使用背面 Assets key，采样 `[col*200,(level-1)*200,200,200]`。
 - 缺纹理/尺寸错误返回false且**不画任何正面占位**，父场景应保留原背面 Rig。
 - `battleIdleReady()` 可查纹理是否可绘制。独立前面 `HeroForms.init` 不自动加载背面，请父通过 Assets 加载。

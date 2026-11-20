@@ -82,6 +82,7 @@ require("./gameplay/play/battle.js"); // 核心玩法
 require("./gameplay/rewards.js"); // 激励奖励业务门禁（禁止占位/H5 假奖励）
 require("./gameplay/input.js"); // 触摸输入
 require("./gameplay/render/scene.js"); // 战场绘制
+require("./gameplay/render/battle-shop.js"); // Figma 战斗底部操作台
 require("./gameplay/hero-forms.js"); // 角色三等级形象
 require("./gameplay/tutorial.js"); // 首关操作引导
 require("./gameplay/ui.js"); // 设置 / 名片 / 排行榜 / 邀请

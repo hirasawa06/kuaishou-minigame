@@ -13,8 +13,7 @@
   var icon = A.Scene.icon;
 
   var UI = {
-    stack: [],          // 'settings' / 'stamina' / 'profile' / 'avatars' / 'nickname' / 'invite' / 'collection' / 'heroDetail'
-    draftNickname: '',
+    stack: [],          // 'settings' / 'stamina' / 'avatars' / 'invite' / 'collection' / 'heroDetail'
     draftAvatar: 0,
   };
 
@@ -45,6 +44,10 @@
   };
 
   var AVATAR_COLOR = [];
+  // 只交换九宫格展示位置，保留已有存档的头像索引。
+  function avatarIndexAt(position) {
+    return position === 7 ? 8 : position === 8 ? 7 : position;
+  }
   (function () {
     var items = (A.AvatarAtlas && A.AvatarAtlas.items) || [];
     for (var i = 0; i < items.length; i++) AVATAR_COLOR.push(items[i].color || '#f5a84a');
@@ -63,17 +66,17 @@
     D.rect(0, 0, u.w, u.h, col(COLOR.mask, 0.34));
   }
 
-  function paper(rect, radius, title, headH) {
+  function paper(rect, radius, title, headH, borderless) {
     // 柔和投影 + 纸面
     D.roundRect(rect.x + 2, rect.y + 5, rect.w, rect.h, radius, col('#7a5533', 0.18));
     D.roundRect(rect.x, rect.y, rect.w, rect.h, radius, col(COLOR.paper, 0.985));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#f3e3cd'));
+    if (!borderless) D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#f3e3cd'));
     if (!title) return;
     // 木棕标题栏：仅盖住上半部分，底边与纸面同色形成圆角包裹
     var hh = headH;
     D.roundRect(rect.x, rect.y, rect.w, hh, radius, col(COLOR.brown));
     D.rect(rect.x, rect.y + hh - radius, rect.w, radius, col(COLOR.brown));
-    D.text(title, rect.x + rect.w / 2, rect.y + (hh - 28) / 2, 28, col(COLOR.white), 1);
+    D.centeredText(title, rect.x + rect.w / 2, rect.y + hh / 2, 32, col(COLOR.white));
   }
 
   function closeButton(rect) {
@@ -87,19 +90,18 @@
   }
 
   function backButton(rect) {
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 14, col(COLOR.paper, 0.96));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#e7d3b8'));
-    icon('ui-back', rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.5);
+    icon('ui-back', rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.6);
   }
 
-  function primaryButton(rect, label, size) {
+  function primaryButton(rect, label, size, borderless) {
+    size = D.fontSize(size || 24);
     D.roundRect(rect.x, rect.y - 1, rect.w, rect.h + 3, rect.h / 2, col(COLOR.accentEdge, 0.34));
     D.roundRect(rect.x, rect.y, rect.w, rect.h, rect.h / 2, col(COLOR.accent));
     D.roundRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h * 0.44, rect.h / 2,
       col(COLOR.accentTop, 0.92));
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1.5, col(COLOR.accentEdge, 0.8));
-    D.text(label, rect.x + rect.w / 2, rect.y + (rect.h - (size || 26)) / 2 + 1,
-      size || 26, col(COLOR.accentText), 1);
+    if (!borderless) D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1.5, col(COLOR.accentEdge, 0.8));
+    D.centeredText(label, rect.x + rect.w / 2, rect.y + rect.h / 2,
+      size, col(COLOR.accentText));
   }
 
   function ghostRow(rect, label, opts) {
@@ -122,19 +124,16 @@
     };
   }
 
-  function toggleRow(rect, label, sub, on) {
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, 14, col('#dba36b'));
-    D.roundRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 4, 12,
-      col('#fff2df'));
+  function toggleRow(rect, label, on) {
+    D.roundRect(rect.x, rect.y, rect.w, rect.h, 14, col('#e5c5a0'));
+    D.roundRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2, 13,
+      col('#fff7eb'), col('#f9e8cd'));
     var pad = 14;
     var sw = switchRects(rect);
     var t = sw.track;
     var textW = t.x - rect.x - pad - 8;
-    fittedText(label, rect.x + pad, rect.y + 6, 28, textW, COLOR.brownDeep, 0);
-    if (sub) {
-      fittedText(sub, rect.x + pad, rect.y + (rect.h < 60 ? 35 : 39), 18,
-        textW, COLOR.textDim, 0);
-    }
+    fittedText(label, rect.x + pad, rect.y + (rect.h - 28) / 2,
+      28, textW, COLOR.brownDeep, 0);
     D.roundRect(t.x, t.y, t.w, t.h, t.h / 2,
       col(on ? COLOR.greenEdge : '#c6b39d'));
     D.roundRect(t.x + 2, t.y + 2, t.w - 4, t.h - 4, (t.h - 4) / 2,
@@ -146,37 +145,22 @@
   }
 
   function fittedText(value, x, y, size, maxW, color, align) {
-    var width = D.textWidth(value, A.FontAtlas[String(size)]);
-    D.text(value, x, y, size, col(color), align,
-      width > maxW ? maxW / width : 1);
+    D.fittedText(value, x, y, size, maxW, col(color), align);
   }
 
-  // 头像：外圈奶油底 + 选中时橙色描边与右下角勾选
+  // 头像铺满格子，选中外圈沿用素材的1/8圆角比例
   function avatarFrame(rect, index, selected) {
     var r = Math.min(rect.w, rect.h);
-    D.roundRect(rect.x, rect.y, rect.w, rect.h, Math.round(r * 0.3), col(COLOR.paperDim));
     if (selected) {
-      D.roundRect(rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, Math.round(r * 0.3) + 2,
+      D.roundRect(rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, r / 8 + 2,
         col('#f8c66a'));
-      D.roundRect(rect.x, rect.y, rect.w, rect.h, Math.round(r * 0.3), col('#fff6e2'));
-      D.strokeRect(rect.x, rect.y, rect.w, rect.h, 2, col(COLOR.accent));
-    } else {
-      D.strokeRect(rect.x, rect.y, rect.w, rect.h, 1, col('#e9d8c0'));
     }
-    drawAvatar(index, rect.x + rect.w / 2, rect.y + rect.h / 2, r * 0.82);
-    if (selected) {
-      var cs = Math.max(14, r * 0.24);
-      var cx = rect.x + rect.w - cs / 2 - 3;
-      var cy = rect.y + rect.h - cs / 2 - 3;
-      D.circle(cx, cy, cs / 2, col(COLOR.accent));
-      D.ring(cx, cy, cs / 2 - 0.8, 1.2, col('#fff6e2'));
-      icon('ui-check', cx, cy, cs * 0.66);
-    }
+    drawAvatar(index, rect.x + rect.w / 2, rect.y + rect.h / 2, r);
   }
 
-  function drawAvatar(index, cx, cy, size) {
-    var atlas = A.AvatarAtlas;
-    var tex = A.Assets.entry('avatars');
+  function drawAvatar(index, cx, cy, size, home) {
+    var atlas = home ? A.HomeAvatarAtlas : A.AvatarAtlas;
+    var tex = A.Assets.entry(home ? 'avatars-home' : 'avatars');
     if (!atlas || !tex) {
       D.circle(cx, cy, size / 2, col(AVATAR_COLOR[index] || '#f5a84a'));
       return;
@@ -194,28 +178,15 @@
     var u = L.ui;
     var g = u.settings;
     dimBackground();
-    D.creamPanel(g.sheet, 1, 22);
-    D.roundRect(g.sheet.x + 7, g.sheet.y + 7,
-      g.sheet.w - 14, g.head - 11, 17, col('#f5d29f'));
-    fittedText('设置', g.sheet.x + g.sheet.w / 2,
-      g.sheet.y + (g.compact ? 19 : 27), g.compact ? 28 : 48,
-      g.sheet.w - 90, COLOR.brownDeep, 1);
-    closeButton(g.close);
+    profilePaper(g.sheet, g.head, '设置');
+    whiteClose(g.close);
 
-    toggleRow(g.musicRow, '音乐', '跟随游戏播放背景音乐', P.data.music);
-    toggleRow(g.sfxRow, '音效', '技能、点击与胜利提示音', P.data.sfx);
+    toggleRow(g.musicRow, '音乐', P.data.music);
+    toggleRow(g.sfxRow, '音效', P.data.sfx);
 
-    D.roundRect(g.shareBtn.x, g.shareBtn.y, g.shareBtn.w, g.shareBtn.h,
-      g.shareBtn.h / 2, col('#a96e44'));
-    D.roundRect(g.shareBtn.x + 2, g.shareBtn.y + 2,
-      g.shareBtn.w - 4, g.shareBtn.h - 4, (g.shareBtn.h - 4) / 2,
-      col('#fff0d9'));
-    icon('ui-share', g.shareBtn.x + 25, g.shareBtn.y + g.shareBtn.h / 2, 20, 0.85);
-    fittedText('分享给好友', g.shareBtn.x + g.shareBtn.w / 2,
-      g.shareBtn.y + (g.shareBtn.h - 28) / 2, 28,
-      g.shareBtn.w - 88, COLOR.brownDeep, 1);
-    icon('ui-chevron', g.shareBtn.x + g.shareBtn.w - 22,
-      g.shareBtn.y + g.shareBtn.h / 2, 17);
+    profileRow(g.shareBtn, '分享给好友', true);
+    icon('ui-share', g.shareBtn.x + 25, g.shareBtn.y + g.shareBtn.h / 2,
+      g.shareBtn.h * 0.4);
 
     fittedText('版本 ' + VERSION, g.sheet.x + g.sheet.w / 2, g.versionY,
       18, g.sheet.w - 36, COLOR.textDim, 1);
@@ -254,25 +225,50 @@
   }
 
   // ── 我的名片 ────────────────────────────────────────────────
-  function drawProfile() {
-    var u = L.ui;
-    var g = u.profile;
-    dimBackground();
-    paper(g.card, 26, '我的名片', g.head);
-    closeButton(g.close);
+  function whiteClose(rect) {
+    var cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+    var width = rect.w * 0.5, thickness = 3;
+    for (var arm = -1; arm <= 1; arm += 2) {
+      A.Render.push(cx - width / 2, cy - thickness / 2, width, thickness, col('#ffffff'),
+        { mode: 0, hw: width / 2, hh: thickness / 2, r: thickness / 2,
+          rot: arm * Math.PI / 4 });
+    }
+  }
 
-    // 头像（可点击，等同「选择头像」）
-    var av = g.avatar;
-    D.roundRect(av.x - 4, av.y - 4, av.w + 8, av.h + 8, 22, col('#f8c66a'));
-    D.roundRect(av.x - 1, av.y - 1, av.w + 2, av.h + 2, 18, col('#fff6e2'));
-    drawAvatar(P.data.avatarIndex, av.x + av.w / 2, av.y + av.h / 2, av.w * 0.82);
+  // --- 纸面内侧压边：阴影限制在圆角内部，向中心逐层淡出 ---
+  function profileInset(x, y, w, h) {
+    D.roundRect(x, y, w, h, 26, col('#e9c6a1'), col('#dcb48d'));
+    D.roundRect(x + 1, y + 1, w - 2, h - 2, 25, col('#f5dfc7'), col('#eccba8'));
+    D.roundRect(x + 3, y + 2, w - 6, h - 5, 24, col('#fbeedd'), col('#f4ddc2'));
+    D.roundRect(x + 6, y + 4, w - 12, h - 10, 22, col('#fffaf3'), col('#fff0de'));
+  }
 
-    D.text(P.data.nickname, g.card.x + g.card.w / 2, g.nameY, 28, col(COLOR.brownDeep), 1);
-    D.text(ID_PREFIX + P.data.id + ' · 中国', g.card.x + g.card.w / 2,
-      g.idY, 18, col(COLOR.textDim), 1);
+  function profilePaper(rect, head, title) {
+    var r = rect, bodyY = r.y + head - 4;
+    for (var i = 3; i > 0; i--) {
+      D.roundRect(r.x - i, r.y + 3 + i * 2, r.w + i * 2, r.h, 28 + i,
+        col('#714325', 0.045));
+    }
+    D.roundRect(r.x, r.y, r.w, r.h, 28, col('#ce996d'), col('#825130'));
+    // --- 顶部内沿六级羽化，避免亮边直接切到深棕色 ---
+    for (var edge = 1; edge <= 6; edge++) {
+      D.roundRect(r.x + Math.min(edge, 2), r.y + edge, r.w - Math.min(edge, 2) * 2,
+        r.h - edge, 28 - Math.min(edge, 2),
+        A.Render.mix(col('#ce996d'), col('#ac7149'), edge / 6), col('#825130'));
+    }
+    profileInset(r.x, bodyY, r.w, r.y + r.h - bodyY);
+    D.text(title, r.x + r.w / 2, r.y + (head - 28) / 2, 28, col(COLOR.white), 1);
+  }
 
-    ghostRow(g.avatarBtn, '选择头像', { chevron: true, size: 28 });
-    ghostRow(g.nickBtn, '修改昵称', { chevron: true, size: 28 });
+  function profileRow(rect, label, chevron) {
+    var radius = rect.h / 2;
+    D.roundRect(rect.x - 1, rect.y + 5, rect.w + 2, rect.h, radius + 1, col('#a86e38', 0.09));
+    D.roundRect(rect.x, rect.y + 3, rect.w, rect.h, radius, col('#b57c43', 0.19));
+    D.roundRect(rect.x, rect.y + 1, rect.w, rect.h, radius, col('#d6ad7d'));
+    D.roundRect(rect.x, rect.y, rect.w, rect.h - 1, radius, col('#f9e8cd'), col('#f8dfba'));
+    D.text(label, rect.x + rect.w / 2, rect.y + (rect.h - 28) / 2 + 2,
+      28, col(COLOR.brownDeep), 1);
+    if (chevron) icon('ui-chevron', rect.x + rect.w - 18, rect.y + rect.h / 2, rect.h * 0.4);
   }
 
   // ── 选择头像 ────────────────────────────────────────────────
@@ -280,63 +276,24 @@
     var u = L.ui;
     var g = u.avatarPick;
     dimBackground();
-    paper(g.sheet, 26, '选择头像', g.head);
-    closeButton(g.close);
-    D.text('选一位伙伴，陪你守护小家', g.sheet.x + g.sheet.w / 2, g.subY, 18,
-      col(COLOR.textDim), 1);
+    profilePaper(g.sheet, g.head, '选择头像');
+    whiteClose(g.close);
 
+    var available = P.availableAvatarIndices();
     for (var i = 0; i < P.AVATARS.length; i++) {
       var rect = g.rect(i);
-      avatarFrame(rect, i, i === UI.draftAvatar);
+      var avatarIndex = avatarIndexAt(i);
+      if (available.indexOf(avatarIndex) >= 0) {
+        avatarFrame(rect, avatarIndex, avatarIndex === UI.draftAvatar);
+      } else {
+        D.roundRect(rect.x, rect.y, rect.w, rect.h, rect.w / 8,
+          col('#e3ddd5'));
+        D.centeredText('待解锁', rect.x + rect.w / 2, rect.y + rect.h / 2,
+          16, col('#9a8d7e'));
+      }
     }
 
-    var item = P.AVATARS[UI.draftAvatar] || P.AVATARS[0];
-    D.text('当前：' + item.name, g.sheet.x + g.sheet.w / 2, g.currentY, 18,
-      col(COLOR.textDim), 1);
-    primaryButton(g.save, '保存头像', 28);
-  }
-
-  // ── 修改昵称 ────────────────────────────────────────────────
-  function nickCount(str) {
-    var n = 0;
-    for (var i = 0; i < str.length; i++) n++;
-    return n;
-  }
-
-  function drawNickname() {
-    var u = L.ui;
-    var g = u.nickname;
-    dimBackground();
-    paper(g.sheet, 26, '修改昵称', g.head);
-    closeButton(g.close);
-
-    D.text('给自己取个响亮的名字吧', g.sheet.x + 24, g.labelY, 18, col(COLOR.brownDeep), 0);
-
-    var f = g.field;
-    D.roundRect(f.x, f.y, f.w, f.h, 12, col('#fffdf7'));
-    D.strokeRect(f.x, f.y, f.w, f.h, 2, col('#e2c9a4'));
-    var text = UI.draftNickname || '';
-    var maxTextW = f.w - 70;
-    var tw = D.textWidth(text, A.FontAtlas['28']);
-    var shown = text;
-    // 超宽时截掉开头，保留用户正在输入的尾部
-    while (shown.length > 1 && tw > maxTextW) {
-      shown = shown.slice(1);
-      tw = D.textWidth(shown, A.FontAtlas['28']);
-    }
-    if (!shown) {
-      D.text('输入昵称', f.x + 14, f.y + (f.h - 28) / 2, 28, col('#c8b6a0'), 0);
-    } else {
-      D.text(shown, f.x + 14, f.y + (f.h - 28) / 2, 28, col(COLOR.text), 0);
-    }
-    var count = nickCount(text);
-    D.text(count + '/' + P.NICK_MAX, f.x + f.w - 12, f.y + f.h - 26, 18,
-      col(count > P.NICK_MAX ? '#d2603a' : COLOR.textDim), 2);
-
-    var hint = '2 到 8 个字符，支持中文、字母和数字';
-    D.text(hint, f.x + 2, g.hintY + 6, 18, col(COLOR.textDim), 0);
-
-    primaryButton(g.save, '保存昵称', 28);
+    profileRow(g.save, '确认选择');
   }
 
   // ── 邀请好友 ────────────────────────────────────────────────
@@ -344,11 +301,11 @@
     var u = L.ui;
     var g = u.invite;
     dimBackground();
-    paper(g.sheet, 26, '一起守护小家', g.head);
-    closeButton(g.close);
+    profilePaper(g.sheet, g.head, '一起守护小家');
+    whiteClose(g.close);
 
     var b = g.body;
-    D.roundRect(b.x, b.y, b.w, b.h, 20, col('#fbe7bd'));
+    D.roundRect(b.x, b.y, b.w, b.h, 20, col('#f9e8cd'), col('#f8dfba'));
     var av = Math.round(Math.min(b.h * 0.5, b.w * 0.26));
     var cy = b.y + b.h / 2;
     drawAvatar(0, b.x + b.w / 2 - av * 0.52, cy, av);
@@ -356,19 +313,12 @@
 
     D.text('萌宠集结，一起出击！', g.sheet.x + g.sheet.w / 2, g.titleY, 28,
       col(COLOR.brownDeep), 1);
-    D.text('来和我挑战客厅防线', g.sheet.x + g.sheet.w / 2, g.subY + 6, 18,
-      col('#9d7c58'), 1);
 
-    primaryButton(g.copy, '复制邀请口令', 28);
-    icon('ui-link', g.copy.x + 26, g.copy.y + g.copy.h / 2, 22);
+    profileRow(g.copy, '复制邀请口令');
 
-    D.text('把这份冒险分享给好朋友', g.sheet.x + g.sheet.w / 2, g.noteY, 18,
-      col('#b39c82'), 1);
-    D.text('也可通过系统分享面板发送', g.sheet.x + g.sheet.w / 2, g.noteY + 22, 18,
-      col('#c0ad95'), 1);
   }
 
-  // ── 英雄收藏：各星级沿用同一静态立绘 ──
+  // ── 萌宠收藏：各星级沿用同一静态立绘 ──
   function heroForm(def, level, cx, cy, size) {
     if (A.HeroForms && A.HeroForms.draw) A.HeroForms.draw(def.id, 2, cx, cy, size);
     else icon(def.icon, cx, cy, size);
@@ -377,69 +327,228 @@
     return S.isHeroUnlocked ? S.isHeroUnlocked(id) :
       (P.data.completedLevel + 1 >= ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[id] || 1));
   }
+  // 展示与点击共用排序：最早获得的在最上面，未获得的排在末尾。
+  function collectionHeroes() {
+    var acquired = P.data.heroAcquiredAt || {};
+    var owned = C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); });
+    owned.sort(function (a, b) {
+      var at = acquired[a.id], bt = acquired[b.id];
+      // 初始角色和旧存档无真实时间时，按现有解锁进程及配置顺序恢复。
+      var order = at && bt ? at - bt :
+        at ? 1 : bt ? -1 : C.heroUnlockLevel(a.id) - C.heroUnlockLevel(b.id);
+      return order || C.HEROES.indexOf(a) - C.HEROES.indexOf(b);
+    });
+    return owned.concat(
+      C.HEROES.filter(function (hero) { return !heroUnlocked(hero.id); }));
+  }
+  // --- 收藏册立绘、剪影与徽章共用一张静态图集 ---
+  function collectionArt(column, row, cx, cy, size) {
+    var entry = A.Assets.entry('collection-art');
+    if (!entry) return;
+    D.texture(entry.tex, entry.w, entry.h, column * 256, row * 256, 256, 256,
+      cx - size / 2, cy - size / 2, size, size);
+  }
+  // ── 收藏锁独立图片，按主体比例居中，不拉伸 ─────────────
+  function collectionLock(cx, cy, size) {
+    var entry = A.Assets.entry('collection-lock');
+    if (!entry) return;
+    var ratio = size / Math.max(entry.w, entry.h);
+    var w = entry.w * ratio, h = entry.h * ratio;
+    D.texture(entry.tex, entry.w, entry.h, 0, 0, entry.w, entry.h,
+      cx - w / 2, cy - h / 2, w, h);
+  }
+  function collectionSilhouette(entry, cx, cy, maxW, maxH) {
+    if (!entry) return;
+    var ratio = Math.min(maxW / entry.w, maxH / entry.h);
+    var w = entry.w * ratio, h = entry.h * ratio;
+    D.texture(entry.tex, entry.w, entry.h, 0, 0, entry.w, entry.h,
+      cx - w / 2, cy - h / 2, w, h);
+  }
+  function collectionCard(hero, cell, obtainedNotice) {
+    var unlocked = obtainedNotice === true || heroUnlocked(hero.id), cx = cell.x + cell.w / 2;
+    var scene = A.Assets.entry('collection-scene-' + hero.id);
+    var silhouette = A.Assets.entry('collection-silhouette-' + hero.id);
+    if (unlocked ? scene : silhouette) {
+      // ┌─ 263:161：场景图只负责角色；卡框、波浪和标题均由代码绘制 ─┐
+      var radius = cell.w * (45.636 / 329.521);
+      var frameInset = cell.w * (10.4424 / 329.521);
+      var photoRadius = cell.w * ((48.7324 - 10.4424) / 329.521);
+      // Figma: 0 0 4.641 rgba(46,37,16,.48)，用两层软边逼近其中心阴影。
+      // --- 收藏卡轻投影：三层低不透明度、向下偏移，近似柔和羽化而非硬描边 ---
+      D.roundRect(cell.x - 4.0, cell.y - 1.2, cell.w + 8.0, cell.h + 8.0, radius + 4.0, col('#6a431b', 0.012));
+      D.roundRect(cell.x - 2.4, cell.y + 0.2, cell.w + 4.8, cell.h + 4.8, radius + 2.4, col('#6a431b', 0.022));
+      D.roundRect(cell.x - 1.0, cell.y + 1.4, cell.w + 2.0, cell.h + 2.0, radius + 1.0, col('#6a431b', 0.032));
+      // Union 的照片槽从四边各缩进 10.442px；这是 Figma 卡框可见的米金边。
+      var panelTop = unlocked ? col('#fff7da') : col('#eeebe5');
+      var panelBottom = unlocked ? col('#ffd59e') : col('#d8cfc2');
+      var borderColor = unlocked ? col('#874600') : col('#c4c4c4');
+      D.roundRect(cell.x, cell.y, cell.w, cell.h, radius, panelTop, panelBottom);
+      if (unlocked) {
+        D.roundTexture(scene.tex, cell.x + frameInset, cell.y + frameInset,
+          cell.w - frameInset * 2, cell.h - frameInset * 2, photoRadius);
+      } else {
+        // --- 锁定态：角色剪影替代场景立绘，底框与波浪仍复用同一张卡结构 ---
+        D.roundRect(cell.x + frameInset, cell.y + frameInset,
+          cell.w - frameInset * 2, cell.h - frameInset * 2,
+          photoRadius, col('#dad7d2'), col('#cbc6bf'));
+        collectionSilhouette(silhouette, cx, cell.y + cell.h * 0.39,
+          (cell.w - frameInset * 2) * 0.9, cell.h * 0.62);
+      }
+
+      D.wavePanel(cell.x, cell.y, cell.w, cell.h, radius,
+        panelTop, panelBottom);
+      if (!unlocked) {
+        collectionLock(cx, cell.y + cell.h * 0.43, cell.w * 0.22);
+      }
+      // --- 所有内容绘制完成后再描边，消除圆角边缘的覆盖误差 ---
+      D.figmaCardBorder(cell.x, cell.y, cell.w, cell.h, radius, borderColor);
+      var caption = unlocked ? hero.name : '第 ' + hero.unlockLevel + ' 关解锁';
+      fittedText(caption, cx, cell.y + cell.h * (414.22 / 502.404), cell.w * (41.77 / 329.521),
+        cell.w * 0.84, unlocked ? '#591f00' : '#665d52', 1);
+      return;
+    }
+    var radius = Math.min(22, cell.w * 0.13);
+    D.roundRect(cell.x, cell.y, cell.w, cell.h, radius, col(unlocked ? '#655740' : '#b79e83'));
+    D.roundRect(cell.x + 0.8, cell.y + 0.8, cell.w - 1.6, cell.h - 1.6, radius - 0.8, col(unlocked ? '#ebcfa5' : '#dfccb4'));
+    var size = Math.min(cell.w * 0.95, cell.h * 0.69);
+    var column = ['tank', 'war', 'arch', 'mage', 'healer'].indexOf(hero.id);
+    collectionArt(column, unlocked ? 0 : 1, cx, cell.y + cell.h * 0.40, size);
+    if (!unlocked) collectionLock(cx, cell.y + cell.h * 0.43, size * 0.34);
+    var label = unlocked ? hero.name : '第 ' + hero.unlockLevel + ' 关解锁';
+    fittedText(label, cx, cell.y + cell.h * 0.80, unlocked ? 28 : 18, cell.w - 20, unlocked ? '#19140e' : COLOR.brownDeep, 1);
+  }
   function drawCollection(detail) {
     var u = L.ui, g = u.collection;
-    D.vGradient(0, 0, u.w, u.h, col(COLOR.pageTop), col(COLOR.pageBottom), 18);
+    var book = A.Assets.entry('collection-book');
+    if (book) D.texture(book.tex, book.w, book.h, 0, 0, book.w, book.h, 0, 0, u.w, u.h);
     backButton(g.back);
     if (detail) {
       var def = S.heroById(UI.collectionHero);
       if (!def || !heroUnlocked(def.id)) { back(); return; }
       D.text(def.name, u.safeLeft + (u.safeRight - u.safeLeft) / 2, g.detailNameY, 28, col(COLOR.brownDeep), 1);
-      for (var lv = 1; lv <= 3; lv++) {
-        var r = g.forms(lv - 1);
-        var starDef = S.heroAtStar(def.id, lv);
-        var edge = lv === 3 ? '#e8b84c' : lv === 2 ? '#88b9dc' : '#e9d8c0';
-        D.roundRect(r.x, r.y, r.w, r.h, 16, col(COLOR.paper));
-        D.strokeRect(r.x, r.y, r.w, r.h, lv > 1 ? 2 : 1, col(edge));
-        var formSize = Math.min(r.w - 8, Math.max(24, r.h - 202));
-        heroForm(def, 2, r.x + r.w / 2, r.y + 10 + formSize / 2, formSize);
-        var textY = r.y + 18 + formSize;
-        var attributes = [
-          lv + '星',
-          '生命 ' + Math.round(starDef.hp),
-          def.cls === 'healer' ? '回血 ' + Math.round(starDef.heal) : '攻击 ' + Math.round(starDef.atk),
-          def.cls === 'tank' ? '攻速 --' : (def.cls === 'healer' ? '治疗间隔 ' : '攻击间隔 ') + Math.round(starDef.interval * 1000) + '毫秒',
-          (def.cls === 'healer' ? '治疗距离 ' : '攻击距离 ') + Math.round(starDef.range),
-          '嘲讽范围 ' + Math.round(starDef.taunt || 0),
-          '群攻范围 ' + Math.round(starDef.splash || 0),
-          starDef.cost + ' 金币'
-        ];
-        for (var ai = 0; ai < attributes.length; ai++) {
-          fittedText(attributes[ai], r.x + r.w / 2, textY + ai * 22, 18, r.w - 10,
-            ai === 0 ? edge : COLOR.text, 1);
-        }
-      }
+      drawCollectionDetail(def, g);
       return;
     }
-    D.text('英雄收藏', u.safeLeft + (u.safeRight - u.safeLeft) / 2, g.titleY, 28, col(COLOR.brownDeep), 1);
-    for (var i = 0; i < C.HEROES.length; i++) {
-      var h = C.HEROES[i], cell = g.rect(i), unlocked = heroUnlocked(h.id);
-      D.roundRect(cell.x, cell.y, cell.w, cell.h, 16, col(unlocked ? COLOR.paper : '#e2d8ca'));
-      if (!unlocked) {
-        D.text('?', cell.x + cell.w / 2, cell.y + cell.h * 0.2, 48, col(COLOR.textDim), 1);
-        var unlockLevel = h.unlockLevel || ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[h.id] || 1);
-        D.text('第 ' + unlockLevel + ' 关解锁', cell.x + cell.w / 2, cell.y + cell.h - 28, 18, col(COLOR.textDim), 1);
-      } else {
-        heroForm(h, 1, cell.x + cell.w / 2, cell.y + cell.h * 0.39, Math.min(80, cell.h * 0.62));
-        D.text(h.name, cell.x + cell.w / 2, cell.y + cell.h - 28, 18, col(COLOR.brownDeep), 1);
-      }
+    var collected = C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); }).length;
+    fittedText('萌宠收藏', u.w / 2, g.titleY, 28, g.back.x > 0 ? u.w * 0.43 : 180, COLOR.brownDeep, 1);
+    D.text(collected + '/' + C.HEROES.length, g.countX, g.titleY + 6, 18, col(COLOR.brownDeep), 2);
+    var heroes = collectionHeroes();
+    for (var i = 0; i < heroes.length; i++) {
+      collectionCard(heroes[i], g.rect(i));
     }
   }
 
   // ── 栈管理 ──────────────────────────────────────────────────
+
+  function drawCollectionDetail(def, g) {
+    var image = g.detailImage, panel = g.detailPanel;
+    var forms = [1, 2, 3].map(function (star) { return S.heroAtStar(def.id, star); });
+    var rows = collectionStatRows(def, forms);
+    var note = collectionStarNote(forms[2]);
+    var noteH = note ? collectionNoteLines(note, 16, panel.w - 36).length * D.textLineH(16) + 12 : 0;
+    // ── 短屏优先缩小立绘，为新增机制数值保留完整面板 ──
+    var shrink = Math.min(image.h - 40, Math.max(0, 36 + noteH + (rows.length + 1) * D.textLineH(12) - panel.h));
+    if (shrink > 0) {
+      var imageH = image.h - shrink, imageW = image.w * imageH / image.h;
+      image = { x: image.x + (image.w - imageW) / 2, y: image.y, w: imageW, h: imageH };
+      panel = { x: panel.x, y: panel.y - shrink, w: panel.w, h: panel.h + shrink };
+    }
+    var scene = A.Assets.entry('collection-scene-' + def.id);
+    if (scene) drawDetailPortrait(scene, image);
+    else heroForm(def, 2, image.x + image.w / 2, image.y + image.h / 2, image.w);
+    var pad = 18, top = panel.y + 16;
+    var font = (panel.h - 36 - noteH) / (rows.length + 1) < 24 ? 12 : 16;
+    var noteLines = collectionNoteLines(note, font, panel.w - pad * 2);
+    noteH = note ? noteLines.length * D.textLineH(font) + 12 : 0;
+    var lineH = D.textLineH(font);
+    var gap = Math.max(0, Math.min(16, (panel.h - 36 - noteH - (rows.length + 1) * lineH) / rows.length));
+    var rowH = lineH + gap;
+    var panelH = 16 + (rows.length + 1) * lineH + rows.length * gap + noteH + 20;
+    D.roundRect(panel.x, panel.y, panel.w, panelH, 24, col('#fff7df'));
+    fittedText('1星 / 2星 / 3星', panel.x + panel.w - pad, top,
+      font, panel.w - pad * 2, '#a77b55', 2);
+    for (var i = 0; i < rows.length; i++) {
+      var y = top + (i + 1) * rowH;
+      var stat = rows[i];
+      var value = forms.map(function (form) {
+        return Math.round((form[stat.key] || 0) * (stat.scale || 1));
+      }).join('/');
+      var label = def.cls === 'healer' && stat.healerLabel ? stat.healerLabel : stat.label;
+      fittedText(label, panel.x + pad, y, font, panel.w * 0.32, COLOR.brownDeep, 0);
+      fittedText(value, panel.x + panel.w - pad, y, font,
+        panel.w * 0.58, COLOR.brownDeep, 2);
+    }
+    for (var ni = 0; ni < noteLines.length; ni++) {
+      D.text(noteLines[ni], panel.x + pad,
+        panel.y + panelH - 20 - (noteLines.length - ni) * lineH,
+        font, col('#a77b55'), 0);
+    }
+  }
+
+  // ── 备注保持字段字号，长文本换行而不缩小 ──
+  function collectionNoteLines(note, font, width) {
+    var lines = [], line = '';
+    for (var i = 0; i < note.length; i++) {
+      var next = line + note.charAt(i);
+      if (line && D.textWidth(next, font) > width) {
+        lines.push(line); line = note.charAt(i);
+      } else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // ── 三星机制显示底部备注，数值读取实际战斗配置 ──
+  function collectionStarNote(form) {
+    var notes = {
+      tank: '减伤' + Math.round((form.damageReduction || 0) * 100) + '%',
+      war: '攻击提升' + Math.round(((form.attackMultiplier || 1) - 1) * 100) +
+        '%，近战连带' + Math.round((form.cleaveRatio || 0) * 100) + '%伤害',
+      arch: '追加一发，造成' + Math.round((form.extraShotRatio || 0) * 100) + '%伤害',
+      mage: '二次爆炸，造成' + Math.round((form.echoRatio || 0) * 100) + '%伤害',
+      healer: '每次治疗' + form.healTargets + '名队友'
+    };
+    return notes[form.id] ? '三星特技：' + notes[form.id] : '';
+  }
+
+  // ── 从统一目录读取实时属性，费用固定末行，三档全零数值隐藏 ──
+  function collectionStatRows(def, forms) {
+    var rows = C.HERO_DETAIL_STATS.filter(function (stat) {
+      if (stat.hiddenClass === def.cls || (stat.onlyClass && stat.onlyClass !== def.cls)) return false;
+      return stat.key === 'cost' || forms.some(function (form) {
+        return typeof form[stat.key] === 'number' && form[stat.key] !== 0;
+      });
+    });
+    return rows.filter(function (stat) { return stat.key !== 'cost'; })
+      .concat(rows.filter(function (stat) { return stat.key === 'cost'; }));
+  }
+
+  function drawDetailPortrait(scene, image) {
+    var scale = Math.max(image.w / scene.w, image.h / scene.h);
+    var w = scene.w * scale, h = scene.h * scale;
+    D.roundRect(image.x, image.y, image.w, image.h, 28, col(COLOR.brownDeep));
+    A.Render.setClipRect({ x: image.x + 3, y: image.y + 3,
+      w: image.w - 6, h: image.h - 6 }, 25);
+    D.texture(scene.tex, scene.w, scene.h, 0, 0, scene.w, scene.h,
+      image.x + (image.w - w) / 2, image.y + (image.h - h) / 2, w, h);
+    A.Render.setClipRect(null);
+  }
+
   function top() {
     return UI.stack.length ? UI.stack[UI.stack.length - 1] : null;
   }
 
   function open(name) {
-    if (['settings', 'stamina', 'profile', 'avatars', 'nickname', 'invite', 'collection', 'heroDetail'].indexOf(name) === -1) return;
+    if (['settings', 'stamina', 'avatars', 'invite', 'collection', 'heroDetail'].indexOf(name) === -1) return;
     if (UI.stack.indexOf(name) === -1) UI.stack.push(name);
     prepare(name);
   }
 
   function prepare(name) {
-    if (name === 'avatars') UI.draftAvatar = P.data.avatarIndex;
-    else if (name === 'nickname') UI.draftNickname = P.data.nickname;
+    if (name === 'avatars') {
+      var available = P.availableAvatarIndices();
+      UI.draftAvatar = available.indexOf(P.data.avatarIndex) >= 0 ? P.data.avatarIndex : available[0];
+    }
   }
 
   function back() {
@@ -537,38 +646,6 @@
     if (on) play('start');
   }
 
-  // 键盘输入统一经平台适配层：快手系统键盘，H5 预览静默降级。
-  function openKeyboard() {
-    if (!window.KwaiDevice || !KwaiDevice.openTextInput) return;
-    KwaiDevice.openTextInput({
-      defaultValue: UI.draftNickname,
-      maxLength: P.NICK_MAX,
-      multiple: false,
-      confirmHold: false,
-      confirmType: 'done',
-      onInput: function (value) {
-        UI.draftNickname = P.cleanNickname(value);
-      },
-      onConfirm: function (value) {
-        UI.draftNickname = P.cleanNickname(value);
-        saveNickname();
-      },
-    });
-  }
-
-  function saveNickname() {
-    var res = P.setNickname(UI.draftNickname);
-    if (!res.ok) {
-      if (res.reason === 'short') toast('昵称至少 2 个字符', 1.4);
-      else toast('请输入昵称', 1.2);
-      return false;
-    }
-    UI.draftNickname = res.value;
-    toast('昵称已保存', 1.1);
-    back();
-    return true;
-  }
-
   // 每帧交互入口：命中则消费并返回 true
   function handleTap(x, y) {
     var name = top();
@@ -595,9 +672,10 @@
     if (name === 'collection' || name === 'heroDetail') {
       if (pointIn(u.collection.back, x, y, 0)) { play('click'); back(); return true; }
       if (name === 'collection') {
-        for (var hi = 0; hi < C.HEROES.length; hi++) {
-          if (pointIn(u.collection.rect(hi), x, y, 0) && heroUnlocked(C.HEROES[hi].id)) {
-            UI.collectionHero = C.HEROES[hi].id; play('click'); open('heroDetail'); return true;
+        var heroes = collectionHeroes();
+        for (var hi = 0; hi < heroes.length; hi++) {
+          if (pointIn(u.collection.rect(hi), x, y, 0) && heroUnlocked(heroes[hi].id)) {
+            UI.collectionHero = heroes[hi].id; play('click'); open('heroDetail'); return true;
           }
         }
       }
@@ -606,11 +684,12 @@
     // 为关闭、返回、分享、保存等此前无声音的按钮补齐统一点击反馈。
     var controls = [];
     if (name === 'settings') controls = [u.settings.close, u.settings.musicRow, u.settings.sfxRow, u.settings.shareBtn];
-    else if (name === 'profile') controls = [u.profile.close, u.profile.avatar, u.profile.avatarBtn, u.profile.nickBtn];
     else if (name === 'avatars') {
       controls = [u.avatarPick.close, u.avatarPick.save];
-      for (var ai = 0; ai < P.AVATARS.length; ai++) controls.push(u.avatarPick.rect(ai));
-    } else if (name === 'nickname') controls = [u.nickname.close, u.nickname.field, u.nickname.save];
+      for (var ai = 0; ai < P.AVATARS.length; ai++) {
+        if (P.availableAvatarIndices().indexOf(avatarIndexAt(ai)) >= 0) controls.push(u.avatarPick.rect(ai));
+      }
+    }
     else if (name === 'invite') controls = [u.invite.close, u.invite.copy];
     for (var ci = 0; ci < controls.length; ci++) {
       if (pointIn(controls[ci], x, y, 0)) { play('click'); break; }
@@ -628,25 +707,13 @@
       return true;
     }
 
-    if (name === 'profile') {
-      var p = u.profile;
-      if (pointIn(p.close, x, y, 6)) { closeAll(); return true; }
-      if (pointIn(p.avatar, x, y, 6) || pointIn(p.avatarBtn, x, y, 4)) {
-        open('avatars');
-        return true;
-      }
-      if (pointIn(p.nickBtn, x, y, 4)) { open('nickname'); return true; }
-      if (pointIn(p.card, x, y, 0)) return true;
-      closeAll();
-      return true;
-    }
-
     if (name === 'avatars') {
       var a = u.avatarPick;
       if (pointIn(a.close, x, y, 6)) { back(); return true; }
       for (var i = 0; i < P.AVATARS.length; i++) {
         if (pointIn(a.rect(i), x, y, 3)) {
-          UI.draftAvatar = i;
+          var selectedIndex = avatarIndexAt(i);
+          if (P.availableAvatarIndices().indexOf(selectedIndex) >= 0) UI.draftAvatar = selectedIndex;
           return true;
         }
       }
@@ -657,16 +724,6 @@
         return true;
       }
       if (pointIn(a.sheet, x, y, 0)) return true;
-      back();
-      return true;
-    }
-
-    if (name === 'nickname') {
-      var n = u.nickname;
-      if (pointIn(n.close, x, y, 6)) { back(); return true; }
-      if (pointIn(n.field, x, y, 4)) { openKeyboard(); return true; }
-      if (pointIn(n.save, x, y, 4)) { saveNickname(); return true; }
-      if (pointIn(n.sheet, x, y, 0)) return true;
       back();
       return true;
     }
@@ -692,9 +749,7 @@
     var name = top();
     if (name === 'settings') drawSettings();
     else if (name === 'stamina') drawStamina();
-    else if (name === 'profile') drawProfile();
     else if (name === 'avatars') drawAvatarPick();
-    else if (name === 'nickname') drawNickname();
     else if (name === 'invite') drawInvite();
     else if (name === 'collection') drawCollection(false);
     else if (name === 'heroDetail') drawCollection(true);
@@ -709,6 +764,9 @@
     handleTap: handleTap,
     draw: draw,
     avatar: drawAvatar,
+    dialogPaper: profilePaper,
+    dialogButton: profileRow,
+    collectionCard: collectionCard,
     shareInvite: shareInvite,
     copyInviteLink: copyInviteLink,
   };

@@ -3,7 +3,7 @@
 """
 gen-shiba-atlas.py — 战斗精灵图集（128px 单元格，1024px 宽）
 输出：
-  package/res/Image/game.png        128px 单元格图集（2x 绘制后缩放）
+  package/res/Image/ingame/characters/game.png        128px 单元格图集（2x 绘制后缩放）
   package/gameplay/data/rigs.js     图集坐标 + 高分辨率特效元数据
 
 图集布局：8 列 × 8 行，单元格 128px（含 4px padding，有效区 120px）。
@@ -20,6 +20,8 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PKG = os.path.join(ROOT, "package")
 IMG_DIR = os.path.join(PKG, "res", "Image")
+CHARACTER_DIR = os.path.join(IMG_DIR, "ingame", "characters")
+EFFECT_DIR = os.path.join(IMG_DIR, "ingame", "effects")
 DATA_DIR = os.path.join(PKG, "gameplay", "data")
 SRC_DIR = os.path.join(ROOT, "tools", "src")
 
@@ -29,7 +31,7 @@ COLS = 8
 ROWS = 9
 ATLAS_W = COLS * CELL
 ATLAS_H = ROWS * CELL
-ATLAS_VERSION = 17
+ATLAS_VERSION = 18
 
 # 原有图标（从 tools/gen-assets.py 生成的 sprites.png 继承）
 LEGACY_ICON_BOXES = {
@@ -39,7 +41,7 @@ LEGACY_ICON_BOXES = {
     "ui-play": [796, 796, 256, 256],
 }
 
-# 本脚本自绘的新图标（按四档敌人与金币重做，不依赖旧图集）
+# 本脚本自绘的新图标（按四档敌人与饼干重做，不依赖旧图集）
 NEW_ICONS = [
     "enemy-small", "enemy-normal", "enemy-elite", "ui-coin",
 ]
@@ -83,11 +85,11 @@ DEFEAT_SMOKE = [
 ]
 DEFEAT_SMOKE_SIZES = [CELL - 2 * PAD, CELL - 2 * PAD]
 MAGE_FLIGHT_GIF = os.path.join(SRC_DIR, "effects", "mage-biscuit-flight", "mage-biscuit-flight-v1.gif")
-MAGE_FLIGHT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-flight.png")
+MAGE_FLIGHT_TEXTURE = os.path.join(EFFECT_DIR, "mage-biscuit-flight.png")
 MAGE_FLIGHT_CELL = 128
 MAGE_FLIGHT_COLS = 4
 MAGE_IMPACT_STRIP = os.path.join(SRC_DIR, "effects", "mage-biscuit-impact", "mage-biscuit-impact-v2.png")
-MAGE_IMPACT_TEXTURE = os.path.join(IMG_DIR, "mage-biscuit-impact.png")
+MAGE_IMPACT_TEXTURE = os.path.join(EFFECT_DIR, "mage-biscuit-impact.png")
 MAGE_IMPACT_CELL = 160
 MAGE_IMPACT_COLS = 4
 MAGE_IMPACT_FRAME = (96, 128)
@@ -183,6 +185,12 @@ def normal_bedside_frame(name):
     img = Image.open(os.path.join(NORMAL_BEDSIDE_DIR, frame["file"])).convert("RGBA")
     rgba = np.asarray(img).copy()
     rgba[rgba[:, :, 3] < 128] = (0, 0, 0, 0)
+    if name == "hop":
+        # 原始02.png底部的独立黄色残留；保留清理前画布边界，
+        # 防止去噪后重新fit导致角色尺寸和脚底位置发生变化。
+        bounds = Image.fromarray(rgba, "RGBA").getbbox()
+        rgba[254:256, 118:133] = (0, 0, 0, 0)
+        return fit_cell(Image.fromarray(rgba, "RGBA").crop(bounds), CELL - 2 * PAD)[0]
     return fit_visible(Image.fromarray(rgba, "RGBA"))
 
 
@@ -192,7 +200,7 @@ def war_frame(name):
 
 
 def mage_frame(name):
-    """哈利边牧动作表：仅背面六帧，统一从 3×2 透明精灵表取帧。"""
+    """哈利汪动作表：仅背面六帧，统一从 3×2 透明精灵表取帧。"""
     frame = MAGE_SPEC["frames"][name]
     sheet = Image.open(os.path.join(MAGE_DOG_DIR, frame["file"])).convert("RGBA")
     width, height = sheet.size
@@ -306,7 +314,7 @@ def mage_flight_texture():
         sheet.alpha_composite(crop, (x, y))
     sheet.save(MAGE_FLIGHT_TEXTURE, optimize=True, compress_level=9)
     return {
-        "src": "res/Image/mage-biscuit-flight.png?v=1",
+        "src": "res/Image/ingame/effects/mage-biscuit-flight.png?v=1",
         "texW": sheet.width,
         "texH": sheet.height,
         "cell": MAGE_FLIGHT_CELL,
@@ -349,7 +357,7 @@ def mage_impact_texture():
         sheet.alpha_composite(frame, (x, MAGE_IMPACT_PAD))
     sheet.save(MAGE_IMPACT_TEXTURE, optimize=True, compress_level=9)
     return {
-        "src": "res/Image/mage-biscuit-impact.png?v=10",
+        "src": "res/Image/ingame/effects/mage-biscuit-impact.png?v=10",
         "texW": sheet.width,
         "texH": sheet.height,
         "cell": MAGE_IMPACT_CELL,
@@ -533,7 +541,7 @@ def build():
     for frame_name, frame in WAR_SPEC["frames"].items():
         cell(frame["icon"], war_frame(frame_name))
 
-    # 哈利边牧：固定背面，蓄能、释放与收势由同一法术攻击时间线驱动。
+    # 哈利汪：固定背面，蓄能、释放与收势由同一法术攻击时间线驱动。
     for frame_name, frame in MAGE_SPEC["frames"].items():
         cell(frame["icon"], mage_frame(frame_name))
 
@@ -560,12 +568,12 @@ def build():
 
     # WebGL 上传时还原 RGBA；索引图集为主包留出新增角色余量。
     atlas.quantize(colors=256, method=Image.Quantize.FASTOCTREE).save(
-        os.path.join(IMG_DIR, "game.png"), optimize=True, compress_level=9
+        os.path.join(CHARACTER_DIR, f"game-v{ATLAS_VERSION}.png"), optimize=True, compress_level=9
     )
 
     data = {
         # 图集替换后必须使 H5 和真机重新取纹理，避免沿用同名旧缓存。
-        "src": f"res/Image/game.png?v={ATLAS_VERSION}",
+        "src": f"res/Image/ingame/characters/game-v{ATLAS_VERSION}.png",
         "texW": ATLAS_W,
         "texH": ATLAS_H,
         "cell": CELL,
@@ -612,7 +620,8 @@ def write_character_animations():
 
 
 if __name__ == "__main__":
-    os.makedirs(IMG_DIR, exist_ok=True)
+    os.makedirs(CHARACTER_DIR, exist_ok=True)
+    os.makedirs(EFFECT_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
     data = build()
     mage_flight = mage_flight_texture()

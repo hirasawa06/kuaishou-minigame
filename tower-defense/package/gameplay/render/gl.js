@@ -1,6 +1,6 @@
 /* gameplay/render/gl.js — 极简 WebGL 1.0 精灵批渲染器 */
 // 只用 gl.* API：单纹理 + 顶点色 + 四边形批处理。
-// mode 0 = 实心圆角矩形/圆，mode 1 = 纹理，mode 2 = 圆环，mode 3 = 高 alpha 纹理遮罩
+// mode 0 = 实心圆角矩形/圆，1 = 纹理，2 = 圆环，3 = 遮罩，5/6 = 彩色/灰度圆角纹理
 (function () {
   var A = window.AIGCUtils;
 
@@ -13,6 +13,7 @@
     'uniform vec2 uRes;',
     'varying vec2 vUV;',
     'varying float vScreenY;',
+    'varying float vScreenX;',
     'varying vec4 vColor;',
     'varying vec3 vShape;',
     'varying float vMode;',
@@ -21,6 +22,7 @@
     '  gl_Position = vec4(p.x, -p.y, 0.0, 1.0);',
     '  vUV = aUV;',
     '  vScreenY = aPos.y;',
+    '  vScreenX = aPos.x;',
     '  vColor = aColor;',
     '  vShape = aShape;',
     '  vMode = aMode;',
@@ -31,24 +33,151 @@
     'precision mediump float;',
     'varying vec2 vUV;',
     'varying float vScreenY;',
+    'varying float vScreenX;',
     'varying vec4 vColor;',
     'varying vec3 vShape;',
     'varying float vMode;',
     'uniform sampler2D uTex;',
     'uniform sampler2D uMaskTex;',
     'uniform float uAdd;',
+    'uniform vec4 uClipRect;',
+    'uniform float uClipRadius;',
+    'uniform vec4 uTutorialHole;',
+    'uniform float uTutorialRadius;',
     'uniform vec4 uSceneLight;', // 调色强度、身体中心Y、画布高、顶部光强度
+    // ── 密集高斯核：81次采样连续羽化，边缘权重渐减并归一 ──
+    'vec4 blurredCover(vec2 uv, vec2 d) {',
+    '  vec4 t = vec4(0.0);',
+    '  float total = 0.0;',
+    '  for (int y = -4; y <= 4; y++) {',
+    '    for (int x = -4; x <= 4; x++) {',
+    '      vec2 offset = vec2(float(x), float(y));',
+    '      float weight = exp(-dot(offset, offset) / 11.52);',
+    '      t += texture2D(uTex, clamp(uv + offset * d, 0.0, 1.0)) * weight;',
+    '      total += weight;',
+    '    }',
+    '  }',
+    '  return t / total;',
+    '}',
     'void main() {',
     '  vec4 c = vColor;',
+    // ── 按屏幕坐标裁切容器，纹理UV保持完整，不依赖源图取景 ──
+    '  if (uClipRect.z > 0.0) {',
+    '    vec2 halfClip = uClipRect.zw * 0.5;',
+    '    vec2 local = vec2(vScreenX, vScreenY) - uClipRect.xy - halfClip;',
+    '    vec2 qClip = abs(local) - (halfClip - uClipRadius);',
+    '    float clipDist = length(max(qClip, 0.0)) + min(max(qClip.x, qClip.y), 0.0) - uClipRadius;',
+    '    float clipAlpha = 1.0 - smoothstep(-0.7, 0.7, clipDist);',
+    '    if (clipAlpha < 0.004) discard;',
+    '    c.a *= clipAlpha;',
+    '  }',
     '  vec2 h = vShape.xy;',
     // 宽中心柔边椭圆：地面阴影不依赖图集光斑。
-    '  if (vMode > 4.5) {',
+    // ┌─ Figma 收藏卡：代码绘制下半部波浪面板，并沿圆角卡片裁切 ─┐
+    // ┌─ Figma 263:161：最外层 1.16px #874600 描边必须在所有内容之上 ─┐
+    // ── 星级底板：仅左上、右下圆角，另外两角保持直角 ──
+    // ── 主按钮：纯色填充，浅黄色柔光只沿顶部内缘分布 ──
+    // ── 模式12：抗锯齿继续三角，直接绘制无需图集 ──
+    // ── 模式13：圆润四角星的距离场，圆头和抗锯齿无需图片 ──
+    '  if (vMode > 13.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    if (uTutorialHole.z > 0.0) {',
+    '      vec2 halfHole = uTutorialHole.zw * 0.5;',
+    '      vec2 holeQ = abs(vec2(vScreenX, vScreenY) - uTutorialHole.xy - halfHole) - (halfHole - uTutorialRadius);',
+    '      float holeDist = length(max(holeQ, 0.0)) + min(max(holeQ.x, holeQ.y), 0.0) - uTutorialRadius;',
+    '      dist = min(dist, holeDist);',
+    '    }',
+    '    float alpha = smoothstep(-0.7, 0.7, dist);',
+    '    if (alpha < 0.004) discard;',
+    '    c.a *= alpha;',
+    '  } else if (vMode > 12.5) {',
+    '    vec2 p = abs((vUV - 0.5) * 2.0);',
+    '    p = vec2(min(p.x, p.y), max(p.x, p.y));',
+    '    vec2 edge = vec2(0.30, -0.56);',
+    '    vec2 delta = p - vec2(0.0, 0.86);',
+    '    float t = clamp(dot(delta, edge) / dot(edge, edge), 0.0, 1.0);',
+    '    float side = sign(edge.x * delta.y - edge.y * delta.x);',
+    '    float dist = (length(delta - edge * t) * side - 0.12) * min(h.x, h.y);',
+    '    float alpha = 1.0 - smoothstep(-0.5, 0.5, dist);',
+    '    if (alpha < 0.004) discard;',
+    '    c.a *= alpha;',
+    '  } else if (vMode > 11.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float slope = 2.0 * h.x / h.y;',
+    '    float side = (p.x + slope * abs(p.y) - h.x) / sqrt(1.0 + slope * slope);',
+    '    float dist = max(-p.x - h.x, side);',
+    '    float a = 1.0 - smoothstep(-0.6, 0.6, dist);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 9.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    float a = 1.0 - smoothstep(-0.7, 0.7, dist);',
+    '    float top = 1.0 - smoothstep(-h.y * 0.5, 0.0, p.y);',
+    '    float light = 0.90 * top * exp(-0.5 * pow((dist + 1.8) / 2.5, 2.0));',
+    '    float bottom = smoothstep(0.0, h.y * 0.5, p.y);',
+    '    float shade = 0.45 * bottom * exp(-0.5 * pow((dist + 1.5) / 2.0, 2.0));',
+    // ── 模式11复用内光轮廓，波次牌使用奶油白高光与暖棕内阴影 ──
+    '    float cream = step(10.5, vMode);',
+    '    vec3 lower = mix(vec3(0.91, 0.45, 0.0), vec3(0.79, 0.59, 0.40), cream);',
+    '    vec3 upper = mix(vec3(1.0, 0.902, 0.639), vec3(1.0, 0.976, 0.91), cream);',
+    '    c.rgb = mix(c.rgb, lower, shade);',
+    '    c.rgb = mix(c.rgb, upper, light);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 8.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 local = p + h;',
+    '    vec2 remaining = h - p;',
+    '    float dist = max(abs(p.x) - h.x, abs(p.y) - h.y);',
+    '    if (local.x < r && local.y < r) dist = length(local - vec2(r)) - r;',
+    '    if (remaining.x < r && remaining.y < r) dist = length(remaining - vec2(r)) - r;',
+    '    float a = 1.0 - smoothstep(-0.7, 0.7, dist);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 7.5) {',
+    '    float t = h.x * 2.0 * (1.16 / 329.521);',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float outer = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    vec2 ih = h - vec2(t);',
+    '    float ir = max(0.0, r - t);',
+    '    vec2 iq = abs(p) - (ih - ir);',
+    '    float inner = length(max(iq, 0.0)) + min(max(iq.x, iq.y), 0.0) - ir;',
+    '    float a = (1.0 - smoothstep(-0.7, 0.7, outer)) * smoothstep(-0.7, 0.7, inner);',
+    '    if (a < 0.004) discard;',
+    '    c.a *= a;',
+    '  } else if (vMode > 6.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    float wave = 0.735 + 0.045 * pow(sin(vUV.x * 6.2831853), 2.0);',
+    '    if (dist > 0.0 || vUV.y < wave) discard;',
+    // Figma Union 内阴影：dy 2.32057、blur 1.91447、白色 70%。
+    '    float depth = vUV.y - wave;',
+    '    float dy = 2.32057 / 502.404;',
+    '    float blur = 1.91447 / 502.404;',
+    '    float innerLight = 0.70 * exp(-0.5 * pow((depth - dy) / blur, 2.0));',
+    '    c.rgb = mix(c.rgb, vec3(1.0), innerLight);',
+    '  } else if (vMode > 4.5) {',
     '    vec2 p = (vUV - 0.5) * 2.0 * h;',
     '    float r = vShape.z;',
     '    vec2 q = abs(p) - (h - r);',
     '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
     '    float a = 1.0 - smoothstep(-0.9, 0.9, dist);',
     '    vec4 t = texture2D(uTex, vUV);',
+    // ── 模式6：未解锁关卡封面去色，保留透明度与圆角 ──
+    // ── 模式6.25：远期关卡先模糊，再去色；不影响模式7/8 ──
+    '    if (vMode > 6.1) t = blurredCover(vUV, vec2(3.0) / (2.0 * h));',
+    '    t.rgb = mix(t.rgb, vec3(dot(t.rgb, vec3(0.299, 0.587, 0.114))), step(5.5, vMode));',
     '    if (a < 0.004 || t.a < 0.004) discard;',
     '    c = vec4(c.rgb * t.rgb, c.a * t.a * a);',
     '  } else if (vMode > 3.5) {',
@@ -182,6 +311,10 @@
     loc.uTex = gl.getUniformLocation(prog, 'uTex');
     loc.uMaskTex = gl.getUniformLocation(prog, 'uMaskTex');
     loc.uAdd = gl.getUniformLocation(prog, 'uAdd');
+    loc.uClipRect = gl.getUniformLocation(prog, 'uClipRect');
+    loc.uClipRadius = gl.getUniformLocation(prog, 'uClipRadius');
+    loc.uTutorialHole = gl.getUniformLocation(prog, 'uTutorialHole');
+    loc.uTutorialRadius = gl.getUniformLocation(prog, 'uTutorialRadius');
     loc.uSceneLight = gl.getUniformLocation(prog, 'uSceneLight');
 
     vbo = gl.createBuffer();
@@ -257,6 +390,22 @@
     gl.activeTexture(gl.TEXTURE0);
   }
 
+  // ── 切换容器前提交批次，避免裁切状态影响后续文字与按钮 ──
+  function setTutorialHole(rect, radius) {
+    if (!gl) return;
+    flush();
+    gl.uniform4f(loc.uTutorialHole, rect ? rect.x : 0, rect ? rect.y : 0,
+      rect ? rect.w : 0, rect ? rect.h : 0);
+    gl.uniform1f(loc.uTutorialRadius, rect ? Math.min(radius || 0, rect.w / 2, rect.h / 2) : 0);
+  }
+  function setClipRect(rect, radius) {
+    if (!gl) return;
+    flush();
+    gl.uniform4f(loc.uClipRect, rect ? rect.x : 0, rect ? rect.y : 0,
+      rect ? rect.w : 0, rect ? rect.h : 0);
+    gl.uniform1f(loc.uClipRadius, rect ? Math.min(radius || 0, rect.w / 2, rect.h / 2) : 0);
+  }
+
   // opts: { mode, u0,v0,u1,v1, hw, hh, r }
   function push(x, y, w, h, color, opts) {
     if (!gl || w <= 0 || h <= 0) return;
@@ -273,12 +422,13 @@
     var r = o0.r || 0;
     var mode = o0.mode || 0;
     if (!color) color = { r: 1, g: 1, b: 1, a: 1 };
-    var cr = color.r, cg = color.g, cb = color.b, ca = color.a;
     var x1 = x + w, y1 = y + h;
 
     function v(sx, sy, uu, vv) {
+      // --- 圆角渐变：沿局部纵轴插值，复用几何裁切 ---
+      var tint = o0.bottomColor ? mix(color, o0.bottomColor, vv) : color;
       b[o] = sx; b[o + 1] = sy; b[o + 2] = uu; b[o + 3] = vv;
-      b[o + 4] = cr; b[o + 5] = cg; b[o + 6] = cb; b[o + 7] = ca;
+      b[o + 4] = tint.r; b[o + 5] = tint.g; b[o + 6] = tint.b; b[o + 7] = tint.a;
       b[o + 8] = hw; b[o + 9] = hh; b[o + 10] = r; b[o + 11] = mode;
       o += FLOATS_PER_VERT;
     }
@@ -408,6 +558,8 @@
   A.Render.setRes = setRes;
   A.Render.setTexture = setTexture;
   A.Render.setMaskTexture = setMaskTexture;
+  A.Render.setClipRect = setClipRect;
+  A.Render.setTutorialHole = setTutorialHole;
   A.Render.invalidateTexture = invalidateTexture;
   A.Render.flush = flush;
   A.Render.beginFrame = beginFrame;

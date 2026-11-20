@@ -8,6 +8,12 @@
   draw.white = WHITE;
   draw.color = function (hex, a) { return GL.color(hex, a); };
 
+  // ── 圆润四角星：统一代码轮廓，不依赖切图 ──
+  draw.star = function (x, y, size, col) {
+    if (size <= 0) return;
+    GL.push(x, y, size, size, col, { mode: 13, hw: size / 2, hh: size / 2, r: 0 });
+  };
+
   // ── 正上方光源的地面软影 ────────────────────────────────
   draw.softEllipse = function (cx, cy, w, h, col) {
     if (w <= 0 || h <= 0) return;
@@ -20,10 +26,26 @@
     GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: 0 });
   };
 
-  draw.roundRect = function (x, y, w, h, r, col) {
+  draw.roundRect = function (x, y, w, h, r, col, bottomColor) {
     if (w <= 0 || h <= 0) return;
     r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
-    GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: r });
+    GL.push(x, y, w, h, col, { mode: 0, hw: w / 2, hh: h / 2, r: r, bottomColor: bottomColor });
+  };
+
+  // ┌─ 收藏卡的下半部波浪：曲线、圆角裁切与渐变全由着色器完成 ─┐
+  draw.wavePanel = function (x, y, w, h, r, top, bottom) {
+    if (w <= 0 || h <= 0) return;
+    GL.push(x, y, w, h, top, {
+      mode: 7, hw: w / 2, hh: h / 2, r: Math.min(r, w / 2, h / 2), bottomColor: bottom,
+    });
+  };
+
+  // ┌─ 263:161 的 1.16px 描边单独后绘；解锁卡默认棕金，锁定卡可传浅灰 ─┐
+  draw.figmaCardBorder = function (x, y, w, h, r, borderColor) {
+    if (w <= 0 || h <= 0) return;
+    GL.push(x, y, w, h, borderColor || draw.color('#874600'), {
+      mode: 8, hw: w / 2, hh: h / 2, r: Math.min(r, w / 2, h / 2),
+    });
   };
 
   // 商店卡片与教学提示共用的暖色圆角底板；所有层均限制在传入矩形内。
@@ -80,11 +102,11 @@
   };
 
   // --- 完整图片放进圆角容器，圆角不写入素材 ---
-  draw.roundTexture = function (tex, x, y, w, h, radius) {
+  draw.roundTexture = function (tex, x, y, w, h, radius, grayscale, blur) {
     if (!tex || w <= 0 || h <= 0) return;
     GL.setTexture(tex);
     GL.push(x, y, w, h, WHITE, {
-      mode: 5, hw: w / 2, hh: h / 2,
+      mode: grayscale ? 6 + (blur ? 0.25 : 0) : 5, hw: w / 2, hh: h / 2,
       r: Math.min(radius, w / 2, h / 2),
     });
   };
@@ -134,7 +156,50 @@
   // atlas 中 ox/oy/adv 已是逻辑像素，w/h 是纹理像素，需乘 TEXT_SCALE
   var TEXT_SCALE = 0.5;
 
-  draw.textWidth = function (str, atlas) {
+  // ── 全局七档字号：辅助、说明、正文、控件、数字、标题、主标题 ──
+  var FONT_SIZES = [12, 14, 16, 20, 24, 32, 40];
+  draw.fontSizes = FONT_SIZES.slice();
+  draw.fontSize = function (requested) {
+    return FONT_SIZES.reduce(function (best, candidate) {
+      return Math.abs(candidate - requested) < Math.abs(best - requested) ? candidate : best;
+    }, FONT_SIZES[0]);
+  };
+
+  // ── 对外只接受最终字号，内部匹配现有字形素材 ──────────
+  function fontForSize(size) {
+    var sizes = Object.keys(A.FontAtlas).map(Number);
+    var nearest = sizes.reduce(function (best, candidate) {
+      return Math.abs(candidate - size) < Math.abs(best - size) ? candidate : best;
+    }, sizes[0]);
+    return A.FontAtlas[String(nearest)];
+  }
+
+  draw.fitTextSize = function (str, size, maxWidth) {
+    var preferred = draw.fontSize(size);
+    var candidates = FONT_SIZES.filter(function (value) { return value <= preferred; });
+    for (var i = candidates.length - 1; i >= 0; i--) {
+      if (draw.textWidth(str, candidates[i]) <= maxWidth) return candidates[i];
+    }
+    return FONT_SIZES[0];
+  };
+
+  draw.fitTextContent = function (str, size, maxWidth) {
+    if (draw.textWidth(str, size) <= maxWidth) return str;
+    var suffix = '...';
+    if (draw.textWidth(suffix, size) > maxWidth) return '';
+    var end = str.length;
+    while (end > 0 && draw.textWidth(str.slice(0, end) + suffix, size) > maxWidth) end--;
+    return str.slice(0, end) + suffix;
+  };
+
+  draw.fittedText = function (str, x, y, size, maxWidth, col, align) {
+    var fontSize = draw.fitTextSize(str, size, maxWidth);
+    return draw.text(draw.fitTextContent(str, fontSize, maxWidth), x, y, fontSize, col, align);
+  };
+
+  draw.textWidth = function (str, size) {
+    size = draw.fontSize(size);
+    var atlas = fontForSize(size);
     if (!atlas) return 0;
     var g = atlas.glyphs;
     var w = 0;
@@ -142,17 +207,20 @@
       var gl = g[str.charAt(i)] || g[' '];
       if (gl) w += gl.adv;
     }
-    return w;
+    return w * size / atlas.size;
   };
 
   // align: 0 左对齐 / 1 居中 / 2 右对齐
-  draw.text = function (str, x, y, size, col, align, scale) {
-    var atlas = A.FontAtlas[String(size)];
+  draw.text = function (str, x, y, size, col, align, visualScale) {
+    size = draw.fontSize(size);
+    var atlas = fontForSize(size);
     if (!atlas) return 0;
-    var tex = A.Assets ? A.Assets.tex('font-' + size) : null;
+    var tex = A.Assets ? A.Assets.tex('font-' + atlas.size) : null;
     if (!tex) return 0;
-    scale = scale === undefined ? 1 : scale;
-    var total = draw.textWidth(str, atlas) * scale;
+    // ── 交互缩放作用于字形尺寸，保留基础字号档位 ──
+    var scale = visualScale === undefined ? 1 : visualScale;
+    var fontRatio = size / atlas.size * scale;
+    var total = draw.textWidth(str, size) * scale;
     var penX = x;
     if (align === 1) penX = x - total / 2;
     else if (align === 2) penX = x - total;
@@ -163,25 +231,50 @@
       if (!gl.blank && gl.w > 0) {
         var page = gl.page || 0;
         var pageAtlas = atlas.pages ? atlas.pages[page] : atlas;
-        var pageTex = page === 0 ? tex : A.Assets.tex('font-' + size + '-' + page);
+        var pageTex = page === 0 ? tex : A.Assets.tex('font-' + atlas.size + '-' + page);
         if (pageAtlas && pageTex) {
           GL.setTexture(pageTex);
-          GL.push(penX + gl.ox * scale, y + gl.oy * scale,
-            gl.w * TEXT_SCALE * scale, gl.h * TEXT_SCALE * scale, col, {
+          GL.push(penX + gl.ox * fontRatio, y + gl.oy * fontRatio,
+            gl.w * TEXT_SCALE * fontRatio, gl.h * TEXT_SCALE * fontRatio, col, {
               mode: 1,
               u0: gl.x / pageAtlas.texW, v0: gl.y / pageAtlas.texH,
               u1: (gl.x + gl.w) / pageAtlas.texW, v1: (gl.y + gl.h) / pageAtlas.texH,
             });
         }
       }
-      penX += gl.adv * scale;
+      penX += gl.adv * fontRatio;
     }
     return total;
   };
 
+  // ── 按可见字形边界居中，消除字体留白造成的偏移 ────────
+  draw.centeredText = function (str, cx, cy, size, col, visualScale) {
+    size = draw.fontSize(size);
+    var atlas = fontForSize(size);
+    if (!atlas) return 0;
+    var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    var pen = 0;
+    for (var i = 0; i < str.length; i++) {
+      var glyph = atlas.glyphs[str.charAt(i)] || atlas.glyphs[' '];
+      if (!glyph) continue;
+      if (!glyph.blank && glyph.w > 0) {
+        left = Math.min(left, pen + glyph.ox);
+        right = Math.max(right, pen + glyph.ox + glyph.w * TEXT_SCALE);
+        top = Math.min(top, glyph.oy);
+        bottom = Math.max(bottom, glyph.oy + glyph.h * TEXT_SCALE);
+      }
+      pen += glyph.adv;
+    }
+    if (left === Infinity) return 0;
+    var fontRatio = size / atlas.size * (visualScale === undefined ? 1 : visualScale);
+    return draw.text(str, cx - (left + right) * fontRatio / 2, cy - (top + bottom) * fontRatio / 2,
+      size, col, 0, visualScale);
+  };
+
   draw.textLineH = function (size) {
-    var atlas = A.FontAtlas[String(size)];
-    return atlas ? atlas.lineH : size;
+    size = draw.fontSize(size);
+    var atlas = fontForSize(size);
+    return atlas ? atlas.lineH * size / atlas.size : size;
   };
 
   A.Render.draw = draw;

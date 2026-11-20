@@ -113,7 +113,7 @@ def pack():
         meta['alpha_source']=target.name
         (HERE/(kind+'-back-source.json')).write_text(json.dumps(meta,ensure_ascii=False,indent=2)+'\n')
     for col,cut in enumerate(existing()): atlas.alpha_composite(module.fit(cut),(col*200,200))
-    out=ROOT/'package/res/Image/hero-levels-back.png'; atlas.save(out,optimize=True,dpi=(72,72))
+    out=ROOT/'package/res/Image/outgame/hero-forms/hero-levels-back.png'; out.parent.mkdir(parents=True,exist_ok=True); atlas.save(out,optimize=True,dpi=(72,72))
     print('back atlas='+str(out),flush=True)
 
 if __name__=='__main__':

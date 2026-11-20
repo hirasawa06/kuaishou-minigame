@@ -1,0 +1,11 @@
+{
+  "status": "现状：用户于 2026-11-19 提供，用于 Figma 275:246 战斗卡池正面角色图。",
+  "generator": "tower-defense/tools/build-battle-ui-assets.py",
+  "items": [
+    {"id": "tank", "name": "柴不破", "source": "tank-source.png", "runtime": "res/Image/ingame/characters/battle-shop/tank-v1.png"},
+    {"id": "war", "name": "锤锤喵", "source": "war-source.png", "runtime": "res/Image/ingame/characters/battle-shop/war-v1.png"},
+    {"id": "mage", "name": "哈利汪", "source": "mage-source.png", "runtime": "res/Image/ingame/characters/battle-shop/mage-v1.png"},
+    {"id": "arch", "name": "镭射喵", "source": "arch-source.png", "runtime": "res/Image/ingame/characters/battle-shop/arch-v1.png"},
+    {"id": "healer", "name": "奶糖喵", "source": "healer-source.png", "runtime": "res/Image/ingame/characters/battle-shop/healer-v1.png"}
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "status": "决定：用户2026-11-18提供，仅收藏卡",
+  "size": [
+    660,
+    1004
+  ],
+  "cropNormalized": [
+    0.04,
+    0.09,
+    0.98,
+    0.87
+  ],
+  "items": [
+    {
+      "id": "tank",
+      "name": "柴不破",
+      "source": "/Users/dengyanyu/Desktop/一些文件/我的项目/kuaishou-minigame/tower-defense/tools/src/characters/角色/柴不破/收藏立绘/柴不破-场景立绘.png",
+      "figmaNode": "263:161",
+      "sha256": "6b433abf66ef5a3ec88a88939608ab98614ec568ef2d5bf00b5d549f11292dc8",
+      "archive": "tools/src/characters/角色/柴不破/收藏立绘",
+      "runtime": "res/Image/outgame/collection/scenes-figma-263-161-hd/tank.jpg"
+    },
+    {
+      "id": "war",
+      "name": "锤锤喵",
+      "source": "/Users/dengyanyu/Desktop/一些文件/我的项目/kuaishou-minigame/tower-defense/tools/src/characters/角色/近战猫/收藏立绘/锤锤喵-场景立绘.png",
+      "figmaNode": "263:161",
+      "sha256": "c763b56ca5166483a4ababe651cbb26b902078a4758c521e888646032ea229e3",
+      "archive": "tools/src/characters/角色/近战猫/收藏立绘",
+      "runtime": "res/Image/outgame/collection/scenes-figma-263-161-hd/war.jpg"
+    },
+    {
+      "id": "mage",
+      "name": "哈利汪",
+      "source": "/Users/dengyanyu/Desktop/一些文件/我的项目/kuaishou-minigame/tower-defense/tools/src/characters/角色/法师狗/收藏立绘/哈利边牧-场景立绘.png",
+      "figmaNode": "263:161",
+      "sha256": "a3e7eea792b78a9bf5b2944f233f2b56c25880e14ce9fa30600b50932e79b785",
+      "archive": "tools/src/characters/角色/法师狗/收藏立绘",
+      "runtime": "res/Image/outgame/collection/scenes-figma-263-161-hd/mage.jpg"
+    },
+    {
+      "id": "arch",
+      "name": "镭射喵",
+      "source": "/Users/dengyanyu/Desktop/一些文件/我的项目/kuaishou-minigame/tower-defense/tools/src/characters/角色/射手猫/收藏立绘/镭射喵-场景立绘.png",
+      "figmaNode": "263:161",
+      "sha256": "a03537813eece67fee5b7536660b3fd977b2c7d47f6f908da65a8b754c0044dd",
+      "archive": "tools/src/characters/角色/射手猫/收藏立绘",
+      "runtime": "res/Image/outgame/collection/scenes-figma-263-161-hd/arch.jpg"
+    },
+    {
+      "id": "healer",
+      "name": "奶糖喵",
+      "source": "/Users/dengyanyu/Desktop/一些文件/我的项目/kuaishou-minigame/tower-defense/tools/src/characters/角色/奶糖喵/收藏立绘/奶糖喵-场景立绘.png",
+      "figmaNode": "263:161",
+      "sha256": "c08af8d02b926c731e820850699bd535ba5af34badf314ff4f8d07e272f2346c",
+      "archive": "tools/src/characters/角色/奶糖喵/收藏立绘",
+      "runtime": "res/Image/outgame/collection/scenes-figma-263-161-hd/healer.jpg"
+    }
+  ]
+}

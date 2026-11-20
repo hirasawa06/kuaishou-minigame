@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "tools/src/avatars"
-MENU = ROOT / "package/res/Image"
+MENU = ROOT / "package/res/Image/outgame/avatars"
 DATA = ROOT / "package/gameplay/data"
 SIZE = 256
 CELL = SIZE + 8
@@ -18,7 +18,7 @@ CELL = SIZE + 8
 # --- 固定九宫格顺序：旧 ID 与索引保留，兼容已保存的选择 ---
 # 原图编号、旧 ID、名称、方形裁切范围（左、上、右、下）
 AVATARS = [
-    (5, "av-cat-orange", "哈利边牧", (260, 280, 820, 840)),
+    (5, "av-cat-orange", "哈利汪", (260, 280, 820, 840)),
     (6, "av-bear-cream", "柴不破", (260, 250, 860, 850)),
     (7, "av-rabbit-pink", "锤锤喵", (390, 250, 940, 800)),
     (8, "av-cat-gray", "镭射喵", (200, 220, 800, 820)),
@@ -53,29 +53,29 @@ def import_source(directory):
         ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def rounded_portrait(path):
+def rounded_portrait(path, radius):
     with Image.open(path) as source:
         image = source.convert("RGBA").resize((SIZE, SIZE), Image.Resampling.LANCZOS)
     mask = Image.new("L", (SIZE, SIZE), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, SIZE - 1, SIZE - 1), radius=32, fill=255)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, SIZE - 1, SIZE - 1), radius=radius, fill=255)
     image.putalpha(mask)
     return image
 
 
-def build_sheet():
+def build_sheet(radius=32, filename="avatars-fill.png"):
     atlas = Image.new("RGBA", (CELL * 3, CELL * 3))
     frames, items = {}, []
     for index, (_, aid, name, _) in enumerate(AVATARS):
-        image = rounded_portrait(source_path(index, aid))
+        image = rounded_portrait(source_path(index, aid), radius)
         x, y = (index % 3) * CELL + 4, (index // 3) * CELL + 4
         atlas.paste(image, (x, y))
         frames[aid] = [x, y, SIZE, SIZE]
         items.append({"id": aid, "name": name, "color": "#e5b688"})
     MENU.mkdir(parents=True, exist_ok=True)
     atlas.quantize(colors=256, method=Image.Quantize.FASTOCTREE).save(
-        MENU / "avatars.png", optimize=True)
+        MENU / filename, optimize=True)
     (ROOT / "package/res/Menu/avatars.png").unlink(missing_ok=True)
-    return {"src": "res/Image/avatars.png", "texW": CELL * 3, "texH": CELL * 3,
+    return {"src": "res/Image/outgame/avatars/" + filename, "texW": CELL * 3, "texH": CELL * 3,
             "grid": 3, "size": 128, "frames": frames, "items": items}
 
 
@@ -86,11 +86,15 @@ def main():
     if args.import_dir:
         import_source(args.import_dir)
     meta = build_sheet()
+    # --- 首页图片标准边长66，12设计像素圆角独立制作 ---
+    home = build_sheet(SIZE * 12 / 66, "avatars-home-r12.png")
     DATA.mkdir(parents=True, exist_ok=True)
     body = json.dumps(meta, ensure_ascii=False, separators=(",", ":"))
+    home_body = json.dumps(home, ensure_ascii=False, separators=(",", ":"))
     (DATA / "avatars.js").write_text("/* 由 tools/gen-profile-art.py 生成，请勿手改 */\n"
         "(function () {\n  var A = window.AIGCUtils = window.AIGCUtils || {};\n"
-        "  A.AvatarAtlas = " + body + ";\n})();\n", encoding="utf-8")
+        "  A.AvatarAtlas = " + body + ";\n"
+        "  A.HomeAvatarAtlas = " + home_body + ";\n})();\n", encoding="utf-8")
     print("头像图集：9 个，792 x 792")
 
 

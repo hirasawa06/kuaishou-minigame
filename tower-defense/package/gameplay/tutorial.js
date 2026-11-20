@@ -1,18 +1,19 @@
 /* gameplay/tutorial.js — 首关五波：真实买卡、合成、锁卡与拖卖教学，真机待验证。 */
 (function () {
   var A = window.AIGCUtils, S = A.State, C = A.Config, L = A.Layout;
-  var T = { active: false, stage: 'deploy', unit: null, strong: null, time: 0, gift: 0, lockedIndex: -1 };
+  var T = { active: false, stage: 'deploy', unit: null, strong: null, time: 0, lockedIndex: -1 };
   var COPY = {
-    deploy: ['先买一只射手', '点击卡池中的镭射喵上阵'],
+    deploy: ['', '拖动卡池中的镭射喵上阵'],
+    firstFight: ['', '家具怪来了，看看镭射喵的攻击'],
+    secondFight: ['', '看看二星镭射喵的攻击'],
     cap: ['扩建上场人口', '点击下方扩建按钮，增加席位'],
-    refresh: ['刷新卡池', '点击刷新，准备两张相同射手卡'],
-    merge: ['合成二星射手', '拖一张一星射手到另一张一星射手上'],
-    lock: ['保留二星卡', '点击二星射手右下角的锁按钮'],
-    refreshLocked: ['验证锁卡保留', '再次点击刷新，锁定的二星射手不会消失'],
-    deploy2: ['买下二星射手', '点击锁定的二星射手上阵'],
-    sell: ['学会出售驻守角色', '拖动原来的一星射手到底部出售区并松手'],
-    redeploy: ['重新布阵', '点击一星射手再次上阵'],
-    start: ['布阵完成！首关共五波', '点击开始战斗，守住客厅']
+    refresh: ['刷新卡池', '点击刷新，准备两张镭射喵卡片'],
+    merge: ['合成二星镭射喵', '拖一张一星镭射喵到另一张一星镭射喵上'],
+    lock: ['二星已上锁', '二星镭射喵已上锁，不会被刷新'],
+    deploy2: ['上阵二星镭射喵', '拖动锁定的二星镭射喵上阵'],
+    sell: ['学会出售镭射喵', '拖动原来的一星镭射喵到底部出售区并松手'],
+    redeploy: ['重新布阵', '拖动一星镭射喵再次上阵'],
+    start: ['', '家具怪入侵，准备迎接吧']
   };
   function idOf(unit) { var def = unit && (unit.baseDef || unit.def); return def && def.id; }
   function starOf(unit) { return unit && (unit.star || unit.level || 1); }
@@ -38,27 +39,26 @@
   }
   function begin() {
     T.active = false; T.stage = 'deploy'; T.unit = null; T.strong = null;
-    T.time = 0; T.gift = 0; T.lockedIndex = -1;
+    T.time = 0; T.lockedIndex = -1;
     if (!A.Profile || S.currentLevel !== 1 || A.Profile.data.tutorialStarComplete === true) return false;
     if (typeof A.Profile.data.tutorialStarComplete !== 'boolean') A.Profile.data.tutorialStarComplete = false;
-    T.active = true; T.gift = 100;
-    S.gold += T.gift; S.goldEarned += T.gift;
+    T.active = true; // 教学使用首关初始预算，不额外赠送饼干。
     guaranteeArchers(1);
     return true;
   }
   function allow(action, detail) {
     if (!T.active) return true;
+    if (T.stage === 'firstFight' || T.stage === 'secondFight') return false;
     if (action === 'deploy') {
       if (T.stage !== 'deploy' && T.stage !== 'redeploy' && T.stage !== 'deploy2') return false;
       return !detail || (idOf(detail) === 'arch' && starOf(detail) === (T.stage === 'deploy2' ? 2 : 1));
     }
     if (action === 'merge') return T.stage === 'merge' && (!detail ||
       ((idOf(detail) === 'arch' || detail.cardId === 'arch') && starOf(detail) === 1));
-    if (action === 'lock') return T.stage === 'lock' && (!detail ||
-      (detail.cardId === 'arch' && (detail.star || 1) === 2 && !detail.locked));
+    if (action === 'lock') return false;
     if (action === 'sell') return T.stage === 'sell' && (!detail ||
       (detail === T.unit && idOf(detail) === 'arch' && detail.def.moveSpeed === 0));
-    if (action === 'refresh') return T.stage === 'refresh' || T.stage === 'refreshLocked';
+    if (action === 'refresh') return T.stage === 'refresh';
     return action === T.stage;
   }
   function onAction(action, detail) {
@@ -66,24 +66,26 @@
     var unit = detail && detail.unit ? detail.unit : detail;
     if (action === 'deploy') {
       if (!allow(action, unit) || !live(unit)) return;
-      if (T.stage === 'deploy2') { T.strong = unit; T.stage = 'sell'; }
-      else { T.unit = unit; T.stage = T.stage === 'redeploy' ? 'start' : 'cap'; }
+      if (T.stage === 'deploy2') {
+        T.strong = unit; T.stage = 'secondFight';
+        T.secondEnemies = A.Battle.startTutorialPair(unit);
+      }
+      else {
+        T.unit = unit;
+        if (T.stage === 'deploy') {
+          T.stage = 'firstFight';
+          T.firstEnemy = A.Battle.startTutorialEncounter(unit);
+        } else { T.stage = 'start'; T.startNoticeTime = 0; }
+      }
     } else if (action === 'cap' && T.stage === 'cap') {
       T.stage = 'refresh';
     } else if (action === 'refresh' && T.stage === 'refresh') {
       guaranteeArchers(2); T.stage = 'merge';
     } else if (action === 'merge' && T.stage === 'merge') {
       if (!detail || detail.cardId !== 'arch' || detail.fromStar !== 1 || detail.star !== 2 || !archerSlots(2).length) return;
-      T.stage = 'lock';
-    } else if (action === 'lock' && T.stage === 'lock') {
-      if (!detail || detail.cardId !== 'arch' || detail.star !== 2 || detail.locked !== true) return;
       var locked = archerSlots(2, true);
       if (!locked.length) return;
-      T.lockedIndex = locked[0]; T.stage = 'refreshLocked';
-    } else if (action === 'refresh' && T.stage === 'refreshLocked') {
-      var slot = S.shop[T.lockedIndex];
-      if (!slot || slot.sold || slot.cardId !== 'arch' || (slot.star || 1) !== 2 || !slot.locked) return;
-      T.stage = 'deploy2';
+      T.lockedIndex = locked[0]; T.stage = 'lock'; T.lockNoticeTime = 0;
     } else if (action === 'sell' && T.stage === 'sell') {
       if (unit !== T.unit || S.units.indexOf(unit) >= 0) return;
       guaranteeArchers(1); T.stage = 'redeploy';
@@ -99,21 +101,49 @@
   function update(dt) {
     if (!T.active) return;
     T.time += dt;
+    if (T.stage === 'secondFight') {
+      A.Battle.update(dt, dt, true);
+      if (T.secondEnemies.every(function (enemy) { return enemy.dead; }) &&
+          S.enemies.length === 0 && live(T.strong)) {
+        S.waveState = 'prep'; S.waveTimer = C.waveGap;
+        T.stage = 'sell';
+      }
+      return;
+    }
+    if (T.stage === 'firstFight') {
+      A.Battle.update(dt, dt, true);
+      if (T.firstEnemy && T.firstEnemy.dead && S.enemies.length === 0 && live(T.unit)) {
+        S.waveIndex = 1;
+        S.waveState = 'prep';
+        S.waveTimer = C.waveGap;
+        S.gold += C.WAVE_GOLD_BONUS;
+        S.goldEarned += C.WAVE_GOLD_BONUS;
+        T.stage = 'cap';
+      }
+      return;
+    }
+    if (T.stage === 'start') {
+      T.startNoticeTime = (T.startNoticeTime || 0) + dt;
+      if (T.startNoticeTime >= 1) { startBattle(); return; }
+    }
+    if (T.stage === 'lock') {
+      T.lockNoticeTime = (T.lockNoticeTime || 0) + dt;
+      // ── 提示满2秒直接允许拖动，不经过点击或再次刷新 ──
+      if (T.lockNoticeTime + 1e-9 >= 2) T.stage = 'deploy2';
+    }
     if (S.toast) { S.toast.life -= dt; if (S.toast.life <= 0) S.toast = null; }
     for (var i = S.floats.length - 1; i >= 0; i--) {
       S.floats[i].life -= dt; if (S.floats[i].life <= 0) S.floats.splice(i, 1);
     }
   }
   function highlight(rect) {
-    if (!rect) return;
-    var D = A.Render.draw;
-    D.strokeRect(rect.x, rect.y, rect.w, rect.h, 3, D.color('#ffe17c', 0.7 + Math.sin(T.time * 5) * 0.2));
+    // 目标通过全屏圆角镂空显示，不再叠加描边。
   }
   function wrapped(text, maxWidth) {
     var D = A.Render.draw, out = [], line = '';
     for (var i = 0; i < text.length; i++) {
       var next = line + text.charAt(i);
-      if (line && D.textWidth(next, A.FontAtlas['18']) > maxWidth) { out.push(line); line = text.charAt(i); }
+      if (line && D.textWidth(next, 18) > maxWidth) { out.push(line); line = text.charAt(i); }
       else line = next;
     }
     if (line) out.push(line);
@@ -122,15 +152,18 @@
   function targetRects() {
     var u = L.ui, rects = [];
     if (T.stage === 'cap') rects.push(u.capBtn);
-    else if (T.stage === 'refresh' || T.stage === 'refreshLocked') rects.push(u.refreshBtn);
-    else if (T.stage === 'start') rects.push(u.tutorial.start);
+    else if (T.stage === 'refresh') rects.push(u.refreshBtn);
+    else if (T.stage === 'lock') {
+      if (T.lockedIndex >= 0) rects.push(L.shopRect(T.lockedIndex));
+    }
     else if (T.stage === 'sell') {
       if (live(T.unit)) rects.push({ x: T.unit.x - 30, y: T.unit.y - 48, w: 60, h: 80 });
       rects.push(u.sellZone);
     } else {
       var slots = archerSlots(T.stage === 'deploy2' || T.stage === 'lock' ? 2 : 1);
+      slots = slots.slice(0, T.stage === 'merge' ? 2 : 1);
       for (var i = 0; i < slots.length; i++) {
-        rects.push(T.stage === 'lock' ? L.shopLockRect(slots[i]) : L.shopRect(slots[i]));
+        rects.push(L.shopRect(slots[i]));
       }
     }
     return rects;
@@ -145,62 +178,48 @@
     var cy = y + h * 0.58;
     var pulse = 0.74 + Math.sin(T.time * 5) * 0.12;
     D.roundRect(x, y, w, h, 10, D.color('#73e5a0', 0.10));
-    D.strokeRect(x, y, w, h, 2, D.color('#eaffbd', pulse));
     D.roundRect(cx - 76, cy - 15, 152, 30, 15,
       D.color('#fff0d9', 0.96));
     D.text('拖到战场上阵', cx, cy - 9, 18, D.color('#704026'), 1);
   }
-  // 多目标镂空：按水平条带合并亮区，不叠加暗层，不依赖DOM或Canvas2D。
+  // 单层全屏圆角镂空，合成及出售最多保留两个必要目标。
   function spotlight(rects) {
-    var D = A.Render.draw, u = L.ui, holes = [], ys = [u.contentTop, u.contentBottom];
-    for (var i = 0; i < rects.length; i++) {
-      var r = rects[i];
-      var x = Math.max(u.safeLeft, r.x - 3), y = Math.max(u.contentTop, r.y - 3);
-      var right = Math.min(u.safeRight, r.x + r.w + 3), bottom = Math.min(u.contentBottom, r.y + r.h + 3);
-      if (right <= x || bottom <= y) continue;
-      holes.push({ x: x, y: y, right: right, bottom: bottom });
-      ys.push(y, bottom);
+    var D = A.Render.draw, u = L.ui;
+    if (rects.length) {
+      var card = rects[0], shadeColor = D.color('#000000', 0.76);
+      A.Render.setTutorialHole(rects[1] || null, 20 * u.battleScale);
+      // 单个全幅四边形镂空，避免分块遮罩边缘抗锯齿产生横竖接缝。
+      A.Render.push(0, 0, u.w, u.h, shadeColor,
+        { mode: 14, hw: card.w / 2, hh: card.h / 2,
+          u0: -card.x / card.w, u1: (u.w - card.x) / card.w,
+          v0: -card.y / card.h, v1: (u.h - card.y) / card.h,
+          r: Math.min(20 * u.battleScale, card.h / 2) });
+      A.Render.setTutorialHole(null);
+      return;
     }
-    ys.sort(function (a, b) { return a - b; });
-    var shade = D.color('#000000', 0.76);
-    for (var band = 0; band < ys.length - 1; band++) {
-      var top = ys[band], end = ys[band + 1];
-      if (end <= top) continue;
-      var spans = [];
-      for (var hi = 0; hi < holes.length; hi++) {
-        if (holes[hi].y < end && holes[hi].bottom > top) spans.push(holes[hi]);
-      }
-      spans.sort(function (a, b) { return a.x - b.x; });
-      var cursor = u.safeLeft;
-      for (var si = 0; si < spans.length; si++) {
-        if (spans[si].x > cursor) D.rect(cursor, top, spans[si].x - cursor, end - top, shade);
-        cursor = Math.max(cursor, spans[si].right);
-      }
-      if (cursor < u.safeRight) D.rect(cursor, top, u.safeRight - cursor, end - top, shade);
-    }
+    D.rect(0, 0, u.w, u.h, D.color('#000000', 0.76));
   }
   function draw() {
     if (!T.active || S.phase !== 'playing') return;
     var drag = S.dragging, dragging = !!(drag && drag.active);
     // 拖动期间不盖暗幕也不追着手指开亮孔，避免遮住浮起卡和战场。
-    if (!dragging) spotlight(targetRects());
+    if (!dragging && T.stage !== 'firstFight' && T.stage !== 'secondFight') spotlight(targetRects());
     if (dragging && (T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'deploy2') &&
       drag.kind !== 'unit' && drag.y >= L.ui.tray.y) drawBattleDropGuide();
     var D = A.Render.draw, u = L.ui, source = u.tutorial.caption, copy = COPY[T.stage];
     var innerW = source.w - 32;
     var deploying = T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'deploy2';
-    var bodyText = dragging && deploying ? '拖到战场，松手上阵' : copy[1];
-    var title = wrapped(copy[0], innerW), body = wrapped(bodyText, innerW);
-    var footer = wrapped('引导赠币 +' + T.gift + ' · 完成操作才继续', innerW);
+    var singleLine = true;
+    var bodyText = singleLine ? copy[1] : dragging && deploying ? '拖到战场，松手上阵' : copy[1];
+    var title = singleLine ? [] : wrapped(copy[0], innerW), body = wrapped(bodyText, innerW);
+    var footer = T.stage === 'merge' ? wrapped('合成后的角色会更强大哦', innerW)
+      : singleLine ? [] : wrapped('完成操作才继续', innerW);
     var rect = { x: source.x, y: source.y, w: source.w,
-      h: 26 + (title.length + body.length + footer.length) * 20 };
+      h: 26 + (title.length + body.length + footer.length) * 20 + (footer.length ? 6 : 0) };
     // 字幕固定在战场上部；出售目标靠近时移到战场底部，商店不被遮挡。
-    if (T.stage === 'sell' && live(T.unit) && T.unit.y - 56 < rect.y + rect.h && T.unit.y + 30 > rect.y) {
-      rect.y = Math.max(u.contentTop + 4, u.tray.y - rect.h - 6);
-    }
     D.creamPanel(rect, 0.98, 16);
     var titleBandH = title.length * 20 + 7;
-    D.roundRect(rect.x + 7, rect.y + 7, rect.w - 14, titleBandH, 10,
+    if (!singleLine) D.roundRect(rect.x + 7, rect.y + 7, rect.w - 14, titleBandH, 10,
       D.color('#f5cd94', 0.96));
     var textY = rect.y + 9;
     function drawLines(items, color) {
@@ -209,15 +228,15 @@
       }
     }
     drawLines(title, '#704026');
-    textY += 6;
+    textY += singleLine ? 4 : 6;
     drawLines(body, '#683c29');
     textY += 3;
-    D.roundRect(rect.x + 18, textY - 2, rect.w - 36, 1.5, 0.75,
+    if (!singleLine) D.roundRect(rect.x + 18, textY - 2, rect.w - 36, 1.5, 0.75,
       D.color('#d7a675', 0.75));
     textY += 3;
     drawLines(footer, '#8a6248');
     if (T.stage === 'cap') { if (!dragging) highlight(u.capBtn); }
-    else if (T.stage === 'refresh' || T.stage === 'refreshLocked') {
+    else if (T.stage === 'refresh') {
       if (!dragging) highlight(u.refreshBtn);
     } else if (T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'merge' || T.stage === 'deploy2' || T.stage === 'lock') {
       if (dragging && T.stage !== 'merge') {
@@ -226,18 +245,12 @@
       var slots = archerSlots(T.stage === 'deploy2' || T.stage === 'lock' ? 2 : 1);
       for (var i = 0; i < slots.length; i++) {
         if (dragging && slots[i] === drag.index) continue;
-        highlight(T.stage === 'lock' ? L.shopLockRect(slots[i]) : L.shopRect(slots[i]));
+        if (T.stage !== 'deploy') highlight(L.shopRect(slots[i]));
       }
     } else if (T.stage === 'sell') {
       if (!dragging && T.unit) highlight({ x: T.unit.x - 28, y: T.unit.y - 48, w: 56, h: 76 });
-      D.roundRect(u.sellZone.x, u.sellZone.y, u.sellZone.w, u.sellZone.h, 12, D.color('#765024', 0.97));
-      D.text('拖到这里松手出售', u.sellZone.x + u.sellZone.w / 2, u.sellZone.y + 12, 18, D.color('#ffe17c'), 1);
+      A.BattleShopUI.drawSellZone(T.unit);
       if (!dragging) highlight(u.sellZone);
-    } else if (T.stage === 'start') {
-      var b = u.tutorial.start;
-      D.roundRect(b.x, b.y, b.w, b.h, 24, D.color('#f0a02a'));
-      D.text('开始战斗', b.x + b.w / 2, b.y + 10, 28, D.color('#5a3208'), 1);
-      highlight(b);
     }
   }
   A.Tutorial = { begin: begin, update: update, draw: draw, onAction: onAction, allow: allow,

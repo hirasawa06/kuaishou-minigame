@@ -18,14 +18,14 @@
 | tank | 柴不破 | `../characters/角色/柴不破/柴不破三视图-60度-已确认-v1.png` | GameAtlas `unit-tank-1` |
 | war | 锤锤喵 | `../characters/角色/近战猫/近战猫三视图参考-v1.png` | GameAtlas `war-front-idle` |
 | arch | 镭射喵 | `../characters/角色/射手猫/射手猫.png`（完整正/侧/后参考，含晕倒图） | GameAtlas `arch-back-idle`（`unit-arch-1` 是遗留弓图标，不可当镭射喵形象） |
-| mage | 哈利边牧 | `../characters/角色/法师狗/法师狗.png`（正/侧/后三视图） | GameAtlas `mage-back-idle` |
+| mage | 哈利汪 | `../characters/角色/法师狗/法师狗.png`（正/侧/后三视图） | GameAtlas `mage-back-idle` |
 | healer | 奶糖喵 | **缺专属角色图和三视图** | 当前只有 `ui-heart` + 绿色医疗十字占位 |
 
 每次正式请求同时提供以上四角色结构参考与必带风格图 `../characters/情绪版/宠物情绪版.png`。不使用随机历史附件或无关角色作为奶糖喵设计参考。读取了角色行动规范与 devkit AI 图片规范；本轮不制作战斗镜头/动作，因此不运行相机浏览器预演。奶糖喵须等待用户确认专属角色参考后再正式设计。
 
 ## 布局与父任务接入合同
 
-- 资源 key：`hero-levels`；src：`res/Image/hero-levels.png`。
+- 资源 key：`hero-levels`；src：`res/Image/outgame/hero-forms/hero-levels.png`。
 - RGBA PNG，1000×600，72 PPI；5 列 × 3 行；格位 200×200。
 - 列从左至右 `tank, war, arch, mage, healer`；行从上至下 `Lv1, Lv2, Lv3`。
 - 采样矩形 `[column*200, (level-1)*200, 200, 200]`。图集中第五列故意为空，禁止将其当作完成的奶糖喵立绘。
@@ -68,6 +68,6 @@ python3 tower-defense/tools/gen-hero-levels.py --pack
 | 柴不破 | 简单蓝围巾、基础爪盾 | 分层肩披/护肩、骨形胸扣、强化大盾 |
 | 锤锤喵 | 单头小爪锤、简单黄领巾、无腰包 | 双头大爪锤、分层短披风、工具腰带及爪纹腰包 |
 | 镭射喵 | 简化开放头盔、短披风、小镭射枪 | 大侧耳护件头盔、分层披风、强化长镭射枪 |
-| 哈利边牧 | 单饼干罐法杖、简单肩披 | 双饼干罐支架法杖、分层长肩披、工具腰带 |
+| 哈利汪 | 单饼干罐法杖、简单肩披 | 双饼干罐支架法杖、分层长肩披、工具腰带 |
 
 最终 alpha 源为 `hero-lv1-lv3-20261111-211128-alpha.png`，全尺寸独立抠图为 `*-lv1-alpha-full.png` / `*-lv3-alpha-full.png`；最终200px格图为 `*-lv1.png` / `*-lv3.png`；深/浅检查板为 `alpha-inspection-dark.png` / `alpha-inspection-light.png`。未运行浏览器、游戏、仿真或测试，未 commit/push。奶糖喵仍等待专属角色参考确认，未擅自制作母版。

@@ -71,7 +71,7 @@ assert(openPanel === 'collection' && state.menuFeedback.key === 'collection', '�
 tap(200, 800)
 assert(starts === 0 && state.menuStartDelay === 0 && openPanel === null, '弹层下的开始按钮被误触')
 tap(50, 180)
-assert(openPanel === 'profile' && state.menuFeedback.key === 'avatar', '头像入口或点击反馈未响应')
+assert(openPanel === 'avatars' && state.menuFeedback.key === 'avatar', '头像应直接打开选择弹窗并响应点击反馈')
 tap(200, 600)
 listeners.mousedown({ clientX: 150, clientY: 160 })
 assert(state.menuPressed === 'stamina', '体力条缺少按下反馈')

@@ -14,7 +14,8 @@
   var S = {
     phase: 'loading',  // loading / menu / playing / paused / win / lose / vfxLab / error
     time: 0,
-    gold: C.GOLD_START,
+    gold: C.GOLD_START_FIRST_LEVEL,
+    biscuitTimer: 0,
     baseHp: C.BASE_HP,
     waveIndex: 0,
     waveState: 'prep',
@@ -32,13 +33,14 @@
     toast: null,
     shop: [],          // 4 格：{ cardId, star: 1..3, sold, locked, born }
     unlockNotice: [],  // 本局首次突破进度新解锁的英雄 id，保留至 reset
+    unlockNoticeIndex: 0,
     refreshCost: C.REFRESH_COST,
-    heroCap: C.UNIT_CAP_START,
+    heroCap: C.UNIT_CAP_FIRST_LEVEL,
     capCost: C.CAP_COST,
     drag: null,
     dragging: null,
     inspect: null,
-    upgradeUnit: null, // 兼容旧角色详情选中字段；不再允许直接金币升级
+    upgradeUnit: null, // 兼容旧角色详情选中字段；不再允许直接饼干升级
     inspectT: 0,
     shake: 0,
     goalHitT: 0,
@@ -93,6 +95,14 @@
   S.wavesForLevel = function (level) {
     return C.wavesForLevel(level === undefined ? S.currentLevel : level);
   };
+  S.newPetPending = function () {
+    return S.phase === 'win' && S.unlockNoticeIndex < S.unlockNotice.length;
+  };
+  S.advanceNewPet = function () {
+    if (!S.newPetPending()) return false;
+    S.unlockNoticeIndex++;
+    return true;
+  };
   S.getWaves = S.wavesForLevel;
 
   S.isHeroUnlocked = function (id) {
@@ -136,12 +146,21 @@
     var speed = C.HERO_STAR_SPEED_SCALES[star - 1];
     var reach = C.HERO_STAR_RANGE_SCALES[star - 1];
     def.interval = base.interval / speed;
+    def.moveSpeed = (base.moveSpeed || 0) * C.HERO_STAR_MOVE_SPEED_SCALES[star - 1];
     def.range = (base.range || 0) * reach;
     def.taunt = (base.taunt || 0) * reach;
     def.splash = (base.splash || 0) * reach;
     if (base.aggro !== undefined) def.aggro = base.aggro * reach;
     def.cost = base.cost * C.HERO_STAR_COST_SCALES[star - 1];
     def.star = star;
+    def.healTargets = base.cls === 'healer' ? 1 : 0;
+    var effect = star === 3 ? C.HERO_THREE_STAR_EFFECTS[id] : null;
+    if (effect) {
+      for (var key in effect) {
+        if (Object.prototype.hasOwnProperty.call(effect, key)) def[key] = effect[key];
+      }
+    }
+    def.atk *= def.attackMultiplier || 1;
     return def;
   };
 
@@ -173,7 +192,7 @@
     target.star++;
     target.born = S.time;
     target.age = 0;
-    target.locked = target.locked === true;
+    target.locked = true; // 合成到2星及以上后自动锁定，仍可手动解锁。
     source.cardId = null;
     source.sold = true;
     source.locked = false;
@@ -192,25 +211,52 @@
     return true;
   };
 
+  // ── 本轮已出卡与保留锁卡共同抑制重复，旧的未锁卡不计入 ──
+  function drawShopHero(unlocked, counts) {
+    if (!counts) return unlocked[randInt(unlocked.length)];
+    var weights = unlocked.map(function (hero) {
+      return Math.pow(C.SHOP_REPEAT_WEIGHTS[S.waveIndex], counts[hero.id] || 0);
+    });
+    var total = weights.reduce(function (sum, weight) { return sum + weight; }, 0);
+    var pick = rand(total);
+    for (var i = 0; i < unlocked.length - 1; i++) {
+      pick -= weights[i];
+      if (pick < 0) return unlocked[i];
+    }
+    return unlocked[unlocked.length - 1];
+  }
+
+  function earlyShopCounts() {
+    if (S.currentLevel < 2 || S.waveIndex >= C.SHOP_REPEAT_WEIGHTS.length) return null;
+    var counts = {};
+    for (var i = 0; i < C.cardCount; i++) {
+      var slot = S.shop[i];
+      if (lockedSlot(slot)) counts[slot.cardId] = (counts[slot.cardId] || 0) + 1;
+    }
+    return counts;
+  }
+
   // 手动刷新才补空位；锁定的任意星级卡保留原槽和原对象，不消耗抽卡随机数。
   S.rollShop = function () {
     var unlocked = [];
     for (var hi = 0; hi < C.HEROES.length; hi++) {
       if (S.isHeroUnlocked(C.HEROES[hi].id)) unlocked.push(C.HEROES[hi]);
     }
+    var counts = earlyShopCounts();
     for (var i = 0; i < C.cardCount; i++) {
       if (lockedSlot(S.shop[i])) continue;
       if (!unlocked.length) {
         S.shop[i] = { cardId: null, star: 1, sold: true, locked: false, born: S.time };
         continue;
       }
-      var h = unlocked[randInt(unlocked.length)];
+      var h = drawShopHero(unlocked, counts);
+      if (counts) counts[h.id] = (counts[h.id] || 0) + 1;
       S.shop[i] = { cardId: h.id, star: 1, sold: false, locked: false, born: S.time };
     }
     S.shop.length = C.cardCount;
   };
 
-  // 花金币刷新卡池，价格逐次上浮；全部锁定不扣金币，也不涨刷新费。
+  // 花饼干刷新卡池，固定消耗3钱币；全部锁定不扣饼干。
   S.refreshShop = function () {
     var allLocked = true;
     for (var i = 0; i < C.cardCount; i++) {
@@ -221,12 +267,11 @@
       return false;
     }
     if (S.gold < S.refreshCost) {
-      S.toastMsg('金币不足', 0.9);
+      S.toastMsg('饼干不足', 0.9);
       return false;
     }
     var paid = S.refreshCost;
     S.gold -= paid;
-    S.refreshCost = Math.min(C.REFRESH_COST_MAX, S.refreshCost + C.REFRESH_COST_STEP);
     S.rollShop();
     S.addFloat(S.shopAnchorX || 0, S.shopAnchorY || 0, '刷新 -' + paid, '#ffd166');
     S.notifyAction('refresh', { cost: paid });
@@ -243,7 +288,7 @@
       return false;
     }
     if (S.gold < S.capCost) {
-      S.toastMsg('金币不足', 0.9);
+      S.toastMsg('饼干不足', 0.9);
       return false;
     }
     S.gold -= S.capCost;
@@ -265,8 +310,10 @@
   S.clamp = clamp;
   S.dist2 = dist2;
 
-  S.addFloat = function (x, y, text, color) {
-    S.floats.push({ x: x, y: y, text: text, color: color || '#ffffff', life: 0.85, max: 0.85 });
+  S.addFloat = function (x, y, text, color, kind) {
+    // 战场只显示击败奖励，攻击、治疗及交易不显示数值飘字。
+    if (kind !== 'kill-reward') return;
+    S.floats.push({ x: x, y: y, text: text, color: color || '#ffffff', kind: kind, life: 0.85, max: 0.85 });
     if (S.floats.length > 40) S.floats.shift();
   };
 
@@ -292,7 +339,8 @@
     S.phase = 'playing';
     S.battleSpeed = 1;
     S.time = 0;
-    S.gold = C.GOLD_START;
+    S.gold = S.currentLevel === 1 ? C.GOLD_START_FIRST_LEVEL : C.GOLD_START;
+    S.biscuitTimer = 0;
     S.baseHp = C.BASE_HP;
     S.waveIndex = 0;
     S.waveState = 'prep';
@@ -301,7 +349,7 @@
     S.spawnTimer = 0;
     S.kills = 0;
     S.goldEarned = 0;
-    S.heroCap = C.UNIT_CAP_START;
+    S.heroCap = S.currentLevel === 1 ? C.UNIT_CAP_FIRST_LEVEL : C.UNIT_CAP_START;
     S.capCost = C.CAP_COST;
     S.refreshCost = C.REFRESH_COST;
     S.cardsPlaced = 0;
@@ -330,6 +378,7 @@
     S.shopFeedback = null;
     S.menuStartDelay = 0;
     S.unlockNotice = [];
+    S.unlockNoticeIndex = 0;
     S.shop.length = 0; // 新局不继承上一局的锁卡。
     S.rollShop();
   };

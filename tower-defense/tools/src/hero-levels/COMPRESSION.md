@@ -2,7 +2,7 @@
 
 状态：**已完成离线量化及图片阅读 / 非游戏或平台验收**。2026-11-11 22:36。
 
-仅修改 `package/res/Image/hero-levels.png` 和 `hero-levels-back.png` 两张 runtime 图片，没有更改其他游戏资源或帧映射。
+仅修改 `package/res/Image/outgame/hero-forms/hero-levels.png` 和 `hero-levels-back.png` 两张 runtime 图片，没有更改其他游戏资源或帧映射。
 
 | 图集 | 原始 RGBA bytes | 256色 PNG bytes | 减少 |
 |---|---:|---:|---:|

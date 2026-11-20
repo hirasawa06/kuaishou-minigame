@@ -83,6 +83,10 @@
     total = 0;
     failed.length = 0;
     var manifest = [];
+    // ── 首屏小素材优先发起加载，加载页不依赖角色与战斗大图集 ──
+    manifest.push(['loading-background', 'res/Image/ui/loading/background-v1.png']);
+    manifest.push(['loading-logo', 'res/Image/ui/loading/logo-v1.png']);
+    manifest.push(['loading-biscuit', 'res/Image/ui/loading/biscuit-v1.png']);
     // 字体图集
     var atlas = A.FontAtlas;
     for (var size in atlas) {
@@ -99,44 +103,66 @@
     if (A.MageImpact && A.MageImpact.src) manifest.push(['mage-impact', A.MageImpact.src]);
     if (A.Config.BOSS_IMPACT) manifest.push(['boss-impact', A.Config.BOSS_IMPACT.src]);
     // 治疗特效分层素材。
-    manifest.push(['heal-aura', 'res/Image/heal-aura.png']);
-    manifest.push(['heal-cross', 'res/Image/heal-cross.png']);
+    manifest.push(['heal-aura', 'res/Image/ingame/effects/heal-aura.png']);
+    manifest.push(['heal-cross', 'res/Image/ingame/effects/heal-cross.png']);
     // 个人资料：9 只猫狗头像图集（首页 / 名片 / 排行榜共用）
-    manifest.push(['avatars', 'res/Image/avatars.png']);
+    manifest.push(['avatars', 'res/Image/outgame/avatars/avatars-fill.png']);
+    manifest.push(['avatars-home', 'res/Image/outgame/avatars/avatars-home-r12.png']);
     // 界面图标图集：关闭 / 返回 / 箭头 / 勾选 / 分享 / 链接等
     if (A.SpriteAtlas && A.SpriteAtlas.src) manifest.push(['sprites', A.SpriteAtlas.src]);
     if (A.HeroForms) {
       manifest.push(['hero-levels', A.HeroForms.src]);
       manifest.push(['hero-levels-back', A.HeroForms.backSrc]);
     }
-    manifest.push(['home-background-clean', 'res/Image/home-background-clean-v2.jpg']);
-    manifest.push(['home-level-card-no-banner', 'res/Image/home-level-card-no-banner-v1.png']);
-    manifest.push(['home-level-frame-overlay', 'res/Image/home-level-frame-overlay-v1.png']);
-    for (var level = 1; level <= 6; level++) {
-      manifest.push(['level-cover-' + level, 'res/Image/level-covers/level-' + level + '.jpg']);
+    manifest.push(['home-background-clean', 'res/Image/outgame/home/home-background-clean-v2.jpg']);
+    manifest.push(['home-level-card-no-banner', 'res/Image/outgame/home/home-level-card-no-banner-v1.png']);
+    manifest.push(['home-level-frame-overlay', 'res/Image/ui/components/home-level-frame-overlay-v1.png']);
+    for (var level = 1; level <= 10; level++) {
+      manifest.push(['level-cover-' + level, 'res/Image/outgame/level-covers/level-' + level + '.jpg']);
     }
-    manifest.push(['home-level-arrows', 'res/Image/home-level-arrows-v1.png']);
-    manifest.push(['home-level-arrows-disabled', 'res/Image/home-level-arrows-disabled-v1.png']);
-    manifest.push(['home-level-nameplate', 'res/Image/home-level-nameplate-v1.png']);
-    manifest.push(['home-level-lock', 'res/Image/home-level-lock-v1.png']);
-    manifest.push(['home-menu-icons', 'res/Image/home-menu-icons-v1.png']);
-    manifest.push(['home-start-paw', 'res/Image/home-start-paw-v1.png']);
-    manifest.push(['in-game-background', 'res/Image/in-game-background-topdown.jpg']);
-    manifest.push(['guardian-photo', 'res/Image/guardian-photo-v1.png']);
+    manifest.push(['home-level-arrows', 'res/Image/ui/icons/home-level-arrows-v1.png']);
+    manifest.push(['home-level-arrows-disabled', 'res/Image/ui/icons/home-level-arrows-disabled-v1.png']);
+    manifest.push(['home-level-nameplate', 'res/Image/ui/components/home-level-nameplate-v3.png']);
+    manifest.push(['home-level-lock', 'res/Image/ui/icons/home-level-lock-v1.png']);
+    manifest.push(['home-menu-icons', 'res/Image/ui/icons/home-menu-icons-v1.png']);
+    manifest.push(['home-start-paw', 'res/Image/ui/icons/home-start-paw-v1.png']);
+    manifest.push(['in-game-background', 'res/Image/ingame/backgrounds/in-game-background-topdown.jpg']);
+    manifest.push(['guardian-photo', 'res/Image/outgame/home/guardian-photo-v1.png']);
+    ['grass', 'wood', 'carpet', 'dining', 'corridor'].forEach(function (id) {
+      manifest.push(['battle-map-' + id, 'res/Image/ingame/maps/' + id + '-v1.jpg']);
+    });
+    ['bed', 'food', 'toy', 'photo'].forEach(function (id) {
+      manifest.push(['battle-guardian-' + id, 'res/Image/ingame/guardians/' + id + '-v1.png']);
+    });
+    manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book.jpg']);
+    manifest.push(['collection-art', 'res/Image/outgame/collection/collection-art.png']);
+    manifest.push(['collection-lock', 'res/Image/ui/icons/collection-lock-v1.png']);
+    manifest.push(['battle-tray', 'res/Image/ui/components/battle/tray-v1.png']);
+    manifest.push(['battle-refresh', 'res/Image/ui/components/battle/refresh-v1.png']);
+    manifest.push(['battle-expand', 'res/Image/ui/components/battle/expand-v1.png']);
+    manifest.push(['battle-paw-token', 'res/Image/ui/icons/battle/paw-token-v1.png']);
+    manifest.push(['battle-white-bone', 'res/Image/ui/icons/battle/white-bone-v1.png']);
+    manifest.push(['battle-lock-closed', 'res/Image/ui/icons/battle/lock-closed-v1.png']);
+    manifest.push(['battle-lock-open', 'res/Image/ui/icons/battle/lock-open-v1.png']);
+    ['tank', 'war', 'mage', 'arch', 'healer'].forEach(function (id) {
+      manifest.push(['collection-scene-' + id, 'res/Image/outgame/collection/scenes-figma-263-161-hd/' + id + '.jpg']);
+      manifest.push(['collection-silhouette-' + id, 'res/Image/outgame/collection/silhouettes/' + id + '-silhouette-b6.png']);
+      manifest.push(['battle-shop-' + id, 'res/Image/ingame/characters/battle-shop/' + id + '-v2.png']);
+    });
 
-    manifest.push(['shield-dog-front', 'res/Image/shield-dog-front.png']);
-    manifest.push(['archer-cat-front', 'res/Image/archer-cat-front.png']);
-    manifest.push(['melee-cat-poses', 'res/Image/melee-cat-poses.png']);
-    manifest.push(['mage-dog-poses', 'res/Image/mage-dog-poses.png']);
-    manifest.push(['archer-cat-hurt', 'res/Image/archer-cat-hurt.png']);
-    manifest.push(['melee-cat-front', 'res/Image/melee-cat-front.png']);
-    manifest.push(['melee-cat-back', 'res/Image/melee-cat-back.png']);
-    manifest.push(['mage-dog-front', 'res/Image/mage-dog-front.png']);
-    manifest.push(['mage-dog-back', 'res/Image/mage-dog-back.png']);
-    manifest.push(['battle-fx-atlas', 'res/Image/battle-fx-atlas.png']);
-    manifest.push(['hud-panel', 'res/Image/hud-panel.png']);
-    manifest.push(['shop-tray', 'res/Image/shop-tray.png']);
-    manifest.push(['shop-button', 'res/Image/shop-button.png']);
+    manifest.push(['shield-dog-front', 'res/Image/ingame/characters/shield-dog-front.png']);
+    manifest.push(['archer-cat-front', 'res/Image/ingame/characters/archer-cat-front.png']);
+    manifest.push(['melee-cat-poses', 'res/Image/ingame/characters/melee-cat-poses.png']);
+    manifest.push(['mage-dog-poses', 'res/Image/ingame/characters/mage-dog-poses.png']);
+    manifest.push(['archer-cat-hurt', 'res/Image/ingame/characters/archer-cat-hurt.png']);
+    manifest.push(['melee-cat-front', 'res/Image/ingame/characters/melee-cat-front.png']);
+    manifest.push(['melee-cat-back', 'res/Image/ingame/characters/melee-cat-back.png']);
+    manifest.push(['mage-dog-front', 'res/Image/ingame/characters/mage-dog-front.png']);
+    manifest.push(['mage-dog-back', 'res/Image/ingame/characters/mage-dog-back.png']);
+    manifest.push(['battle-fx-atlas', 'res/Image/ingame/effects/battle-fx-atlas.png']);
+    manifest.push(['hud-panel', 'res/Image/ui/components/hud-panel.png']);
+    manifest.push(['shop-tray', 'res/Image/ui/components/shop-tray.png']);
+    manifest.push(['shop-button', 'res/Image/ui/components/shop-button.png']);
 
     total = manifest.length;
     pending = total;

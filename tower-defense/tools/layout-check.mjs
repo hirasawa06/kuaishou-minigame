@@ -49,6 +49,20 @@ function assert(condition, message) {
 
 function check(name, input, expected) {
   const ui = loadLayout(input)
+  // ── 全部弹窗共享安全可用区域中心，允许像素取整误差 ──
+  const centerX = (ui.safeLeft + ui.safeRight) / 2
+  const centerY = (ui.contentTop + ui.contentBottom) / 2 - 24
+  for (const rect of [ui.settings.sheet, ui.avatarPick.sheet, ui.invite.sheet,
+    ui.stamina.sheet, ui.pausePanel.panel, ui.result.panel, ui.result.losePanel]) {
+    assert(Math.abs(rect.x + rect.w / 2 - centerX) <= 0.5 &&
+      Math.abs(rect.y + rect.h / 2 - centerY) <= 0.5,
+    `${name}: dialog not centered in safe interactive area`)
+  }
+  for (const rect of [ui.resultLoseRevive, ui.resultLoseReplay, ui.resultLoseHome]) {
+    assert(rect.y >= ui.result.losePanel.y + ui.result.headerH &&
+      rect.y + rect.h <= ui.result.losePanel.y + ui.result.losePanel.h,
+    `${name}: lose result button outside panel`)
+  }
   assert(ui.systemTop === expected.systemTop, `${name}: systemTop ${ui.systemTop}`)
   assert(ui.contentTop === expected.contentTop, `${name}: contentTop ${ui.contentTop}`)
   assert(ui.contentBottom === expected.contentBottom, `${name}: contentBottom ${ui.contentBottom}`)
@@ -66,7 +80,7 @@ function check(name, input, expected) {
   assert(ui.field.y + ui.field.h <= ui.tray.y, `${name}: field overlaps tray`)
   const pause = ui.pausePanel.panel
   assert(pause.x >= ui.safeLeft && pause.x + pause.w <= ui.safeRight &&
-    pause.y >= ui.contentTop && pause.y + pause.h <= ui.contentBottom,
+    pause.y >= ui.contentTop - 24 && pause.y + pause.h <= ui.contentBottom - 24,
   `${name}: pause panel outside interactive area`)
   let previousPauseButton = null
   for (const key of ['resume', 'settings', 'restart', 'home']) {
@@ -81,19 +95,15 @@ function check(name, input, expected) {
   }
   const rp = ui.result.panel
   assert(rp.x >= ui.safeLeft && rp.x + rp.w <= ui.safeRight &&
-    rp.y >= ui.contentTop && rp.y + rp.h <= ui.contentBottom,
+    rp.y >= ui.contentTop - 24 && rp.y + rp.h <= ui.contentBottom - 24,
   `${name}: result panel outside interactive area`)
   for (const button of [ui.resultNext, ui.resultReplay, ui.resultHome]) {
     assert(button.x >= rp.x + 8 && button.x + button.w <= rp.x + rp.w - 8 &&
       button.y >= rp.y + 8 && button.y + button.h <= rp.y + rp.h - 8,
     `${name}: result button outside panel`)
   }
-  const notice = ui.result.notice
-  assert(notice.x >= rp.x + 8 && notice.x + notice.w <= rp.x + rp.w - 8 &&
-    notice.y >= rp.y + ui.result.headerH && notice.y + notice.h <= ui.resultNext.y - 8,
-  `${name}: unlock notice outside result content`)
-  assert(ui.result.statsY + ui.result.statsGap * 5 <= ui.resultNext.y,
-    `${name}: result stats overlap buttons`)
+  assert(ui.resultNext.y - (rp.y + ui.result.headerH) <= 24,
+    `${name}: result retains unused caption space`)
   for (const kind of ['menu', 'paused', 'result']) {
     const button = ui.btnRect(kind)
     assert(button.x >= ui.safeLeft && button.x + button.w <= ui.safeRight, `${name}: ${kind} button outside safe width`)
@@ -113,7 +123,7 @@ function check(name, input, expected) {
   const settings = ui.settings
   const sheet = settings.sheet
   assert(sheet.x >= ui.safeLeft && sheet.x + sheet.w <= ui.safeRight &&
-    sheet.y >= ui.contentTop && sheet.y + sheet.h <= ui.contentBottom,
+    sheet.y >= ui.contentTop - 24 && sheet.y + sheet.h <= ui.contentBottom - 24,
   `${name}: settings sheet outside interactive area`)
   for (const control of [settings.close, settings.musicRow, settings.sfxRow, settings.shareBtn]) {
     assert(control.x >= sheet.x + 6 && control.x + control.w <= sheet.x + sheet.w - 6 &&
@@ -153,8 +163,11 @@ function check(name, input, expected) {
     assert(r.x >= ui.safeLeft && r.x + r.w <= ui.safeRight &&
       r.y >= ui.contentTop && r.y + r.h <= ui.contentBottom,
     `${name}: shop card outside interactive area`)
-    assert(p.x >= r.x && p.y >= r.y && p.x + p.w <= r.x + r.w && p.y + p.h <= r.y + r.h,
-    `${name}: portrait outside shop card`)
+    // Figma 人物图从卡片左上角向外溢出，不能错误地按内容裁切；
+    // 但其可见范围仍必须留在可交互安全区内。
+    assert(p.x >= ui.safeLeft && p.y >= ui.contentTop &&
+      p.x + p.w <= ui.safeRight && p.y < ui.contentBottom,
+    `${name}: portrait origin outside interactive area`)
     assert(c.x - c.r >= r.x && c.x + c.r <= r.x + r.w &&
       c.y - c.r >= r.y && c.y + c.r <= r.y + r.h,
     `${name}: cost badge outside shop card`)
@@ -165,8 +178,8 @@ function check(name, input, expected) {
     `${name}: lock hit target outside shop card`)
     assert(hit.x <= l.x && hit.y <= l.y && hit.x + hit.w >= l.x + l.w && hit.y + hit.h >= l.y + l.h,
     `${name}: lock hit target misses visual button`)
-    assert(part.textX > p.x + p.w && part.textX < c.x - c.r,
-    `${name}: shop card title has no space`)
+    assert(part.textX > p.x + p.w,
+    `${name}: shop card title overlaps portrait`)
     assert(part.textX + 8 < l.x,
     `${name}: shop card attribute has no space before lock button`)
   }
