@@ -58,6 +58,12 @@
     D.centeredText('第' + waveNo + '/' + totalWaves + '波',
       plate.x + plate.w / 2, plate.y + plate.h / 2, 16 * s, D.color('#78432B'));
 
+    // 波次牌下方独立倍速按钮，绘制与点击共用40×40布局。
+    var speed = u.speedBtn;
+    drawCreamControl(speed, s);
+    D.centeredText((S.battleSpeed === 2 ? '2' : '1') + 'x',
+      speed.x + speed.w / 2, speed.y + speed.h / 2, 18 * s, brown);
+
     // ── 图标直接绘制，继续箭头不再依赖战斗图集 ──
     drawCreamControl(pb, s);
     if (S.phase === 'paused') {

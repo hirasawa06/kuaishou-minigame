@@ -201,27 +201,19 @@
     var seconds = Math.max(0, Math.ceil(snapshot.nextRecoveryMs / 1000));
     var cx = g.sheet.x + g.sheet.w / 2;
     dimBackground();
-    D.creamPanel(g.sheet, 1, 22);
-    D.roundRect(g.sheet.x + 7, g.sheet.y + 7, g.sheet.w - 14,
-      g.head - 11, 17, col('#f5d29f'));
-    fittedText('体力', cx, g.sheet.y + (g.head - 28) / 2,
-      28, g.sheet.w - 96, COLOR.brownDeep, 1);
-    closeButton(g.close);
+    profilePaper(g.sheet, g.head, '体力');
+    whiteClose(g.close);
     fittedText('当前体力 ' + snapshot.value + '/' + snapshot.max,
       cx, g.valueY, 28, g.sheet.w - 36, COLOR.brownDeep, 1);
     fittedText(full ? '体力已满' : '恢复倒计时 ' + Math.floor(seconds / 60) + ':' +
       ('0' + seconds % 60).slice(-2) + ' +1', cx, g.timerY,
       18, g.sheet.w - 36, COLOR.textDim, 1);
     var enabled = !full && !busy;
-    D.roundRect(g.ad.x, g.ad.y, g.ad.w, g.ad.h, g.ad.h / 2,
-      col(enabled ? COLOR.accentEdge : '#bca58b'));
-    D.roundRect(g.ad.x + 2, g.ad.y + 2, g.ad.w - 4, g.ad.h - 4,
-      (g.ad.h - 4) / 2, col(enabled ? COLOR.accentTop : '#e7dcc9'));
-    fittedText(busy ? '广告加载中' : full ? '体力已满' : '看广告 +10体力',
-      cx, g.ad.y + 10, 28, g.ad.w - 24,
-      enabled ? COLOR.accentText : COLOR.textDim, 1);
-    fittedText(S.toast ? S.toast.text : '完整观看广告后获得奖励', cx, g.noteY, 18,
-      g.sheet.w - 36, S.toast ? COLOR.brownDeep : COLOR.textDim, 1);
+    profileRow(g.ad, busy ? '广告加载中' : full ? '体力已满' : '看广告 +10体力');
+    if (!enabled) D.roundRect(g.ad.x, g.ad.y, g.ad.w, g.ad.h, g.ad.h / 2,
+      col('#e7dcc9', 0.48));
+    if (S.toast) fittedText(S.toast.text, cx, g.noteY, 18,
+      g.sheet.w - 36, COLOR.brownDeep, 1);
   }
 
   // ── 我的名片 ────────────────────────────────────────────────

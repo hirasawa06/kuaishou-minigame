@@ -227,40 +227,11 @@ function toggleOrientation() {
 <script src="gameplay/data/character-animations.js?v=healer-duration08-1119-1934"></script>
 <script src="gameplay/data/avatars.js?v=mage-name-1927"></script>
 <script src="gameplay/config.js?v=random-batches-1642"></script>
-<script src="gameplay/layout.js?v=guardian-win-1611"></script>
+<script src="gameplay/layout.js?v=stamina-dialog-1719"></script>
 <script src="gameplay/state.js?v=new-pet-sequence-1602"></script>
 <script src="gameplay/profile.js?v=avatar-migration-1639"></script>
 <script>
-// 仅本地H5测试：本次首次加载恢复初始存档，后续加载保留新进度并免体力消耗。
-(function () {
-  if (location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') return;
-  var resetKey = 'td_local_initial_unlimited_20261120_1603';
-  var profile = window.AIGCUtils.Profile;
-  try {
-    if (localStorage.getItem(resetKey) !== 'done') {
-      localStorage.removeItem('td_profile_v1');
-      profile.load();
-      localStorage.setItem(resetKey, 'done');
-    }
-  } catch (error) { console.warn('Local test profile reset failed', error); }
-  var snapshot = profile.getStaminaSnapshot;
-  profile.getStaminaSnapshot = function (now) {
-    profile.addStamina(window.AIGCUtils.Config.STAMINA_MAX, now);
-    return snapshot.call(profile, now);
-  };
-  profile.consumeStamina = function () {
-    profile.addStamina(window.AIGCUtils.Config.STAMINA_MAX);
-    return true;
-  };
-})();
-</script>
-<script>
 // ── 本地预览：一次性补满体力或解锁全部，不清除头像等已有存档 ──
-// 本地调试不限开局次数，正式平台继续使用原体力规则。
-if (['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0) {
-  window.AIGCUtils.Profile.addStamina(window.AIGCUtils.Config.STAMINA_MAX);
-  window.AIGCUtils.Profile.consumeStamina = function () { return true; };
-}
 if (['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0 &&
     (_q.get('refill') === 'stamina' || _q.get('unlock') === 'all')) {
   if (_q.get('unlock') === 'all') {
@@ -288,8 +259,8 @@ if (['localhost', '127.0.0.1'].indexOf(window.location.hostname) >= 0 &&
 <script src="gameplay/input.js?v=all-unit-drag-1651"></script>
 <script src="gameplay/render/scene.js?v=melee-drag-ghost-1656"></script>
 <script src="gameplay/render/battle-shop.js?v=sell-glyph-scale-1519"></script>
-<script src="gameplay/ui.js?v=stable-collection-1639"></script>
-<script src="gameplay/render/hud.js?v=isolated-pet-preview-1639"></script>
+<script src="gameplay/ui.js?v=stamina-dialog-1719"></script>
+<script src="gameplay/render/hud.js?v=speed-button-1712"></script>
 <script src="gameplay/render/safe-area-debug.js?v=3"></script>
 <script src="gameplay/game.js?v=sell-hover-1515"></script>
 
