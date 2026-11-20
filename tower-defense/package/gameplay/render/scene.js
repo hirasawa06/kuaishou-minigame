@@ -670,7 +670,7 @@
     if (!def) return;
     if (drag.kind === 'unit') {
       var unit = drag.unit;
-      if (!unit || unit.dead || unit.hp <= 0 || def.moveSpeed !== 0 || S.units.indexOf(unit) < 0) return;
+      if (!unit || unit.dead || unit.hp <= 0 || S.units.indexOf(unit) < 0) return;
       // 原位角色保持不透明，仅拖动副本半透明；售价统一显示在出售区。
       var ghostRig = A.Rigs && A.Rigs[unit.rigId || def.id];
       var ghostSize = ghostRig ? def.radius * 3.05 * (ghostRig.scale || 1) : def.radius * 2.35;

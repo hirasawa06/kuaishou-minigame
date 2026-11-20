@@ -169,7 +169,7 @@
     var dy = py - drag.startY;
     if (Math.abs(dx) + Math.abs(dy) > MOVE_TOL) drag.moved = true;
     if (!drag.active && drag.moved) {
-      if (drag.kind !== 'unit' || (S.phase === 'playing' && drag.unit.def.moveSpeed === 0 && allowed('sell', drag.unit))) drag.active = true;
+      if (drag.kind !== 'unit' || (S.phase === 'playing' && allowed('sell', drag.unit))) drag.active = true;
     }
     if (drag.kind === 'lock') return;
     if (drag.active && drag.kind !== 'unit') {
@@ -260,7 +260,7 @@
     if (!d.def) return;
     if (d.kind === 'unit') {
       if (d.active && S.phase === 'playing' && !d.unit.dead && d.unit.hp > 0 &&
-        S.units.indexOf(d.unit) >= 0 && d.unit.def.moveSpeed === 0 && allowed('sell', d.unit) && hitControl(u.sellZone, px, py, 0)) {
+        S.units.indexOf(d.unit) >= 0 && allowed('sell', d.unit) && hitControl(u.sellZone, px, py, 0)) {
         A.Battle.sellUnit(d.unit);
       }
       return;

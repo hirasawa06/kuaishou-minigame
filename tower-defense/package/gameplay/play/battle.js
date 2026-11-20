@@ -165,10 +165,10 @@
   function getUpgradePreview() { return null; }
   function upgradeUnit() { return false; }
 
-  // 只接受仍在场上的存活驻守单位；不读取会随平衡调整改变的 def.cost。
+  // 接受仍在场上的所有存活角色；不读取会随平衡调整改变的 def.cost。
   function canSellUnit(unit) {
     return !!(unit && !unit.dead && unit.hp > 0 && unit.def &&
-      unit.def.moveSpeed === 0 && S.units.indexOf(unit) >= 0 && unit.maxHp > 0 &&
+      S.units.indexOf(unit) >= 0 && unit.maxHp > 0 &&
       typeof unit.purchaseCost === 'number' && isFinite(unit.purchaseCost) && unit.purchaseCost >= 0);
   }
 
