@@ -28,7 +28,8 @@
     var u = L.ui;
     var s = u.battleScale;
     // 切图高于可视区域，底部自然裁剪，保留 Figma 木纹的原始比例。
-    var tray = { x: u.safeLeft - s, y: u.tray.y, w: 416 * s, h: 296 * s };
+    // 图片右侧两列为透明留白，可见414px主体从battleLeft开始对齐。
+    var tray = { x: u.battleLeft, y: u.tray.y, w: 416 * s, h: 296 * s };
     if (!image('battle-tray', tray)) {
       D.vGradient(0, u.tray.y, u.w, u.h - u.tray.y,
         D.color('#fff0d9'), D.color('#f2c981'), 14);
