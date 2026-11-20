@@ -2,6 +2,9 @@
     "deviceOrientation": "portrait",
     "showStatusBar": false,
     "runtimeVersion": "1.0.0",
-    "subpackages": [],
+    "subpackages": [
+        { "name": "battle-art", "root": "subpackages/battle-art/" },
+        { "name": "collection-art", "root": "subpackages/collection-art/" }
+    ],
     "parallelPreloadSubpackages": []
 }
