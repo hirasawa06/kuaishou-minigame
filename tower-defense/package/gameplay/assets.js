@@ -166,7 +166,23 @@
 
     total = manifest.length;
     pending = total;
-    for (var i = 0; i < manifest.length; i++) load(manifest[i][0], manifest[i][1]);
+    for (var i = 0; i < manifest.length; i++) {
+      (function (item) {
+        var resource = A.ResourcePackages ? A.ResourcePackages.resolve(item[1]) : { src: item[1] };
+        if (!resource.name) { load(item[0], resource.src); return; }
+        if (!A.SubpackageLoader) {
+          failed.push({ key: item[0], src: resource.src, reason: 'subpackage-loader-missing' });
+          pending--; check(); return;
+        }
+        A.SubpackageLoader.load(resource.name, {
+          onSuccess: function () { load(item[0], resource.src); },
+          onFail: function () {
+            failed.push({ key: item[0], src: resource.src, reason: 'subpackage-load-failed' });
+            pending--; check();
+          }
+        });
+      })(manifest[i]);
+    }
     if (pending === 0) check();
   }
 

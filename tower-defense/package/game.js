@@ -74,6 +74,8 @@ require("./gameplay/state.js"); // 运行时数据模型
 require("./gameplay/profile.js"); // 个人资料 / 设置 / 虚拟地区榜
 require("./gameplay/render/gl.js"); // WebGL 批渲染器
 require("./gameplay/render/draw.js"); // 绘图原语
+require("./kwaiOpenApi/kwai-subpackage.js");
+require("./gameplay/resource-packages.js");
 require("./gameplay/assets.js"); // 纹理加载
 require("./gameplay/audio.js"); // 音效
 require("./gameplay/anim/rig.js"); // 分件关键帧动画

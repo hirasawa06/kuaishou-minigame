@@ -16,10 +16,12 @@ gen-assets.py — 塔防小游戏离线资源生成器
 """
 
 import hashlib
+import io
 import json
 import math
 import os
 import re
+import shutil
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -602,8 +604,111 @@ def main():
     }, ensure_ascii=False))
 
 
+def archive_unused_fonts():
+    # 当前图集及任何代码引用都保留，旧生成文件归档到主包外。
+    referenced = set()
+    for directory, _, names in os.walk(PKG):
+        for name in names:
+            if name.endswith((".js", ".html", ".json")):
+                with open(os.path.join(directory, name), encoding="utf-8") as source:
+                    referenced.update(re.findall(r'res/Image/ui/fonts/[^"\s]+\.png', source.read()))
+    archive = os.path.join(ROOT, "design", "unused-font-atlases")
+    moved = []
+    for name in sorted(os.listdir(UI_FONT_DIR)):
+        relative = "res/Image/ui/fonts/" + name
+        if not name.startswith("font-") or not name.endswith(".png") or relative in referenced:
+            continue
+        source = os.path.join(UI_FONT_DIR, name)
+        os.makedirs(archive, exist_ok=True)
+        target = os.path.join(archive, name)
+        if os.path.exists(target):
+            raise RuntimeError("Archive already exists: " + target)
+        moved.append({"file": relative, "bytes": os.path.getsize(source)})
+        shutil.move(source, target)
+    print(json.dumps({"archived": len(moved), "bytesSaved": sum(item["bytes"] for item in moved),
+                      "files": moved}, ensure_ascii=False))
+
+
+def optimize_package_pngs():
+    # 无损重编码：尺寸与解码后的RGBA像素必须逐字节一致，且仅采用更小文件。
+    saved = 0
+    count = 0
+    for directory, _, names in os.walk(IMG_DIR):
+        for name in names:
+            if not name.endswith(".png"):
+                continue
+            path = os.path.join(directory, name)
+            with Image.open(path) as original:
+                original.load()
+                output = io.BytesIO()
+                original.save(output, format="PNG", optimize=True, compress_level=9)
+                data = output.getvalue()
+                old_size = os.path.getsize(path)
+                if len(data) >= old_size:
+                    continue
+                with Image.open(io.BytesIO(data)) as candidate:
+                    if candidate.size != original.size or candidate.convert("RGBA").tobytes() != original.convert("RGBA").tobytes():
+                        raise RuntimeError("Lossless verification failed: " + path)
+                with open(path, "wb") as target:
+                    target.write(data)
+                saved += old_size - len(data)
+                count += 1
+    print(json.dumps({"losslessPngs": count, "bytesSaved": saved}))
+
+
+def prepare_resource_packages():
+    archive = os.path.join(ROOT, "design", "jpeg-before-compression")
+    saved = 0
+    for directory, _, names in os.walk(os.path.join(PKG, "res")):
+        for name in names:
+            if not name.endswith(".jpg"):
+                continue
+            path = os.path.join(directory, name)
+            relative = os.path.relpath(path, PKG)
+            with Image.open(path) as image:
+                output = io.BytesIO()
+                image.save(output, format="JPEG", quality=78, optimize=True, progressive=True)
+                data = output.getvalue()
+                if len(data) >= os.path.getsize(path):
+                    continue
+                backup = os.path.join(archive, relative)
+                os.makedirs(os.path.dirname(backup), exist_ok=True)
+                if not os.path.exists(backup):
+                    shutil.copy2(path, backup)
+                saved += os.path.getsize(path) - len(data)
+                with open(path, "wb") as target:
+                    target.write(data)
+    moved = 0
+    groups = [("battle-art", "res/Image/ingame"),
+              ("collection-art", "res/Image/outgame/collection"),
+              ("collection-art", "res/Image/outgame/level-covers"),
+              ("collection-art", "res/Image/outgame/avatars")]
+    for package, relative in groups:
+        directory = os.path.join(PKG, relative)
+        for parent, _, names in os.walk(directory):
+            for name in names:
+                source = os.path.join(parent, name)
+                path = os.path.relpath(source, PKG).replace(os.sep, "/")
+                if path in ("res/Image/outgame/level-covers/level-1.jpg",
+                            "res/Image/outgame/avatars/avatars-home-r12.png"):
+                    continue
+                target = os.path.join(PKG, "subpackages", package, path)
+                if os.path.exists(target):
+                    raise RuntimeError("Resource already exists: " + target)
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                shutil.move(source, target)
+                moved += 1
+    print(json.dumps({"jpegBytesSaved": saved, "subpackageFiles": moved}))
+
+
 if __name__ == "__main__":
-    if "--fonts-only" in sys.argv:
+    if "--prepare-resource-packages" in sys.argv:
+        prepare_resource_packages()
+    elif "--optimize-package-pngs" in sys.argv:
+        optimize_package_pngs()
+    elif "--archive-unused-fonts" in sys.argv:
+        archive_unused_fonts()
+    elif "--fonts-only" in sys.argv:
         print(json.dumps({"glyphs": len(generate_fonts()[18]["glyphs"]),
                           "fontSizes": [48, 28, 18]}, ensure_ascii=False))
     else:

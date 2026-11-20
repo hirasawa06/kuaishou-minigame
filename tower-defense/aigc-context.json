@@ -11,6 +11,9 @@
     "device",
     "storage"
   ],
-  "subpackages": [],
+  "subpackages": [
+    { "name": "battle-art", "root": "subpackages/battle-art/" },
+    { "name": "collection-art", "root": "subpackages/collection-art/" }
+  ],
   "currentStep": 5
 }
