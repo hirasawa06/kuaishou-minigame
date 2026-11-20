@@ -467,7 +467,7 @@
     if (blendAdditive) gl.blendFunc(gl.ONE, gl.ONE);
     else gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     // 着色器里按贴图 alpha 预乘，透明区不加亮
-    if (loc.uAdd) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
+    if (loc.uAdd != null) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
   }
 
   function isAdditive() { return blendAdditive; }
@@ -485,9 +485,14 @@
   function flush() {
     if (!gl || quadCount === 0) return;
     gl.useProgram(prog);
+    // 手机宿主可能共用上下文；每批显式恢复自己的混合状态。
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(blendAdditive ? gl.ONE : gl.SRC_ALPHA,
+      blendAdditive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
     gl.uniform2f(loc.uRes, resW, resH);
     if (loc.uSceneLight != null) gl.uniform4f(loc.uSceneLight, sceneLight[0], sceneLight[1], sceneLight[2], sceneLight[3]);
-    if (loc.uAdd) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
+    if (loc.uAdd != null) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, buffer.subarray(0, quadCount * 4 * FLOATS_PER_VERT));
     var stride = FLOATS_PER_VERT * 4;
@@ -514,10 +519,10 @@
     stats.quads = 0;
     sceneLight = [0, 0, 1, 0];
     stats.flushes = 0;
-    if (blendAdditive) {
-      blendAdditive = false;
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    }
+    blendAdditive = false;
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(rgb[0], rgb[1], rgb[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(prog);

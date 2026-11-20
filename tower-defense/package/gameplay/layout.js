@@ -61,6 +61,7 @@
     // 779 是 Figma 顶部控件到第二排卡片底部的有效高度。
     // 标准 414×896 不缩放；有刘海/底部安全区时只等比收紧整套战斗 UI。
     var battleScale = Math.min(safeW / 414, Math.max(0.01, (contentH - 0.5) / 779));
+    var battleLeft = metrics.safeLeft + (safeW - 414 * battleScale) / 2;
     var battleTop = Math.max(contentTop - 96 * battleScale,
       contentBottom - 896 * battleScale);
     var pad = Math.round(Math.max(10, Math.min(22, w * 0.033)));
@@ -101,6 +102,7 @@
     ui.sourceSafeTop = L.safeTop || 0;
     ui.systemTop = st;
     ui.safeLeft = metrics.safeLeft;
+    ui.battleLeft = battleLeft;
     ui.safeRight = metrics.safeRight;
     ui.safeBottom = contentBottom;
     ui.bottomInset = metrics.bottomInset;
@@ -134,27 +136,27 @@
 
     // ── Figma 275:246 底部托盘：饼干、两个操作键与 2×2 卡池 ──
     var goldBar = {
-      x: metrics.safeLeft + 20 * battleScale,
+      x: battleLeft + 20 * battleScale,
       y: tray.y + 22 * battleScale,
       w: 71 * battleScale,
       h: 38 * battleScale,
     };
     ui.shopBtnH = 48 * battleScale;
     ui.refreshBtn = {
-      x: metrics.safeLeft + 160 * battleScale,
+      x: battleLeft + 160 * battleScale,
       y: tray.y + 18 * battleScale,
       w: 114 * battleScale,
       h: 48 * battleScale,
     };
     ui.capBtn = {
-      x: metrics.safeLeft + 286 * battleScale,
+      x: battleLeft + 286 * battleScale,
       y: tray.y + 18 * battleScale,
       w: 114 * battleScale,
       h: 48 * battleScale,
     };
     ui.goldBar = goldBar;
     ui.shop = {
-      x: metrics.safeLeft + 14 * battleScale,
+      x: battleLeft + 14 * battleScale,
       y: tray.y + 83 * battleScale,
       w: 386 * battleScale,
       h: 156 * battleScale,
