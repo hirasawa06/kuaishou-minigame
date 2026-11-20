@@ -37,7 +37,13 @@ for (const id of ['arch', 'mage']) {
       tx: 207, ty: 399, speed: 680, life: 1, dmg: 10, kind: 'light' };
     S.projectiles = [p];
     A.Battle.testProjectiles(0.1);
-    assert.equal(rear.hp, 10000, '飞行中绕后不命中');
+    assert.equal(rear.hp, 9990, '发射后绕后仍命中');
+    rear.hp = 10000;
+    front.y = unit.y - def.range - 100;
+    S.projectiles = [{ sourceUnit: unit, targetUid: front.uid, x: front.x,
+      y: front.y + 1, tx: 207, ty: 370, speed: 680, life: 1, dmg: 10, kind: 'light' }];
+    A.Battle.testProjectiles(0.1);
+    assert.equal(front.hp, 9990, '发射后超出角色攻击距离仍命中');
     front.y = 395;
     A.Battle.testSplash({ sourceUnit: unit, splash: 100, dmg: 10, kind: 'magic' }, 207, 400);
     assert(front.hp < 10000);
@@ -45,7 +51,7 @@ for (const id of ['arch', 'mage']) {
   }
 }
 assert(A.Battle.testRange({ def: S.heroAtStar('war', 1), x: 207, y: 400 }, enemy(2, 207, 410)));
-console.log('两种远程×三星前方180度、出手/弹道/范围伤害及战士隔离：通过');
+console.log('两种远程×三星出手范围、发射后绕后/超距命中、范围伤害及战士隔离：通过');
 for (const star of [1, 2, 3]) {
   const tank = { uid: 1, def: S.heroAtStar('tank', star), x: 207, y: 400 };
   S.units = [tank];

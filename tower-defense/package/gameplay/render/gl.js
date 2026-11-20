@@ -42,6 +42,8 @@
     'uniform float uAdd;',
     'uniform vec4 uClipRect;',
     'uniform float uClipRadius;',
+    'uniform vec4 uTutorialHole;',
+    'uniform float uTutorialRadius;',
     'uniform vec4 uSceneLight;', // 调色强度、身体中心Y、画布高、顶部光强度
     // ── 密集高斯核：81次采样连续羽化，边缘权重渐减并归一 ──
     'vec4 blurredCover(vec2 uv, vec2 d) {',
@@ -77,7 +79,21 @@
     // ── 主按钮：纯色填充，浅黄色柔光只沿顶部内缘分布 ──
     // ── 模式12：抗锯齿继续三角，直接绘制无需图集 ──
     // ── 模式13：圆润四角星的距离场，圆头和抗锯齿无需图片 ──
-    '  if (vMode > 12.5) {',
+    '  if (vMode > 13.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    float r = vShape.z;',
+    '    vec2 q = abs(p) - (h - r);',
+    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    '    if (uTutorialHole.z > 0.0) {',
+    '      vec2 halfHole = uTutorialHole.zw * 0.5;',
+    '      vec2 holeQ = abs(vec2(vScreenX, vScreenY) - uTutorialHole.xy - halfHole) - (halfHole - uTutorialRadius);',
+    '      float holeDist = length(max(holeQ, 0.0)) + min(max(holeQ.x, holeQ.y), 0.0) - uTutorialRadius;',
+    '      dist = min(dist, holeDist);',
+    '    }',
+    '    float alpha = smoothstep(-0.7, 0.7, dist);',
+    '    if (alpha < 0.004) discard;',
+    '    c.a *= alpha;',
+    '  } else if (vMode > 12.5) {',
     '    vec2 p = abs((vUV - 0.5) * 2.0);',
     '    p = vec2(min(p.x, p.y), max(p.x, p.y));',
     '    vec2 edge = vec2(0.30, -0.56);',
@@ -297,6 +313,8 @@
     loc.uAdd = gl.getUniformLocation(prog, 'uAdd');
     loc.uClipRect = gl.getUniformLocation(prog, 'uClipRect');
     loc.uClipRadius = gl.getUniformLocation(prog, 'uClipRadius');
+    loc.uTutorialHole = gl.getUniformLocation(prog, 'uTutorialHole');
+    loc.uTutorialRadius = gl.getUniformLocation(prog, 'uTutorialRadius');
     loc.uSceneLight = gl.getUniformLocation(prog, 'uSceneLight');
 
     vbo = gl.createBuffer();
@@ -373,6 +391,13 @@
   }
 
   // ── 切换容器前提交批次，避免裁切状态影响后续文字与按钮 ──
+  function setTutorialHole(rect, radius) {
+    if (!gl) return;
+    flush();
+    gl.uniform4f(loc.uTutorialHole, rect ? rect.x : 0, rect ? rect.y : 0,
+      rect ? rect.w : 0, rect ? rect.h : 0);
+    gl.uniform1f(loc.uTutorialRadius, rect ? Math.min(radius || 0, rect.w / 2, rect.h / 2) : 0);
+  }
   function setClipRect(rect, radius) {
     if (!gl) return;
     flush();
@@ -534,6 +559,7 @@
   A.Render.setTexture = setTexture;
   A.Render.setMaskTexture = setMaskTexture;
   A.Render.setClipRect = setClipRect;
+  A.Render.setTutorialHole = setTutorialHole;
   A.Render.invalidateTexture = invalidateTexture;
   A.Render.flush = flush;
   A.Render.beginFrame = beginFrame;

@@ -26,9 +26,11 @@
 
     // ── 经济 ──
     GOLD_START: 30,
+    GOLD_START_FIRST_LEVEL: 42, // 一星镭射7 + 扩建15 + 刷新3 + 二星镭射14 + 余留3
     BISCUIT_INTERVAL: 5, // 战斗有效时间秒数，不随倍速加快
     BASE_HP: 100,
-    UNIT_CAP_START: 4,      // 初始可上场英雄数
+    UNIT_CAP_START: 3,      // 初始可上场英雄数
+    UNIT_CAP_FIRST_LEVEL: 1, // 第一关初始席位
     UNIT_CAP_MAX: 20,       // 上限
     UNIT_CAP_STEP: 1,       // 每次购买 +1
     UNIT_MIN_GAP: 32,
@@ -40,6 +42,8 @@
 
     // 卡池刷新：每次固定消耗3钱币
     REFRESH_COST: 3,
+    // ── 第二关起逐波放开重复，第五波起恢复独立均匀抽卡 ──
+    SHOP_REPEAT_WEIGHTS: [0.15, 0.15, 0.4, 0.7],
     // 买人口：每次涨价
     CAP_COST: 15,
     CAP_COST_STEP: 10,
@@ -54,6 +58,14 @@
     HERO_STAR_SPEED_SCALES: [1, 1.15, 1.30],
     // ── 主动位移速度：与攻击速度分别配置，驻守角色保持为 0 ──
     HERO_STAR_MOVE_SPEED_SCALES: [1, 1.25, 1.5],
+    // ── 三星机制：费用与一、二星行为保持，参数集中用于玩法及收藏 ──
+    HERO_THREE_STAR_EFFECTS: {
+      tank: { damageReduction: 0.4 },
+      war: { attackMultiplier: 1.25, cleaveRatio: 0.5, cleaveRange: 60 },
+      arch: { extraShotRatio: 0.5 },
+      mage: { echoRatio: 0.5 },
+      healer: { healTargets: 2 }
+    },
     // ── 收藏数值目录：新属性登记后自动进入档案，消耗固定末行 ──
     HERO_DETAIL_STATS: [
       { key: 'hp', label: '生命' },
@@ -88,7 +100,7 @@
         // 体型扩大后的承伤与输出补偿。
         hp: 504, atk: 50.4, interval: 0.8,
         // 逻辑直径 43.2；攻击与追击距离同步扩大 1.2 倍。
-        range: 55.2, radius: 21.6, moveSpeed: 52,
+        range: 44.16, radius: 21.6, moveSpeed: 52,
         taunt: 0, splash: 0,
         aggro: 312,
         directionRig: { front: 'war-front', back: 'war-back' },
@@ -160,7 +172,9 @@
     // 每波敌人血量 / 攻击成长
     waveHpScale: 1.13,
     waveAtkScale: 1.08,
-    spawnGap: 0.75,
+    spawnBatchMin: 1,
+    spawnBatchMax: 3,
+    spawnBatchGap: 1.5,
     waveGap: 6.0,
     firstWaveDelay: 5.0,
 
@@ -171,7 +185,7 @@
 
     // 十个独立关卡：首关五波，其余十波；名称与倍率为首轮可调数值。
     LEVELS: [
-      { name: '新手引导', hpScale: 1.00, atkScale: 1.00, map: 'grass', guardian: 'bed', guardianName: '宠物的窝' },
+      { name: '新手引导', hpScale: 1.00, atkScale: 1.00, map: 'grass', guardian: 'photo', guardianName: '主人合照' },
       { name: '沙发防线', hpScale: 1.08, atkScale: 1.05, map: 'carpet', guardian: 'toy', guardianName: '宠物玩具' },
       { name: '窗边警报', hpScale: 1.16, atkScale: 1.10, map: 'wood', guardian: 'photo', guardianName: '合照' },
       { name: '地毯守卫', hpScale: 1.24, atkScale: 1.15, map: 'carpet', guardian: 'photo', guardianName: '合照' },
@@ -187,15 +201,13 @@
     // groups: [敌人 id, 数量]
     WAVES: [
       { groups: [['small', 8]] },
-      { groups: [['small', 10], ['normal', 3]] },
+      { groups: [['small', 8], ['normal', 2]] },
       { groups: [['normal', 6], ['small', 6]] },
-      { groups: [['elite', 1], ['small', 12]] },
-      { groups: [['normal', 9], ['elite', 1]] },
-      { groups: [['elite', 2], ['small', 14]] },
-      { groups: [['normal', 10], ['elite', 2], ['small', 10]] },
-      { groups: [['elite', 3], ['normal', 12]] },
-      { groups: [['elite', 4], ['small', 16]] },
-      { groups: [['boss', 1], ['elite', 3], ['normal', 8]] },
+      { groups: [['elite', 1], ['small', 13]] },
+      { groups: [['normal', 15], ['elite', 1]] },
+      { groups: [['elite', 2], ['small', 12], ['normal', 4]] },
+      { groups: [['normal', 10], ['elite', 2], ['small', 8]] },
+      { groups: [['boss', 1], ['elite', 3], ['normal', 10], ['small', 8]] },
     ],
   };
 
@@ -203,10 +215,30 @@
   C.HERO_MAX_LEVEL = C.HERO_MAX_STAR;
   C.HERO_LEVEL_SCALES = C.HERO_STAR_SCALES;
 
-  // 静态 WAVES 保留十波母表；战斗与绘制必须使用按关卡查询接口。
-  var firstLevelWaves = C.WAVES.slice(0, 5);
+  // 静态 WAVES 为八波母表；战斗与绘制必须使用按关卡查询接口。
+  // 首关只出现台灯和床头柜，沙发精英从后续关卡开始出现。
+  var firstLevelWaves = [
+    { groups: [['small', 8]] },
+    { groups: [['small', 10], ['normal', 3]] },
+    { groups: [['normal', 6], ['small', 6]] },
+    { groups: [['small', 12]] },
+    { groups: [['normal', 9]] }
+  ];
+  C.LEVELS.forEach(function (level) { level.hpScale = 1; level.atkScale = 1; });
   C.wavesForLevel = function (level) {
-    return level === 1 ? firstLevelWaves : C.WAVES;
+    if (level === 1) return firstLevelWaves;
+    var extra = Math.max(0, Math.min(C.LEVELS.length, level || 2) - 2);
+    return C.WAVES.map(function (wave, index) {
+      var groups = wave.groups.map(function (group) {
+        return [group[0] === 'boss' && level !== 5 && level !== 10 ? 'normal' : group[0], group[1]];
+      });
+      var target = groups.filter(function (group) { return group[0] === 'small'; })[0] ||
+        groups.filter(function (group) { return group[0] === 'normal'; })[0];
+      // 每关总量增加10只，均匀分配到8波，后段承担余量。
+      var waveExtra = index >= 6 ? 2 : 1;
+      target[1] += extra * waveExtra;
+      return { groups: groups };
+    });
   };
   C.heroUnlockLevel = function (id) {
     return C.HERO_UNLOCK_LEVELS[id] || 0;

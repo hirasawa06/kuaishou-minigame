@@ -559,6 +559,35 @@ for (let frame = 0; frame < 900; frame++) {
 }
 if (!chasedAround || chaseEnemy.hp >= 10000) throw new Error('近战猫追击未绕开队友并命中敌人 ' + JSON.stringify({x:chasingCat.x,y:chasingCat.y,hp:chaseEnemy.hp,path:chasingCat.returnPath,enemyY:chaseEnemy.y,anim:chasingCat.anim,pending:chasingCat.pendingHit,timer:chasingCat.atkTimer,phase:S.phase}))
 console.log('warrior chase obstacle route: ok')
+// 旧目标在范围外不能阻止攻击贴身的小怪（录屏中的卡住场景）。
+S.reset()
+S.phase = 'playing'
+S.waveTimer = 100
+const surroundedCat = testUnit(S.heroById('war'), 9971, bossUi.field.x + bossUi.field.w / 2)
+surroundedCat.y = bossUi.baseStopY - 130
+surroundedCat.homeY = surroundedCat.y
+const distantTarget = { ...chaseEnemy, uid: 9972, x: surroundedCat.x + 140,
+  y: bossUi.baseStopY - 15, hp: 10000, maxHp: 10000, atkTimer: 100,
+  pendingHit: -1, anim: 'idle', animT: 0 }
+const contactEnemy = { ...distantTarget, uid: 9973, x: surroundedCat.x + 48, y: surroundedCat.y }
+surroundedCat.pendingTarget = distantTarget.uid
+S.units.push(surroundedCat)
+S.enemies.push(distantTarget, contactEnemy)
+if (A.Battle.findTarget(surroundedCat) !== contactEnemy) throw new Error('范围外旧目标阻止近战迎战贴身敌人')
+for (let frame = 0; frame < 180 && contactEnemy.hp === 10000; frame++) A.Battle.update(1 / 60)
+if (contactEnemy.hp >= 10000) throw new Error('贴身敌人没有受到实际攻击')
+console.log('warrior nearby attack fallback: ok')
+// 可攻击目标优先；同层按离家最近、离自己最近排序，不被旧目标抢占。
+surroundedCat.anim = 'idle'
+surroundedCat.pendingHit = -1
+const homeCloser = { ...contactEnemy, uid: 9974, x: surroundedCat.x, y: surroundedCat.y + 55 }
+S.enemies = [distantTarget, contactEnemy, homeCloser]
+surroundedCat.pendingTarget = contactEnemy.uid
+if (A.Battle.findTarget(surroundedCat) !== homeCloser) throw new Error('范围内目标未按离家距离排序')
+const sameHomeFar = { ...homeCloser, uid: 9975, x: surroundedCat.x + 25 }
+S.enemies = [sameHomeFar, homeCloser]
+if (A.Battle.findTarget(surroundedCat) !== homeCloser) throw new Error('同距家目标未按自身距离排序')
+console.log('attack target priority: ok')
 // 动作场也按同一0.48秒命中时刻启动特效，不结算实际伤害。
 for (const file of ['gameplay/data/character-animations.js', 'gameplay/anim/defs.js']) {
   vm.runInContext(fs.readFileSync(path.join(PKG, file), 'utf8'), ctx, { filename: file })
@@ -594,4 +623,24 @@ if (S.effects.filter((e) => e.type === 'smoke').length !== 1) {
   console.error('退场烟雾重复触发')
   process.exit(1)
 }
+// 第一只镭射喵部署后必须锁操作并真实击败第一波单只小怪。
+vm.runInContext(fs.readFileSync(path.join(PKG, 'gameplay/tutorial.js'), 'utf8'), ctx)
+S.currentLevel = 1
+S.reset()
+S.phase = 'playing'
+A.Profile.data.tutorialStarComplete = false
+A.Tutorial.begin()
+const demoArcher = testUnit(S.heroById('arch'), 9981, bossUi.field.x + bossUi.field.w / 2)
+S.units.push(demoArcher)
+A.Tutorial.onAction('deploy', demoArcher)
+if (A.Tutorial.getStage() !== 'firstFight' || S.enemies.length !== 1 || S.waveIndex !== 0 ||
+    A.Tutorial.allow('refresh') || A.Tutorial.allow('deploy') || A.Tutorial.allow('cap')) {
+  throw new Error('第一波实战教学未正确开始/锁定操作')
+}
+for (let frame = 0; frame < 7200 && A.Tutorial.getStage() === 'firstFight'; frame++) A.Tutorial.update(1 / 60)
+if (A.Tutorial.getStage() !== 'cap' || S.kills !== 1 || S.waveIndex !== 1 || S.enemies.length !== 0) {
+  throw new Error('首只小怪被击败后未进入扩建或第一波重复结算')
+}
+A.Tutorial.stop()
+console.log('tutorial first wave combat gate: ok')
 console.log('\nOK')

@@ -267,7 +267,7 @@
       S.menuStartDelay -= dt;
       if (S.menuStartDelay <= 0) { S.menuStartDelay = 0; start(); }
     }
-    // 首次引导只更新提示/UI/音乐，不调用 Battle，波次与攻击保持冻结。
+    // 教学自行管理计时；第一波演示推进真实战斗，其他步骤冻结波次。
     if (S.phase === 'bossLab') updateBossLab(dt);
     else if (A.Tutorial && A.Tutorial.isActive()) A.Tutorial.update(dt);
     else {
@@ -368,7 +368,8 @@
     Hud.drawTray();
     // 守卫图底部压在托盘上20px，不能被托盘背景遮掉。
     Scene.drawBase();
-    Hud.drawDragGhost();
+    var draggingUnit = S.dragging && S.dragging.active && S.dragging.kind === 'unit';
+    if (!draggingUnit) Hud.drawDragGhost();
     Hud.drawToast();
 
     if (S.phase === 'paused') Hud.drawPaused();
@@ -378,6 +379,8 @@
     // 战斗内设置面板叠在暂停层之上
     if (A.ProfileUI) A.ProfileUI.draw();
     if (A.Tutorial) A.Tutorial.draw();
+    // ── 拖动角色置于教学出售区上层，避免底部面板覆盖角色 ──
+    if (draggingUnit) Hud.drawDragGhost();
 
     if (A.SafeAreaDebug) A.SafeAreaDebug.draw();
     A.Render.endFrame();

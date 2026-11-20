@@ -269,8 +269,8 @@
       panel: pausePanel, compact: pauseCompact, headerH: pauseHeaderH,
       btn: function (kind) { return pauseRects[kind]; },
     };
-    ui.sellZone = { x: metrics.safeLeft + pad, y: contentBottom - 44,
-      w: safeW - pad * 2, h: 44 };
+    ui.sellZone = { x: metrics.safeLeft, y: contentBottom - 72,
+      w: safeW, h: 72 };
     // ── 结算弹窗：标题、提示和三个按钮按内容收紧，不再预留战绩区 ──
     var resultPanelH = Math.min(340, Math.max(1, contentH - 16));
     var resultPanelW = Math.min(340, safeW - pad * 2);
@@ -295,6 +295,15 @@
     ui.resultHome = { x: resultBtnX, y: resultTop + (resultBtnH + resultGap) * 2,
       w: resultW, h: resultBtnH };
     ui.btnY.result = ui.resultReplay.y;
+    var petCardW = Math.min(w * 0.55, Math.max(80, (ui.contentH - 160) / 1.525));
+    var petCardH = petCardW * 1.525;
+    var petTop = ui.contentTop + (ui.contentH - petCardH - 128) / 2;
+    ui.newPet = {
+      titleY: petTop,
+      card: { x: (w - petCardW) / 2, y: petTop + 48, w: petCardW, h: petCardH },
+      button: { x: (w - Math.min(220, w - 48)) / 2, y: petTop + 72 + petCardH,
+        w: Math.min(220, w - 48), h: 48 }
+    };
     var resultInfoTop = resultPanel.y + resultHeaderH + 20;
     var resultInfoH = Math.max(1, resultTop - 20 - resultInfoTop);
     var resultNoticeH = Math.min(resultCompact ? 56 : 64, resultInfoH);
@@ -319,6 +328,11 @@
     ui.resultLoseRevive = loseButton(ui.resultRevive);
     ui.resultLoseReplay = loseButton(ui.resultReplay);
     ui.resultLoseHome = loseButton(ui.resultHome);
+    // 胜利同样只保留标题与按钮，使用已居中的紧凑面板及对应命中区域。
+    ui.result.panel = ui.result.losePanel;
+    ui.resultNext = ui.resultLoseRevive;
+    ui.resultReplay = ui.resultLoseReplay;
+    ui.resultHome = ui.resultLoseHome;
     // ── Figma 首页：以 390×845 原图坐标映射，所有热区进入安全区 ──
     var figmaScale = Math.min(safeW / 390, contentH / (691.66 - 45.77));
     var figmaX = metrics.safeLeft + (safeW - 390 * figmaScale) / 2;

@@ -50,6 +50,7 @@
 
   function spawnEnemy(spec) {
     var def = C.ENEMIES[spec.id];
+    if (A.Profile && A.Profile.recordEnemyEncounter) A.Profile.recordEnemyEncounter(spec.id);
     var u = L.ui;
     var lane = S.randInt(u.lanes.length);
     var laneSpread = u.field.w * 0.62 / 3;
@@ -60,9 +61,9 @@
       x: S.clamp(laneX, u.field.x + 26, u.field.x + u.field.w - 26),
       y: u.spawnY - S.rand(24),
       lane: lane,
-      hp: Math.round(def.hp * spec.hp * (S.levelHpScale === undefined ? 1 : S.levelHpScale)),
-      maxHp: Math.round(def.hp * spec.hp * (S.levelHpScale === undefined ? 1 : S.levelHpScale)),
-      atk: def.atk * spec.atk * (S.levelAtkScale === undefined ? 1 : S.levelAtkScale),
+      hp: Math.round(def.hp * spec.hp),
+      maxHp: Math.round(def.hp * spec.hp),
+      atk: def.atk * spec.atk,
       speed: def.speed,
       slowT: 0,
       slowFactor: 1,
@@ -78,9 +79,33 @@
       taunted: 0,
     };
     S.enemies.push(e);
+    return e;
+  }
+
+  function startTutorialEncounter(unit) {
+    S.waveIndex = 0;
+    S.waveState = 'fighting';
+    S.spawnQueue = [];
+    var enemy = spawnEnemy({ id: 'small', hp: 1, atk: 1 });
+    enemy.x = unit.x;
+    S.toastMsg('第 1 波来袭', 1.6);
+    A.GameAudio && A.GameAudio.play('wave');
+    return enemy;
   }
 
   // ── 英雄 ───────────────────────────────────────────────────
+  // ── 二星上阵演示：两只小怪，不消耗正式波次队列 ──
+  function startTutorialPair(unit) {
+    S.waveState = 'fighting';
+    S.spawnQueue = [];
+    return [-24, 24].map(function (offset) {
+      var enemy = spawnEnemy({ id: 'small', hp: 1, atk: 1 });
+      enemy.x = S.clamp(unit.x + offset, L.ui.field.x + enemy.def.radius,
+        L.ui.field.x + L.ui.field.w - enemy.def.radius);
+      return enemy;
+    });
+  }
+
   // 各实例保留独立的 1 星配置母版，实际属性由统一星级接口派生。
   function copyDef(value) {
     if (!value || typeof value !== 'object') return value;
@@ -340,7 +365,7 @@
 
   function damageUnit(u, dmg) {
     if (u.dead) return;
-    u.hp -= dmg;
+    u.hp -= dmg * (1 - (u.def.damageReduction || 0));
     u.hitFlash = 0.14;
     if (u.anim !== 'die' && u.anim !== 'atk') {
       u.anim = 'hurt';
@@ -370,7 +395,8 @@
 
   function enterAnimation(entity, stateName) {
     if (entity.anim === stateName) return;
-    if (stateName === 'idle' && entity.def.directionRig) {
+    // ── 战士待机继承上一动作朝向，避免攻击结束后强制回头 ──
+    if (stateName === 'idle' && entity.def.directionRig && entity.def.cls !== 'warrior') {
       entity.rigId = entity.def.directionRig.back;
     }
     entity.anim = stateName;
@@ -440,7 +466,7 @@
     };
   }
 
-  function fireProjectile(unit, target) {
+  function fireProjectile(unit, target, damageRatio, delay) {
     var def = unit.def;
     var origin = projectileOrigin(unit);
     var projectile = {
@@ -450,7 +476,9 @@
       sourceUnit: unit,
       speed: def.cls === 'archer' ? 680 : 420,
       kind: def.cls === 'archer' ? 'light' : def.cls === 'mage' ? 'magic' : 'fire',
-      dmg: def.atk,
+      dmg: def.atk * (damageRatio === undefined ? 1 : damageRatio),
+      delay: delay || 0,
+      echoRatio: def.echoRatio || 0,
       splash: def.splash || 0,
       slow: def.slow || null,
       color: def.color,
@@ -460,12 +488,12 @@
     return projectile;
   }
 
-  function applySplash(p, cx, cy) {
+  function applySplash(p, cx, cy, primary) {
     var r2 = p.splash * p.splash;
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
       if (e.dead) continue;
-      if (!attackInFront(p.sourceUnit, e)) continue;
+      if (e !== primary && !attackInFront(p.sourceUnit, e)) continue;
       if (S.dist2(e.x, e.y, cx, cy) > r2) continue;
       if (p.slow) {
         e.slowT = Math.max(e.slowT, p.slow.duration);
@@ -492,7 +520,7 @@
   }
 
   // ── 帧更新 ─────────────────────────────────────────────────
-  function update(dt, elapsedDt) {
+  function update(dt, elapsedDt, tutorialEncounter) {
     if (S.adBusy) return;
     if (S.phase === 'paused') {
       updateEffects(dt);
@@ -514,7 +542,7 @@
     }
 
     updateShop(dt);
-    updateWaves(dt);
+    if (!tutorialEncounter) updateWaves(dt);
     updateUnits(battleDt);
     updateEnemies(battleDt);
     resolveBodyCollisions();
@@ -681,8 +709,11 @@
     if (S.waveState === 'spawning') {
       S.spawnTimer -= dt;
       if (S.spawnTimer <= 0 && S.spawnQueue.length > 0) {
-        spawnEnemy(S.spawnQueue.shift());
-        S.spawnTimer = C.spawnGap;
+        var batchSize = C.spawnBatchMin + Math.floor(Math.random()
+          * (C.spawnBatchMax - C.spawnBatchMin + 1));
+        batchSize = Math.min(batchSize, S.spawnQueue.length);
+        for (var bi = 0; bi < batchSize; bi++) spawnEnemy(S.spawnQueue.shift());
+        S.spawnTimer = C.spawnBatchGap;
       }
       if (S.spawnQueue.length === 0) S.waveState = 'fighting';
       return;
@@ -821,9 +852,17 @@
 
       // 战士只追到攻击范围边缘；攻击起手/命中等待/收势期间都不主动移动。
       if (def.cls === 'warrior' && def.moveSpeed > 0) {
+        // ── 当前交战目标优先；目标失效后再按离家、自身距离选择 ──
+        var priority = warriorTarget(un);
+        if ((un.anim === 'atk' || un.pendingHit >= 0) && (!priority || priority.uid !== un.pendingTarget)) {
+          un.pendingHit = -1;
+          un.pendingTarget = 0;
+          un.atkTimer = 0;
+          enterAnimation(un, 'idle');
+        }
         var attacking = un.anim === 'atk' || un.pendingHit >= 0;
         var inRange = findTarget(un);
-        var chase = !attacking && !inRange ? nearestEnemy(un, def.aggro || 240) : null;
+        var chase = !attacking && !inRange ? priority : null;
         var tx = chase ? chase.x : un.homeX;
         var ty = chase ? chase.y : un.homeY;
         if (!attacking && !inRange) {
@@ -845,11 +884,12 @@
         // 与 findTarget/命中检查共用中心距口径，不再追到敌人的北侧偏移点。
         var remaining = d;
         if (!attacking && !inRange && remaining > (chase ? 0 : 1)) {
-          selectVerticalRig(un, ty);
+          // ── 追击看向目标，绕行路点只决定移动，避免前后朝向来回切换 ──
+          selectVerticalRig(un, chase ? chase.y : ty);
           var step = Math.min(remaining, def.moveSpeed * dt);
           un.x += dx / d * step;
           un.y += dy / d * step;
-          un.facing = dx >= 0 ? 1 : -1;
+          un.facing = (chase ? chase.x - un.x : dx) >= 0 ? 1 : -1;
           if (un.anim === 'idle' || un.anim === 'move') enterAnimation(un, 'move');
         } else if (un.anim === 'move') {
           enterAnimation(un, 'idle');
@@ -857,6 +897,11 @@
         var uu = L.ui;
         un.x = S.clamp(un.x, uu.field.x + def.radius, uu.field.x + uu.field.w - def.radius);
         un.y = S.clamp(un.y, uu.placeTop, uu.placeBottom);
+        // ── 归位且脱离交战才恢复朝前守卫，攻击收势仍保留朝向 ──
+        if (!priority && un.anim === 'idle' &&
+            S.dist2(un.x, un.y, un.homeX, un.homeY) <= 1) {
+          un.rigId = def.directionRig.back;
+        }
       }
 
       // 治疗命中帧才结算生命和特效，避免满血时空放治疗动作。
@@ -893,7 +938,8 @@
           }
           if (!tgt) tgt = findTarget(un);
           if (tgt) {
-            if (attackInRange(un, tgt, true)) {
+            // ── 近战有效起手即承诺这一刀，移动目标不因命中帧复验距离落空 ──
+            if (def.cls === 'warrior' || attackInRange(un, tgt, true)) {
               resolveAttack(un, tgt);
             }
           }
@@ -907,7 +953,7 @@
       }
 
       un.atkTimer -= dt;
-      if (un.atkTimer <= 0) {
+      if (un.atkTimer <= 0 && un.pendingHit < 0) {
         var best = findTarget(un);
         if (best) {
           selectAttackRig(un, best);
@@ -927,8 +973,17 @@
     var def = healer.def;
     var amount = def.heal || 0;
     if (amount <= 0) return;
-    var target = findHealTarget(healer);
-    if (!target) return;
+    var healedTargets = [];
+    for (var i = 0; i < (def.healTargets || 1); i++) {
+      var target = findHealTarget(healer, healedTargets);
+      if (!target) break;
+      healedTargets.push(target);
+      healTarget(healer, target, amount);
+    }
+    if (healedTargets.length) A.GameAudio && A.GameAudio.play('heal');
+  }
+
+  function healTarget(healer, target, amount) {
     var healed = Math.min(amount, target.maxHp - target.hp);
     target.hp += healed;
     S.addFloat(target.x, target.y - target.def.radius - 14, '+' + Math.round(healed), '#6ff0a8');
@@ -937,14 +992,14 @@
       x: target.x, y: target.y - target.def.radius * 0.3,
       r: target.def.radius, life: 0.5, max: 0.5, color: '#6ff0a8',
     });
-    A.GameAudio && A.GameAudio.play('heal');
   }
 
-  function findHealTarget(healer) {
+  function findHealTarget(healer, excluded) {
     var range2 = healer.def.range * healer.def.range;
     var target = null;
     for (var i = 0; i < S.units.length; i++) {
       var ally = S.units[i];
+      if (excluded && excluded.indexOf(ally) >= 0) continue;
       if (ally === healer || ally.dead || ally.hp <= 0 || ally.hp >= ally.maxHp) continue;
       if (S.dist2(healer.x, healer.y, ally.x, ally.y) > range2) continue;
       // 按当前剩余生命值选择单个目标；同血量按 uid 稳定选择。
@@ -953,14 +1008,32 @@
     return target;
   }
 
-  function nearestEnemy(un, maxRange) {
+  function warriorTarget(un) {
+    var range = un.def.aggro || 240;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var e = S.enemies[i];
+      if (e.uid !== un.pendingTarget || e.dead) continue;
+      if (un.anim === 'atk' || un.pendingHit >= 0) return e;
+    }
+    return homePriorityEnemy(un) || homePriorityEnemy(un, range);
+  }
+
+  // ── 无交战目标时：离家最近，其次离自己最近，平局按uid稳定 ──
+  function homePriorityEnemy(un, maxRange) {
     var best = null;
-    var bestD = maxRange * maxRange;
+    var bestHome = Infinity, bestD = Infinity;
+    var bar = L.ui.guardianBar;
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
       if (e.dead) continue;
       var d2 = S.dist2(un.x, un.y, e.x, e.y);
-      if (d2 < bestD) { bestD = d2; best = e; }
+      var eligible = maxRange === undefined ? attackInRange(un, e, e.uid === un.pendingTarget)
+        : d2 <= maxRange * maxRange;
+      if (!eligible) continue;
+      var home = S.dist2(e.x, e.y, S.clamp(e.x, bar.x, bar.x + bar.w), L.ui.baseStopY);
+      if (home > bestHome || (home === bestHome && d2 > bestD)) continue;
+      if (best && home === bestHome && d2 === bestD && e.uid >= best.uid) continue;
+      best = e; bestHome = home; bestD = d2;
     }
     return best;
   }
@@ -985,23 +1058,8 @@
   }
 
   function findTarget(un) {
-    var best = null;
-    var bestY = -Infinity;
-    var bestD = Infinity;
-    for (var j = 0; j < S.enemies.length; j++) {
-      var e = S.enemies[j];
-      if (e.dead) continue;
-      var d2 = S.dist2(un.x, un.y, e.x, e.y);
-      var retained = e.uid === un.pendingTarget;
-      if (!attackInRange(un, e, retained)) continue;
-      if (retained) return e;
-      if (e.y > bestY || (e.y === bestY && d2 < bestD)) {
-        bestY = e.y;
-        bestD = d2;
-        best = e;
-      }
-    }
-    return best;
+    // 可攻击目标第一优先，其内部按离家距离、自身距离依次排序。
+    return homePriorityEnemy(un);
   }
 
   function resolveAttack(un, best) {
@@ -1009,6 +1067,7 @@
     if (def.cls === 'healer' || def.cls === 'tank') return;
     if (def.cls === 'warrior') {
       damageEnemy(best, def.atk, false);
+      if (def.cleaveRatio) applyMeleeCleave(un, best);
       var mx = (un.x + best.x) / 2, my = (un.y + best.y) / 2;
       S.addEffect({
         type: 'slash', x: un.x, y: un.y, tx: best.x, ty: best.y,
@@ -1020,12 +1079,26 @@
       S.hitstop = Math.max(S.hitstop, 0.04);
     } else {
       var projectile = fireProjectile(un, best);
+      if (def.extraShotRatio) fireProjectile(un, best, def.extraShotRatio, 0.12);
       S.addEffect({
         type: 'glow', x: projectile.x, y: projectile.y, r: def.cls === 'archer' ? 7 : 8,
         life: 0.12, max: 0.12, color: def.color,
       });
     }
     A.GameAudio && A.GameAudio.play(def.cls === 'archer' ? 'arrow' : def.cls === 'mage' ? 'magic' : 'hit');
+  }
+
+  // ── 三星近战连带：仅伤害主目标附近且仍在自身近战范围内的其他怪 ──
+  function applyMeleeCleave(unit, primary) {
+    var def = unit.def;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var e = S.enemies[i];
+      if (e === primary || e.dead || !attackInRange(unit, e, false)) continue;
+      if (S.dist2(e.x, e.y, primary.x, primary.y) > def.cleaveRange * def.cleaveRange) continue;
+      damageEnemy(e, def.atk * def.cleaveRatio, true);
+      S.addEffect({ type: 'slash', x: primary.x, y: primary.y, tx: e.x, ty: e.y,
+        life: 0.18, max: 0.18, color: def.color });
+    }
   }
 
   function resolveBaseHit(e, goalX, baseY) {
@@ -1176,6 +1249,16 @@
     var alive = [];
     for (var i = 0; i < S.projectiles.length; i++) {
       var p = S.projectiles[i];
+      if (p.delay > 0) {
+        p.delay -= dt;
+        if (p.delay > 0) { alive.push(p); continue; }
+      }
+      if (p.echo) {
+        applySplash(p, p.x, p.y);
+        S.addEffect({ type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
+          life: 0.6, max: 0.6, color: p.color });
+        continue;
+      }
       p.life -= dt;
       var target = null;
       for (var j = 0; j < S.enemies.length; j++) {
@@ -1184,7 +1267,7 @@
           break;
         }
       }
-      if (target && !attackInFront(p.sourceUnit, target)) target = null;
+      // 发射后锁定存活目标，不再因目标离开角色范围或绕后取消命中。
       if (target) { p.tx = target.x; p.ty = target.y; }
       var dx = p.tx - p.x, dy = p.ty - p.y;
       var d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -1193,8 +1276,12 @@
       if (hit) {
         p.x = p.tx;
         p.y = p.ty;
-        if (target) damageEnemy(target, p.dmg, false);
-        if (p.splash) applySplash(p, p.x, p.y);
+        // ── 范围弹只通过爆炸结算，主目标不再重复吃直接伤害 ──
+        if (p.splash) applySplash(p, p.x, p.y, target);
+        else if (target) damageEnemy(target, p.dmg, false);
+        if (p.echoRatio) alive.push({ x: p.x, y: p.y, splash: p.splash,
+          dmg: p.dmg * p.echoRatio, sourceUnit: p.sourceUnit, color: p.color,
+          kind: 'magic', echo: true, delay: 0.2 });
         if (p.kind === 'magic') {
           S.addEffect({
             type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
@@ -1300,6 +1387,8 @@
 
   A.Battle = {
     update: update,
+    startTutorialEncounter: startTutorialEncounter,
+    startTutorialPair: startTutorialPair,
     revive: revive,
     tryDeploy: tryDeploy,
     findDeployPoint: findDeployPoint,

@@ -279,10 +279,18 @@
     profilePaper(g.sheet, g.head, '选择头像');
     whiteClose(g.close);
 
+    var available = P.availableAvatarIndices();
     for (var i = 0; i < P.AVATARS.length; i++) {
       var rect = g.rect(i);
       var avatarIndex = avatarIndexAt(i);
-      avatarFrame(rect, avatarIndex, avatarIndex === UI.draftAvatar);
+      if (available.indexOf(avatarIndex) >= 0) {
+        avatarFrame(rect, avatarIndex, avatarIndex === UI.draftAvatar);
+      } else {
+        D.roundRect(rect.x, rect.y, rect.w, rect.h, rect.w / 8,
+          col('#e3ddd5'));
+        D.centeredText('待解锁', rect.x + rect.w / 2, rect.y + rect.h / 2,
+          16, col('#9a8d7e'));
+      }
     }
 
     profileRow(g.save, '确认选择');
@@ -319,9 +327,18 @@
     return S.isHeroUnlocked ? S.isHeroUnlocked(id) :
       (P.data.completedLevel + 1 >= ({ war: 1, arch: 1, tank: 2, mage: 2, healer: 3 }[id] || 1));
   }
-  // --- 展示与点击共用排序：已解锁优先，组内沿用配置顺序 ---
+  // 展示与点击共用排序：最早获得的在最上面，未获得的排在末尾。
   function collectionHeroes() {
-    return C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); }).concat(
+    var acquired = P.data.heroAcquiredAt || {};
+    var owned = C.HEROES.filter(function (hero) { return heroUnlocked(hero.id); });
+    owned.sort(function (a, b) {
+      var at = acquired[a.id], bt = acquired[b.id];
+      // 初始角色和旧存档无真实时间时，按现有解锁进程及配置顺序恢复。
+      var order = at && bt ? at - bt :
+        at ? 1 : bt ? -1 : C.heroUnlockLevel(a.id) - C.heroUnlockLevel(b.id);
+      return order || C.HEROES.indexOf(a) - C.HEROES.indexOf(b);
+    });
+    return owned.concat(
       C.HEROES.filter(function (hero) { return !heroUnlocked(hero.id); }));
   }
   // --- 收藏册立绘、剪影与徽章共用一张静态图集 ---
@@ -347,8 +364,8 @@
     D.texture(entry.tex, entry.w, entry.h, 0, 0, entry.w, entry.h,
       cx - w / 2, cy - h / 2, w, h);
   }
-  function collectionCard(hero, cell) {
-    var unlocked = heroUnlocked(hero.id), cx = cell.x + cell.w / 2;
+  function collectionCard(hero, cell, obtainedNotice) {
+    var unlocked = obtainedNotice === true || heroUnlocked(hero.id), cx = cell.x + cell.w / 2;
     var scene = A.Assets.entry('collection-scene-' + hero.id);
     var silhouette = A.Assets.entry('collection-silhouette-' + hero.id);
     if (unlocked ? scene : silhouette) {
@@ -425,15 +442,28 @@
 
   function drawCollectionDetail(def, g) {
     var image = g.detailImage, panel = g.detailPanel;
+    var forms = [1, 2, 3].map(function (star) { return S.heroAtStar(def.id, star); });
+    var rows = collectionStatRows(def, forms);
+    var note = collectionStarNote(forms[2]);
+    var noteH = note ? collectionNoteLines(note, 16, panel.w - 36).length * D.textLineH(16) + 12 : 0;
+    // ── 短屏优先缩小立绘，为新增机制数值保留完整面板 ──
+    var shrink = Math.min(image.h - 40, Math.max(0, 36 + noteH + (rows.length + 1) * D.textLineH(12) - panel.h));
+    if (shrink > 0) {
+      var imageH = image.h - shrink, imageW = image.w * imageH / image.h;
+      image = { x: image.x + (image.w - imageW) / 2, y: image.y, w: imageW, h: imageH };
+      panel = { x: panel.x, y: panel.y - shrink, w: panel.w, h: panel.h + shrink };
+    }
     var scene = A.Assets.entry('collection-scene-' + def.id);
     if (scene) drawDetailPortrait(scene, image);
     else heroForm(def, 2, image.x + image.w / 2, image.y + image.h / 2, image.w);
-    var forms = [1, 2, 3].map(function (star) { return S.heroAtStar(def.id, star); });
-    var rows = collectionStatRows(def, forms);
     var pad = 18, top = panel.y + 16;
-    var font = (panel.h - 36) / (rows.length + 1) < 24 ? 12 : 16;
-    var lineH = D.textLineH(font), rowH = lineH + 16;
-    var panelH = 16 + (rows.length + 1) * lineH + rows.length * 16 + 20;
+    var font = (panel.h - 36 - noteH) / (rows.length + 1) < 24 ? 12 : 16;
+    var noteLines = collectionNoteLines(note, font, panel.w - pad * 2);
+    noteH = note ? noteLines.length * D.textLineH(font) + 12 : 0;
+    var lineH = D.textLineH(font);
+    var gap = Math.max(0, Math.min(16, (panel.h - 36 - noteH - (rows.length + 1) * lineH) / rows.length));
+    var rowH = lineH + gap;
+    var panelH = 16 + (rows.length + 1) * lineH + rows.length * gap + noteH + 20;
     D.roundRect(panel.x, panel.y, panel.w, panelH, 24, col('#fff7df'));
     fittedText('1星 / 2星 / 3星', panel.x + panel.w - pad, top,
       font, panel.w - pad * 2, '#a77b55', 2);
@@ -448,6 +478,37 @@
       fittedText(value, panel.x + panel.w - pad, y, font,
         panel.w * 0.58, COLOR.brownDeep, 2);
     }
+    for (var ni = 0; ni < noteLines.length; ni++) {
+      D.text(noteLines[ni], panel.x + pad,
+        panel.y + panelH - 20 - (noteLines.length - ni) * lineH,
+        font, col('#a77b55'), 0);
+    }
+  }
+
+  // ── 备注保持字段字号，长文本换行而不缩小 ──
+  function collectionNoteLines(note, font, width) {
+    var lines = [], line = '';
+    for (var i = 0; i < note.length; i++) {
+      var next = line + note.charAt(i);
+      if (line && D.textWidth(next, font) > width) {
+        lines.push(line); line = note.charAt(i);
+      } else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // ── 三星机制显示底部备注，数值读取实际战斗配置 ──
+  function collectionStarNote(form) {
+    var notes = {
+      tank: '减伤' + Math.round((form.damageReduction || 0) * 100) + '%',
+      war: '攻击提升' + Math.round(((form.attackMultiplier || 1) - 1) * 100) +
+        '%，近战连带' + Math.round((form.cleaveRatio || 0) * 100) + '%伤害',
+      arch: '追加一发，造成' + Math.round((form.extraShotRatio || 0) * 100) + '%伤害',
+      mage: '二次爆炸，造成' + Math.round((form.echoRatio || 0) * 100) + '%伤害',
+      healer: '每次治疗' + form.healTargets + '名队友'
+    };
+    return notes[form.id] ? '三星特技：' + notes[form.id] : '';
   }
 
   // ── 从统一目录读取实时属性，费用固定末行，三档全零数值隐藏 ──
@@ -484,7 +545,10 @@
   }
 
   function prepare(name) {
-    if (name === 'avatars') UI.draftAvatar = P.data.avatarIndex;
+    if (name === 'avatars') {
+      var available = P.availableAvatarIndices();
+      UI.draftAvatar = available.indexOf(P.data.avatarIndex) >= 0 ? P.data.avatarIndex : available[0];
+    }
   }
 
   function back() {
@@ -622,7 +686,9 @@
     if (name === 'settings') controls = [u.settings.close, u.settings.musicRow, u.settings.sfxRow, u.settings.shareBtn];
     else if (name === 'avatars') {
       controls = [u.avatarPick.close, u.avatarPick.save];
-      for (var ai = 0; ai < P.AVATARS.length; ai++) controls.push(u.avatarPick.rect(ai));
+      for (var ai = 0; ai < P.AVATARS.length; ai++) {
+        if (P.availableAvatarIndices().indexOf(avatarIndexAt(ai)) >= 0) controls.push(u.avatarPick.rect(ai));
+      }
     }
     else if (name === 'invite') controls = [u.invite.close, u.invite.copy];
     for (var ci = 0; ci < controls.length; ci++) {
@@ -646,7 +712,8 @@
       if (pointIn(a.close, x, y, 6)) { back(); return true; }
       for (var i = 0; i < P.AVATARS.length; i++) {
         if (pointIn(a.rect(i), x, y, 3)) {
-          UI.draftAvatar = avatarIndexAt(i);
+          var selectedIndex = avatarIndexAt(i);
+          if (P.availableAvatarIndices().indexOf(selectedIndex) >= 0) UI.draftAvatar = selectedIndex;
           return true;
         }
       }
@@ -699,6 +766,7 @@
     avatar: drawAvatar,
     dialogPaper: profilePaper,
     dialogButton: profileRow,
+    collectionCard: collectionCard,
     shareInvite: shareInvite,
     copyInviteLink: copyInviteLink,
   };

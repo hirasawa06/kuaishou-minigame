@@ -173,20 +173,34 @@
     drawSellZone();
   }
 
-  function drawSellZone() {
+  function drawSellZone(unit) {
     var drag = S.dragging;
-    if (!drag || drag.kind !== 'unit' || !drag.active) return;
+    if (!unit && (!drag || drag.kind !== 'unit' || !drag.active)) return;
+    unit = unit || drag.unit;
     var sell = L.ui.sellZone;
-    var inside = drag.x >= sell.x && drag.x <= sell.x + sell.w && drag.y >= sell.y && drag.y <= sell.y + sell.h;
-    D.roundRect(sell.x, sell.y, sell.w, sell.h, 12, D.color(inside ? '#306f49' : '#4d3521', 0.96));
-    var price = A.Battle.sellPrice(drag.unit);
-    D.text(price ? '松手出售 +' + price + ' 饼干' : '角色已退场，无法出售',
-      sell.x + sell.w / 2, sell.y + 12, 18, D.color('#ffe5ac'), 1);
+    // ── 圆弧顶部：同心圆裁切形成3px描边，底部平直铺满出售区 ──
+    var rise = sell.h * 0.4, radius = sell.w * sell.w / (8 * rise) + rise / 2;
+    var cx = sell.x + sell.w / 2, cy = sell.y + radius;
+    A.Render.setClipRect(sell);
+    D.circle(cx, cy, radius, D.color('#FDD199'));
+    D.circle(cx, cy, radius - 3, D.color('#874732'));
+    A.Render.setClipRect(null);
+    var inside = drag && drag.active && drag.kind === 'unit' &&
+      drag.x >= sell.x && drag.x <= sell.x + sell.w &&
+      drag.y >= sell.y && drag.y <= sell.y + sell.h;
+    var price = A.Battle.sellPrice(unit), font = 24, zoom = inside ? 1.05 : 1;
+    var label = '出售 +' + price, iconW = 24;
+    var textW = D.textWidth(label, font) * zoom, x = cx - (textW + iconW + 4) / 2;
+    var y = sell.y + sell.h * 0.56;
+    D.centeredText(label, x + textW / 2, y, font, D.color('#ffffff'), zoom);
+    var ix = x + textW + 4, white = D.color('#ffffff');
+    D.roundRect(ix + 3, y - 5, 18, 10, 4, white);
+    for (var i = 0; i < 4; i++) D.circle(ix + (i < 2 ? 5 : 19), y + (i % 2 ? 4 : -4), 5, white);
   }
 
   function drawDragCard(def, rect, index) {
     drawCard(def, rect, 0.98, index, true);
   }
 
-  A.BattleShopUI = { draw: drawShop, drawDragCard: drawDragCard };
+  A.BattleShopUI = { draw: drawShop, drawDragCard: drawDragCard, drawSellZone: drawSellZone };
 })();

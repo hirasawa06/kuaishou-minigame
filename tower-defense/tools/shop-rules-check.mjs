@@ -13,6 +13,11 @@ S.phase = 'playing';
 S.isHeroUnlocked = () => true;
 S.notifyAction = () => {};
 S.toastMsg = () => {};
+for (const level of [1, 2, C.LEVELS.length, 1]) {
+  S.currentLevel = level;
+  S.reset();
+  assert.equal(S.heroCap, level === 1 ? 1 : 3, '新局席位按关卡分配，不继承上一关');
+}
 S.gold = 100000;
 S.heroCap = C.UNIT_CAP_START;
 S.capCost = 1;

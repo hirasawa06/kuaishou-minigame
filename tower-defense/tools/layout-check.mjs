@@ -102,10 +102,8 @@ function check(name, input, expected) {
       button.y >= rp.y + 8 && button.y + button.h <= rp.y + rp.h - 8,
     `${name}: result button outside panel`)
   }
-  const notice = ui.result.notice
-  assert(notice.x >= rp.x + 8 && notice.x + notice.w <= rp.x + rp.w - 8 &&
-    notice.y >= rp.y + ui.result.headerH && notice.y + notice.h <= ui.resultNext.y - 8,
-  `${name}: unlock notice outside result content`)
+  assert(ui.resultNext.y - (rp.y + ui.result.headerH) <= 24,
+    `${name}: result retains unused caption space`)
   for (const kind of ['menu', 'paused', 'result']) {
     const button = ui.btnRect(kind)
     assert(button.x >= ui.safeLeft && button.x + button.w <= ui.safeRight, `${name}: ${kind} button outside safe width`)

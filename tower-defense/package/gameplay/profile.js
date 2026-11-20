@@ -159,7 +159,7 @@
   function defaults() {
     return {
       nickname: NICK_DEFAULT,
-      avatarIndex: 0,
+      avatarIndex: 3,
       id: S.id || nowId(),
       region: 0,
       town: 0,
@@ -168,6 +168,8 @@
       bestWave: 0,      // 历史最高通关关卡（0 = 尚未通关）
       progressVersion: 2, // 本轮清除旧测试进度；只迁移一次，不反复清空新进度。
       completedLevel: 0, // 独立关卡进度；旧 bestWave 是波次，不能用于解锁
+      heroAcquiredAt: {}, // 新获得角色的Unix毫秒时间；旧存档不伪造历史时间。
+      encounteredEnemies: {}, // 仅记录实际生成过的怪物。
       tutorialComplete: false,
       tutorialStarComplete: false,
       clears: 0,
@@ -186,7 +188,16 @@
 
   function load() {
     var stored = readStore();
+    // ── 本地预览显式重置：同一请求只执行一次，不影响平台存档 ──
+    var location = window.location;
+    var local = location && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+    var request = local && (location.search || '').match(/[?&]resetLocal=([a-zA-Z0-9-]+)/);
+    var resetToken = request ? request[1] : '';
+    var reset = resetToken && (!stored || stored.localResetRequest !== resetToken);
+    if (reset) stored = null;
     var base = defaults();
+    if (resetToken) base.localResetRequest = resetToken;
+    else if (stored && stored.localResetRequest) base.localResetRequest = stored.localResetRequest;
     if (stored && typeof stored === 'object') {
       if (typeof stored.nickname === 'string') base.nickname = stored.nickname;
       if (typeof stored.avatarIndex === 'number') base.avatarIndex = stored.avatarIndex;
@@ -208,8 +219,21 @@
         if (validTimestamp(stored.lastRecoveryAt)) base.lastRecoveryAt = Math.floor(stored.lastRecoveryAt);
       }
       if (typeof stored.bestAt === 'number') base.bestAt = stored.bestAt;
+      if (stored.encounteredEnemies && typeof stored.encounteredEnemies === 'object') {
+        for (var enemyId in C.ENEMIES) {
+          if (stored.encounteredEnemies[enemyId] === true) base.encounteredEnemies[enemyId] = true;
+        }
+      }
+      if (stored.heroAcquiredAt && typeof stored.heroAcquiredAt === 'object') {
+        for (var ai = 0; ai < C.HEROES.length; ai++) {
+          var heroId = C.HEROES[ai].id, acquiredAt = stored.heroAcquiredAt[heroId];
+          if (validTimestamp(acquiredAt)) base.heroAcquiredAt[heroId] = Math.floor(acquiredAt);
+        }
+      }
       if (stored.progressVersion !== 2) {
         base.completedLevel = 0;
+        base.heroAcquiredAt = {};
+        base.encounteredEnemies = {};
         base.bestWave = 0;
         base.bestAt = 0;
         base.clears = 0;
@@ -223,8 +247,11 @@
     base.town = clamp(base.town | 0, 0, REGIONS[base.region].towns.length - 1);
     if (!base.id) base.id = nowId();
     S.data = base;
+    var availableAvatars = S.availableAvatarIndices();
+    var avatarChanged = availableAvatars.indexOf(base.avatarIndex) < 0;
+    if (avatarChanged) base.avatarIndex = availableAvatars[0];
     var staminaChanged = refreshStamina(staminaNow());
-    if (!stored || stored.progressVersion !== 2 || staminaChanged ||
+    if (!stored || stored.progressVersion !== 2 || staminaChanged || avatarChanged ||
         stored.stamina !== base.stamina || stored.lastRecoveryAt !== base.lastRecoveryAt) writeStore(base);
     return base;
   }
@@ -239,6 +266,21 @@
     var i = index === undefined ? S.data.avatarIndex : index;
     return AVATARS[clamp(i | 0, 0, AVATARS.length - 1)];
   };
+  S.availableAvatarIndices = function () {
+    var heroes = ['mage', 'tank', 'war', 'arch', 'healer'];
+    var enemies = { 5: 'small', 6: 'normal', 7: 'boss', 8: 'elite' };
+    return [0, 1, 2, 3, 4, 5, 6, 8, 7].filter(function (index) {
+      return index < 5 ? S.isHeroUnlocked(heroes[index]) :
+        !!(S.data.encounteredEnemies && S.data.encounteredEnemies[enemies[index]]);
+    });
+  };
+  S.recordEnemyEncounter = function (id) {
+    if (!C.ENEMIES[id]) return;
+    if (!S.data.encounteredEnemies) S.data.encounteredEnemies = {};
+    if (S.data.encounteredEnemies[id]) return;
+    S.data.encounteredEnemies[id] = true;
+    S.save();
+  };
 
   S.regionDef = function () {
     return REGIONS[S.data.region] || REGIONS[0];
@@ -251,6 +293,7 @@
   };
 
   S.setAvatar = function (index) {
+    if (S.availableAvatarIndices().indexOf(index) < 0) return S.data.avatarIndex;
     S.data.avatarIndex = clamp(index | 0, 0, AVATARS.length - 1);
     S.save();
     return S.data.avatarIndex;
@@ -309,6 +352,7 @@
         var required = C.heroUnlockLevel(hero.id);
         if (required > previousCompleted + 1 && required <= d.completedLevel + 1) {
           newlyUnlocked.push(hero.id);
+          if (!d.heroAcquiredAt[hero.id]) d.heroAcquiredAt[hero.id] = Date.now();
         }
       }
       A.State.unlockNotice = newlyUnlocked;

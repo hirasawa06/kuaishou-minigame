@@ -343,6 +343,13 @@
     if (S.phase === 'win' || S.phase === 'lose') {
       // 广告期间吞掉结算操作，不能在回调前重开或退出当前对局。
       if (S.adBusy || (A.Rewards && A.Rewards.isBusy())) return;
+      if (S.newPetPending()) {
+        if (hitControl(u.newPet.button, px, py, 0)) {
+          S.advanceNewPet();
+          A.GameAudio && A.GameAudio.play('click');
+        }
+        return;
+      }
       if (S.phase === 'lose' && hitControl(u.resultLoseRevive, px, py, 0)) {
         if (S.revivesUsed > 0) { S.toastMsg('本局复活次数已用', 1.4); return; }
         if (A.Rewards && A.Rewards.watchRevive) A.Rewards.watchRevive();
@@ -373,9 +380,6 @@
     if (S.phase === 'playing') {
       if (hitControl(u.speedBtn, px, py, 0)) { if (allowed('speed')) A.Game.toggleSpeed(); return; }
       if (hitControl(u.pauseBtn, px, py, 10)) { if (allowed('pause')) A.Game.togglePause(); return; }
-      if (A.Tutorial && A.Tutorial.isActive() && hitControl(u.tutorial.start, px, py, 0) && allowed('start')) {
-        A.Tutorial.startBattle(); return;
-      }
       if (hitControl(u.refreshBtn, px, py, 4)) {
         if (!allowed('refresh')) return;
         A.GameAudio && A.GameAudio.play('click');

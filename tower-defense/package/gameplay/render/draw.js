@@ -211,14 +211,16 @@
   };
 
   // align: 0 左对齐 / 1 居中 / 2 右对齐
-  draw.text = function (str, x, y, size, col, align) {
+  draw.text = function (str, x, y, size, col, align, visualScale) {
     size = draw.fontSize(size);
     var atlas = fontForSize(size);
     if (!atlas) return 0;
     var tex = A.Assets ? A.Assets.tex('font-' + atlas.size) : null;
     if (!tex) return 0;
-    var fontRatio = size / atlas.size;
-    var total = draw.textWidth(str, size);
+    // ── 交互缩放作用于字形尺寸，保留基础字号档位 ──
+    var scale = visualScale === undefined ? 1 : visualScale;
+    var fontRatio = size / atlas.size * scale;
+    var total = draw.textWidth(str, size) * scale;
     var penX = x;
     if (align === 1) penX = x - total / 2;
     else if (align === 2) penX = x - total;
@@ -246,7 +248,7 @@
   };
 
   // ── 按可见字形边界居中，消除字体留白造成的偏移 ────────
-  draw.centeredText = function (str, cx, cy, size, col) {
+  draw.centeredText = function (str, cx, cy, size, col, visualScale) {
     size = draw.fontSize(size);
     var atlas = fontForSize(size);
     if (!atlas) return 0;
@@ -264,9 +266,9 @@
       pen += glyph.adv;
     }
     if (left === Infinity) return 0;
-    var fontRatio = size / atlas.size;
+    var fontRatio = size / atlas.size * (visualScale === undefined ? 1 : visualScale);
     return draw.text(str, cx - (left + right) * fontRatio / 2, cy - (top + bottom) * fontRatio / 2,
-      size, col, 0);
+      size, col, 0, visualScale);
   };
 
   draw.textLineH = function (size) {

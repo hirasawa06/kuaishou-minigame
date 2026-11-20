@@ -662,40 +662,46 @@
     D.fittedText(value, x, y, size, maxW, D.color(color), align);
   }
 
+  function drawNewPetAtmosphere(card) {
+    // 结算时战斗时钟停止，使用渲染时钟让奖励光晕继续呼吸。
+    var time = A._now() / 1000;
+    var cx = card.x + card.w / 2, cy = card.y + card.h / 2;
+    var breath = 0.5 + 0.5 * Math.sin(time * 1.6);
+    D.softEllipse(cx, cy, card.w + 112, card.h + 64,
+      D.color('#ffd166', 0.24 + breath * 0.08));
+    D.softEllipse(cx, cy, card.w + 56, card.h + 32,
+      D.color('#ffe7a3', 0.18 + breath * 0.06));
+    for (var i = 0; i < 8; i++) {
+      var phase = time * 1.9 + i * 2.4;
+      var shimmer = 0.5 + 0.5 * Math.sin(phase);
+      var size = 5 + (i % 3) * 2 + shimmer * 2;
+      var side = i % 2 ? 1 : -1;
+      var x = cx + side * (card.w / 2 + 12 + (i % 3) * 7);
+      var y = card.y + card.h * (0.16 + Math.floor(i / 2) * 0.22)
+        + Math.sin(time * 0.8 + i) * 4;
+      D.star(x - size / 2, y - size / 2, size,
+        D.color('#fff0b5', 0.3 + shimmer * 0.6));
+    }
+  }
+
   function drawResult(win) {
+    if (win && S.newPetPending()) {
+      var pet = L.ui.newPet;
+      D.rect(0, 0, L.ui.w, L.ui.h, D.color('#3e2419', 0.44));
+      drawNewPetAtmosphere(pet.card);
+      D.centeredText('获得新萌宠', L.ui.w / 2, pet.titleY + 16, 32, D.color('#fff7df'));
+      A.ProfileUI.collectionCard(S.heroById(S.unlockNotice[S.unlockNoticeIndex]), pet.card, true);
+      A.ProfileUI.dialogButton(pet.button,
+        S.unlockNoticeIndex + 1 < S.unlockNotice.length ? '下一个' : '继续');
+      return;
+    }
     var u = L.ui, result = u.result, panel = win ? result.panel : result.losePanel;
     var cx = panel.x + panel.w / 2;
     D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
-    A.ProfileUI.dialogPaper(panel, result.headerH, win ? '胜利' : '合照被毁了');
+    var level = C.LEVELS[Math.max(0, S.currentLevel - 1)] || {};
+    var guardianName = level.guardianName || '合照';
+    A.ProfileUI.dialogPaper(panel, result.headerH, win ? guardianName + '守住了' : '合照被毁了');
     var nextUnlocked = win && S.currentLevel < C.LEVELS.length;
-    var hasNotice = win && S.unlockNotice && S.unlockNotice.length;
-    // ── 提示区单独占一段，删除失败时的关卡与重复说明，避免上下留白失衡 ──
-    if (win && !hasNotice) {
-      var chapter = '第 ' + S.currentLevel + ' 关' + (nextUnlocked ? ' · 下一关已解锁' : '');
-      resultText(chapter, cx, result.notice.y + (result.notice.h - 42) / 2,
-        panel.w - 44, 18, '#73482a', 1);
-      resultText('合照守住了！', cx, result.notice.y + (result.notice.h - 42) / 2 + 24,
-        panel.w - 44, 18, '#73482a', 1);
-    }
-
-    if (hasNotice) {
-      var notice = result.notice;
-      resultText('新伙伴已解锁', notice.x + notice.w / 2, notice.y + 5,
-        notice.w - 20, 18, '#a86a24', 1);
-      var itemW = notice.w / S.unlockNotice.length;
-      var iconSize = result.compact ? 22 : 28;
-      var itemY = notice.y + notice.h - iconSize / 2 - 5;
-      for (var ni = 0; ni < S.unlockNotice.length; ni++) {
-        var hero = S.heroById(S.unlockNotice[ni]);
-        if (!hero) continue;
-        var itemX = notice.x + itemW * ni + 9;
-        var artX = itemX + iconSize / 2;
-        if (A.HeroForms) A.HeroForms.draw(hero.id, 2, artX, itemY, iconSize);
-        else icon(hero.icon, artX, itemY, iconSize);
-        resultText(hero.name, itemX + iconSize + 5, itemY - 9,
-          itemW - iconSize - 20, 18, '#704026', 0);
-      }
-    }
 
     // ── 结算按钮共用头像选择弹窗样式，命中与复活状态仍由原逻辑管理 ──
     if (nextUnlocked) A.ProfileUI.dialogButton(u.resultNext, '下一关');
@@ -707,9 +713,7 @@
       if (used || busy) D.roundRect(u.resultLoseRevive.x + 3, u.resultLoseRevive.y + 3,
         u.resultLoseRevive.w - 6, u.resultLoseRevive.h - 6, u.resultLoseRevive.h / 2 - 3,
         D.color('#b5a18a', 0.22));
-    } else resultText('全部关卡已通关',
-      cx, u.resultNext.y + (u.resultNext.h - 18) / 2,
-      panel.w - 36, 18, '#8a6248', 1);
+    }
     A.ProfileUI.dialogButton(win ? u.resultReplay : u.resultLoseReplay, '再玩一次');
     A.ProfileUI.dialogButton(win ? u.resultHome : u.resultLoseHome, '返回主页');
   }

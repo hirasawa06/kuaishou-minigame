@@ -266,9 +266,10 @@
     for (var g = 0; g < groups.length; g++) {
       for (var i = 0; i < groups[g].length; i++) {
         var actor = groups[g][i];
-        if (actor.dead) continue;
+        if (actor.dead && g === 0) continue;
         var ground = actorGround(actor, g === 1);
-        drawGroundShadow(ground.x, ground.y, ground.size * 0.40, ground.spawn);
+        var deathFade = actor.dead ? Math.max(0, Math.min(1, actor.dieT / 0.12)) : 1;
+        drawGroundShadow(ground.x, ground.y, ground.size * 0.40, ground.spawn * deathFade);
       }
     }
   }
@@ -443,6 +444,8 @@
   function drawUnit(un) {
     var d = un.def;
     var r = d.radius;
+    var draggingOriginal = S.dragging && S.dragging.active &&
+      S.dragging.kind === 'unit' && S.dragging.unit === un;
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
     var rig = A.Rigs && A.Rigs[un.rigId || d.id];
     var size = rig
@@ -456,7 +459,7 @@
     A.Render.setSceneLight('character', spriteY, size);
     if (rig) {
       A.Anim.draw(rig, un, un.x, spriteY, size, {
-        alpha: 0.3 + 0.7 * spawn,
+        alpha: draggingOriginal ? 1 : 0.3 + 0.7 * spawn,
       });
       if (un.hitFlash > 0) {
         A.Render.setAdditive(true);
@@ -464,7 +467,7 @@
         A.Render.setAdditive(false);
       }
     } else {
-      var alpha = 0.25 + 0.75 * spawn;
+      var alpha = draggingOriginal ? 1 : 0.25 + 0.75 * spawn;
 
       var poseSize = r * 3.4 * (0.8 + 0.2 * spawn);
       if (d.cls === 'healer') drawHealerPlaceholder(un.x, un.y, size, alpha);
@@ -500,6 +503,7 @@
   function drawProjectiles() {
     for (var i = 0; i < S.projectiles.length; i++) {
       var p = S.projectiles[i];
+      if (p.delay > 0 || p.echo) continue;
       if (p.kind === 'light') {
         var dx = p.tx - p.x, dy = p.ty - p.y;
         var len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -667,7 +671,7 @@
     if (drag.kind === 'unit') {
       var unit = drag.unit;
       if (!unit || unit.dead || unit.hp <= 0 || def.moveSpeed !== 0 || S.units.indexOf(unit) < 0) return;
-      // 只绘制一个角色副本与售价，不移动原单位，不进入买卡/部署预览分支。
+      // 原位角色保持不透明，仅拖动副本半透明；售价统一显示在出售区。
       var ghostRig = A.Rigs && A.Rigs[unit.rigId || def.id];
       var ghostSize = ghostRig ? def.radius * 3.05 * (ghostRig.scale || 1) : def.radius * 2.35;
       var ghostY = ghostRig ? drag.y - def.radius * 0.15 : drag.y;
@@ -678,8 +682,6 @@
       } else {
         icon(def.icon, drag.x, ghostY, ghostSize, 0.7);
       }
-      D.text('+' + A.Battle.sellPrice(unit) + ' 饼干', drag.x, drag.y + def.radius + 12,
-        18, COL.gold, 1);
       return;
     }
     var overField = drag.y < u.tray.y;
@@ -688,23 +690,28 @@
     if (!overField) return;
     var reason = A.Battle.deployBlockReason(def, x, y);
     var ok = !reason && y < u.tray.y - 4;
-    var col = ok ? '#6ff0a8' : '#ff6b7f';
     var point = ok && A.Battle.findDeployPoint(def, x, y);
     if (point) { x = point.x; y = point.y; }
 
+    // 远程攻击及柴不破嘲讽均朝上180度，预览与实际方向规则一致。
+    var frontOnly = def.cls === 'archer' || def.cls === 'mage' || def.cls === 'tank';
+    var previewRadius = def.cls === 'tank' ? def.taunt || 0 : def.range || 0;
+    if (frontOnly && previewRadius > 0) {
+      A.Render.setClipRect({ x: x - previewRadius - 2, y: y - previewRadius - 2,
+        w: previewRadius * 2 + 4, h: previewRadius + 2 });
+    }
     // 攻击半径（盾位无攻击，改画嘲讽半径）
     if (def.cls === 'tank' && def.taunt) {
-      D.circle(x, y, def.taunt, D.color('#5b8bd0', 0.10));
-      D.ring(x, y, def.taunt, 1.6, D.color('#7fb2ff', 0.55));
-      D.text('嘲讽', x, y - def.taunt - 16, 18, D.color('#9ec6ff', 0.85), 1);
+      D.circle(x, y, def.taunt, D.color('#ffd166', 0.25));
     } else if (def.range) {
-      D.circle(x, y, def.range, D.color(col, 0.09));
-      D.ring(x, y, def.range, 1.4, D.color(col, 0.5));
+      D.circle(x, y, def.range, D.color('#ffd166', 0.25));
     }
-    // 群攻范围
-    if (def.splash) {
-      D.circle(x, y, def.splash, D.color('#a583f0', 0.08));
-      D.ring(x, y, def.splash, 1.2, D.color('#b79cff', 0.45));
+    // 群攻以弹道命中点为中心，不在角色放置位置展示。
+    if (frontOnly && previewRadius > 0) {
+      A.Render.setClipRect(null);
+    }
+    if (def.cls === 'tank' && def.taunt) {
+      D.text('嘲讽', x, y - def.taunt - 16, 18, D.color('#9ec6ff', 0.85), 1);
     }
     // 落点预览复用正式角色待机美术，避免再次露出旧图集的职业符号。
     var rig = A.Rigs && A.Rigs[def.id];
