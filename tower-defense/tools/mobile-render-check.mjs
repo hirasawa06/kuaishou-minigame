@@ -20,7 +20,7 @@ const gl = new Proxy({}, { get: (_, k) => {
   if (k === 'getUniformLocation') return (_, name) => name === 'uAdd' ? 0 : name;
   if (k === 'getAttribLocation') return () => 1;
   if (k === 'uniform1f') return (loc, val) => { if (loc === 0) calls.push(['add', val]); };
-  if (k === 'blendFunc' || k === 'blendEquation') return (...args) => calls.push([k, ...args]);
+  if (k === 'blendFunc' || k === 'blendFuncSeparate' || k === 'blendEquation') return (...args) => calls.push([k, ...args]);
   if (String(k).startsWith('create')) return () => ({});
   if (['SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'ONE', 'FUNC_ADD'].includes(k)) return k;
   return () => {};
@@ -35,7 +35,7 @@ R.setAdditive(false);
 calls.length = 0;
 R.push(0, 0, 10, 10, { r: 0, g: 0, b: 0, a: 0.25 }); R.flush();
 assert(calls.some(c => c[0] === 'add' && c[1] === 0), '句柄0也恢复普通透明绘制');
-assert(calls.some(c => c[0] === 'blendFunc' && c[1] === 'SRC_ALPHA' && c[2] === 'ONE_MINUS_SRC_ALPHA'),
-  '每批恢复普通混合，黑色蒙层不增亮');
+assert(calls.some(c => c[0] === 'blendFuncSeparate' && c[1] === 'SRC_ALPHA' && c[2] === 'ONE_MINUS_SRC_ALPHA' && c[3] === 'ONE' && c[4] === 'ONE_MINUS_SRC_ALPHA'),
+  '每批保持正确颜色混合与不透明画布，描边不透出网页底色');
 assert(calls.some(c => c[0] === 'blendEquation' && c[1] === 'FUNC_ADD'));
 console.log('手机托盘居中、零值uniform与逐批混合状态恢复检查通过');

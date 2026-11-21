@@ -149,6 +149,10 @@
     if (line) out.push(line);
     return out;
   }
+  function unitRect(unit, width, height) {
+    var rect = { x: unit.x - width / 2, y: unit.y - 48, w: width, h: height };
+    return A.BattleWorld ? A.BattleWorld.rectToScreen(rect) : rect;
+  }
   function targetRects() {
     var u = L.ui, rects = [];
     if (T.stage === 'cap') rects.push(u.capBtn);
@@ -157,7 +161,7 @@
       if (T.lockedIndex >= 0) rects.push(L.shopRect(T.lockedIndex));
     }
     else if (T.stage === 'sell') {
-      if (live(T.unit)) rects.push({ x: T.unit.x - 30, y: T.unit.y - 48, w: 60, h: 80 });
+      if (live(T.unit)) rects.push(unitRect(T.unit, 60, 80));
       rects.push(u.sellZone);
     } else {
       var slots = archerSlots(T.stage === 'deploy2' || T.stage === 'lock' ? 2 : 1);
@@ -203,7 +207,7 @@
     if (!T.active || S.phase !== 'playing') return;
     var drag = S.dragging, dragging = !!(drag && drag.active);
     // 拖动期间不盖暗幕也不追着手指开亮孔，避免遮住浮起卡和战场。
-    if (!dragging && T.stage !== 'firstFight' && T.stage !== 'secondFight') spotlight(targetRects());
+    if (!dragging && T.stage !== 'firstFight' && T.stage !== 'secondFight' && T.stage !== 'start') spotlight(targetRects());
     if (dragging && (T.stage === 'deploy' || T.stage === 'redeploy' || T.stage === 'deploy2') &&
       drag.kind !== 'unit' && drag.y >= L.ui.tray.y) drawBattleDropGuide();
     var D = A.Render.draw, u = L.ui, source = u.tutorial.caption, copy = COPY[T.stage];
@@ -248,7 +252,7 @@
         if (T.stage !== 'deploy') highlight(L.shopRect(slots[i]));
       }
     } else if (T.stage === 'sell') {
-      if (!dragging && T.unit) highlight({ x: T.unit.x - 28, y: T.unit.y - 48, w: 56, h: 76 });
+      if (!dragging && T.unit) highlight(unitRect(T.unit, 56, 76));
       A.BattleShopUI.drawSellZone(T.unit);
       if (!dragging) highlight(u.sellZone);
     }

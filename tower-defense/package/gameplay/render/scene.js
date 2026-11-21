@@ -99,11 +99,12 @@
 
   function drawBackground() {
     var u = L.ui;
-    // 环境层覆盖整个画布，按中心裁切保持原图比例；不受交互安全区约束。
+    // ── 背景恢复全屏铺满，按原图比例居中裁切 ──
     var level = C.LEVELS[S.currentLevel - 1] || C.LEVELS[0];
     var bg = Assets.entry('battle-map-' + level.map) || Assets.entry('in-game-background');
     if (bg) {
-      var targetRatio = u.w / u.h;
+      var map = { x: 0, y: 0, w: u.w, h: u.h };
+      var targetRatio = map.w / map.h;
       var sourceRatio = bg.w / bg.h;
       var sx = 0, sy = 0, sw = bg.w, sh = bg.h;
       if (sourceRatio > targetRatio) {
@@ -114,7 +115,7 @@
         sy = (bg.h - sh) / 2;
       }
       A.Render.setSceneLight('environment');
-      D.texture(bg.tex, bg.w, bg.h, sx, sy, sw, sh, 0, 0, u.w, u.h);
+      D.texture(bg.tex, bg.w, bg.h, sx, sy, sw, sh, map.x, map.y, map.w, map.h);
       A.Render.setSceneLight('off');
     } else {
       D.vGradient(0, 0, u.w, u.h, COL.bgTop, COL.bgBottom, 26);
@@ -161,7 +162,7 @@
         fx, fy, fw, fh);
       A.Render.setSceneLight('off');
     }
-    var bar = u.guardianBar, s = u.battleScale;
+    var bar = u.guardianBar, s = u.worldScale || u.battleScale;
     var bx = bar.x, bw = bar.w, barY = bar.y;
     D.roundRect(bx, barY, bw, bar.h, bar.h / 2, D.color('#fff4df'));
     D.roundRect(bx + 3*s, barY + 3*s, bw - 6*s, bar.h - 6*s, 4*s, COL.hpBack);
@@ -171,7 +172,7 @@
       D.roundRect(bx + 3*s, barY + 3*s, bw - 6*s, bar.h - 6*s, 4*s,
         D.color('#ff5a6e', Math.min(0.85, S.goalHitT * 2.5)));
     }
-    D.text(level.guardianName, u.guardianLabel.x, u.guardianLabel.y, 16, D.color('#ffffff'), 0);
+    D.text(level.guardianName, u.guardianLabel.x, u.guardianLabel.y, 16, D.color('#ffffff'), 0, s);
   }
 
   function hpBar(x, y, w, ratio, col) {
@@ -763,6 +764,9 @@
     drawFloats: drawFloats,
     drawSpawnHint: drawSpawnHint,
     drawFieldGuides: drawFieldGuides,
-    drawDragGhost: drawDragGhost,
+    drawDragGhost: function () {
+      if (A.BattleWorld) return A.BattleWorld.draw(drawDragGhost);
+      return drawDragGhost();
+    },
   };
 })();

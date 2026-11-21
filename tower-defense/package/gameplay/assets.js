@@ -120,8 +120,8 @@
     for (var level = 1; level <= 10; level++) {
       manifest.push(['level-cover-' + level, 'res/Image/outgame/level-covers/level-' + level + '.jpg']);
     }
-    manifest.push(['home-level-arrows', 'res/Image/ui/icons/home-level-arrows-v1.png']);
-    manifest.push(['home-level-arrows-disabled', 'res/Image/ui/icons/home-level-arrows-disabled-v1.png']);
+    manifest.push(['home-level-arrows', 'res/Image/ui/icons/home-level-arrows-v2.png']);
+    manifest.push(['home-level-arrows-disabled', 'res/Image/ui/icons/home-level-arrows-disabled-v2.png']);
     manifest.push(['home-level-nameplate', 'res/Image/ui/components/home-level-nameplate-v3.png']);
     manifest.push(['home-level-lock', 'res/Image/ui/icons/home-level-lock-v1.png']);
     manifest.push(['home-menu-icons', 'res/Image/ui/icons/home-menu-icons-v1.png']);
@@ -134,7 +134,8 @@
     ['bed', 'food', 'toy', 'photo'].forEach(function (id) {
       manifest.push(['battle-guardian-' + id, 'res/Image/ingame/guardians/' + id + '-v1.png']);
     });
-    manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book.jpg']);
+    manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book-base-v2.jpg']);
+    manifest.push(['collection-book-ring', 'res/Image/outgame/collection/collection-book-ring-v2.png']);
     manifest.push(['collection-art', 'res/Image/outgame/collection/collection-art.png']);
     manifest.push(['collection-lock', 'res/Image/ui/icons/collection-lock-v1.png']);
     manifest.push(['battle-tray', 'res/Image/ui/components/battle/tray-v1.png']);

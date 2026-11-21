@@ -337,7 +337,7 @@
 
     whiteTex = makeWhiteTexture();
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.uniform1i(loc.uTex, 0);
@@ -464,8 +464,8 @@
     if (!gl || blendAdditive === !!on) return;
     flush();
     blendAdditive = !!on;
-    if (blendAdditive) gl.blendFunc(gl.ONE, gl.ONE);
-    else gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    if (blendAdditive) gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE);
+    else gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     // 着色器里按贴图 alpha 预乘，透明区不加亮
     if (loc.uAdd != null) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
   }
@@ -488,8 +488,10 @@
     // 手机宿主可能共用上下文；每批显式恢复自己的混合状态。
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
-    gl.blendFunc(blendAdditive ? gl.ONE : gl.SRC_ALPHA,
-      blendAdditive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
+    // ── RGB按透明度混合；Alpha保持不透明，避免网页底色透进描边 ──
+    gl.blendFuncSeparate(blendAdditive ? gl.ONE : gl.SRC_ALPHA,
+      blendAdditive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA,
+      gl.ONE, blendAdditive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
     gl.uniform2f(loc.uRes, resW, resH);
     if (loc.uSceneLight != null) gl.uniform4f(loc.uSceneLight, sceneLight[0], sceneLight[1], sceneLight[2], sceneLight[3]);
     if (loc.uAdd != null) gl.uniform1f(loc.uAdd, blendAdditive ? 1 : 0);
@@ -522,7 +524,7 @@
     blendAdditive = false;
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(rgb[0], rgb[1], rgb[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(prog);

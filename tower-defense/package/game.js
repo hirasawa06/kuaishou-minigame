@@ -70,6 +70,7 @@ require("./gameplay/data/character-animations.js"); // 角色动作规格（生�
 require("./gameplay/data/avatars.js"); // 首页与个人资料头像元数据
 require("./gameplay/config.js"); // 数值配置
 require("./gameplay/layout.js"); // 竖屏布局
+require("./gameplay/battle-world.js"); // 固定战场坐标
 require("./gameplay/state.js"); // 运行时数据模型
 require("./gameplay/profile.js"); // 个人资料 / 设置 / 虚拟地区榜
 require("./gameplay/render/gl.js"); // WebGL 批渲染器

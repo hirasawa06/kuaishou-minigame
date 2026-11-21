@@ -48,7 +48,7 @@ const GL_ENUM = {
   TEXTURE_MAG_FILTER: 18, LINEAR: 19, NEAREST: 20, TRIANGLES: 21,
   COLOR_BUFFER_BIT: 22, DEPTH_TEST: 23, CULL_FACE: 24, BLEND: 25,
   SRC_ALPHA: 26, ONE_MINUS_SRC_ALPHA: 27, ONE: 28, TEXTURE0: 29,
-  UNPACK_PREMULTIPLY_ALPHA_WEBGL: 30,
+  UNPACK_PREMULTIPLY_ALPHA_WEBGL: 30, FUNC_ADD: 31, TEXTURE1: 32,
 }
 
 function makeGL() {
@@ -82,6 +82,8 @@ function makeGL() {
     enable: noop,
     disable: noop,
     blendFunc: noop,
+    blendFuncSeparate: noop,
+    blendEquation: noop,
     depthMask: noop,
     viewport: noop,
     clearColor: noop,
@@ -171,6 +173,7 @@ const FILES = [
   'gameplay/data/avatars.js',
   'gameplay/config.js',
   'gameplay/layout.js',
+  'gameplay/battle-world.js',
   'gameplay/state.js',
   'gameplay/profile.js',
   'gameplay/render/gl.js',
