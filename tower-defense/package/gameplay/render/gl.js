@@ -422,11 +422,17 @@
     var r = o0.r || 0;
     var mode = o0.mode || 0;
     if (!color) color = { r: 1, g: 1, b: 1, a: 1 };
+    // ── 距离场柔边需要轮廓外的像素，位置与UV同步外扩保持形状不变 ──
+    if (mode === 0 || mode === 2 || (mode >= 8 && mode <= 13)) {
+      u0 -= 1 / w; u1 += 1 / w;
+      v0 -= 1 / h; v1 += 1 / h;
+      x -= 1; y -= 1; w += 2; h += 2;
+    }
     var x1 = x + w, y1 = y + h;
 
     function v(sx, sy, uu, vv) {
       // --- 圆角渐变：沿局部纵轴插值，复用几何裁切 ---
-      var tint = o0.bottomColor ? mix(color, o0.bottomColor, vv) : color;
+      var tint = o0.bottomColor ? mix(color, o0.bottomColor, Math.max(0, Math.min(1, vv))) : color;
       b[o] = sx; b[o + 1] = sy; b[o + 2] = uu; b[o + 3] = vv;
       b[o + 4] = tint.r; b[o + 5] = tint.g; b[o + 6] = tint.b; b[o + 7] = tint.a;
       b[o + 8] = hw; b[o + 9] = hh; b[o + 10] = r; b[o + 11] = mode;
