@@ -580,12 +580,44 @@
       if (!S.enemies[i].dead) actors.push({ actor: S.enemies[i], kind: 'enemy' });
     }
 
+    // ── 按纵向占地分桶；移动后立即更新，保留原有配对顺序与连锁退让 ──
+    var cell = 1, rows = Object.create(null);
+    for (i = 0; i < actors.length; i++)
+      cell = Math.max(cell, actors[i].actor.def.radius * 2 + C.ACTOR_BODY_GAP + 0.5);
+    function updateRow(index) {
+      var body = actors[index], row = Math.floor(body.actor.y / cell);
+      if (body.row === row) return;
+      if (body.row !== undefined) {
+        var old = rows[body.row];
+        old.splice(old.indexOf(index), 1);
+      }
+      body.row = row;
+      (rows[row] || (rows[row] = [])).push(index);
+    }
+    function candidates(index, after) {
+      var found = [], row = actors[index].row;
+      for (var offset = -1; offset <= 1; offset++) {
+        var list = rows[row + offset] || [];
+        for (var k = 0; k < list.length; k++)
+          if (list[k] > after) found.push(list[k]);
+      }
+      return found.sort(function (a, b) { return a - b; });
+    }
+    for (i = 0; i < actors.length; i++) updateRow(i);
     // 多轮清开同一帧的连锁挤压；没有重叠时立即退出，密集阵位才会用满上限。
     for (var pass = 0; pass < 24; pass++) {
       var adjusted = false;
       for (i = 0; i < actors.length; i++) {
-        for (var j = i + 1; j < actors.length; j++) {
-          if (separateBodies(actors[i], actors[j])) adjusted = true;
+        var nearby = candidates(i, i);
+        for (var next = 0; next < nearby.length; next++) {
+          var j = nearby[next], aa = actors[i].actor, bb = actors[j].actor;
+          var reach = aa.def.radius + bb.def.radius + C.ACTOR_BODY_GAP + 0.5;
+          if (Math.abs(aa.x - bb.x) >= reach || Math.abs(aa.y - bb.y) >= reach) continue;
+          if (!separateBodies(actors[i], actors[j])) continue;
+          adjusted = true;
+          updateRow(i); updateRow(j);
+          nearby = candidates(i, j);
+          next = -1;
         }
       }
       if (!adjusted) break;
@@ -600,8 +632,9 @@
     var targetDistance = minDistance + 0.5;
     var dx = bb.x - aa.x;
     var dy = bb.y - aa.y;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist >= targetDistance) return false;
+    var distance2 = dx * dx + dy * dy;
+    if (distance2 >= targetDistance * targetDistance) return false;
+    var dist = Math.sqrt(distance2);
 
     // 完全重合时使用 uid 生成稳定方向，不能用随机数，否则画面会抖动。
     if (dist < 0.001) {

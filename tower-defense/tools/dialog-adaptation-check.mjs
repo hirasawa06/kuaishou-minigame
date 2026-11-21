@@ -13,6 +13,14 @@ for (const [w,h,top,bottom] of [[375,667,0,0],[430,932,0,0],[320,568,20,20],[390
   assert.ok(p.y>=u.contentTop && p.y+p.h<=u.contentBottom-8);
   assert.ok(p.w<=(u.safeRight-u.safeLeft)*.8+1);
   const base=t.base[name][key];
+  const g=t.base[name];
+  const bottom=name==='settings' ? g.versionY+18 :
+    name==='stamina' ? g.ad.y+g.ad.h :
+    name==='avatarPick' ? g.save.y+g.save.h :
+    name==='invite' ? g.copy.y+g.copy.h :
+    name==='pausePanel' ? g.btn('home').y+g.btn('home').h :
+    t.base.resultHome.y+t.base.resultHome.h;
+  assert.ok(Math.abs(base.y+base.h-bottom-20)<1e-7, name+'底部内边距20');
   assert.ok(p.w <= 340 * u.contentH / 836 + 1, 'short-screen dialog height budget missing');
   assert.ok(Math.abs(p.w-base.w*t.scale)<1e-7);
  }
