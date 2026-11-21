@@ -207,7 +207,9 @@
     '    vec2 p = (vUV - 0.5) * 2.0 * h;',
     '    float r = vShape.z;',
     '    vec2 q = abs(p) - (h - r);',
-    '    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+    // ── 大圆先归一化再求长度，避免手机mediump平方溢出丢失出售底色 ──
+    '    float shapeScale = max(max(h.x, h.y), 1.0);',
+    '    float dist = length(max(q, 0.0) / shapeScale) * shapeScale + min(max(q.x, q.y), 0.0) - r;',
     '    float a = 1.0 - smoothstep(-0.9, 0.9, dist);',
     '    if (a < 0.02) discard;',
     '    c = vec4(c.rgb * mix(1.0, a, uAdd), c.a * a);',
