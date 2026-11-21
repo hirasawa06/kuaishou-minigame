@@ -25,7 +25,7 @@
     REWARDED_TIMEOUT_MS: 120000, // 无回调时只解锁，不推断广告完成
 
     // ── 经济 ──
-    GOLD_START: 30,
+    GOLD_START: 20,
     GOLD_START_FIRST_LEVEL: 42, // 一星镭射7 + 扩建15 + 刷新3 + 二星镭射14 + 余留3
     BISCUIT_INTERVAL: 5, // 战斗有效时间秒数，不随倍速加快
     BASE_HP: 100,
@@ -146,20 +146,20 @@
     ENEMIES: {
       small: {
         id: 'small', name: '台灯小怪', tier: 'small', icon: 'enemy-small',
-        hp: 70, atk: 8, interval: 0.9, speed: 62,
-        radius: 11, color: '#8fd06a', baseDamage: 2, gold: 2,
+        hp: 81, atk: 10, interval: 0.9, speed: 62,
+        radius: 11, color: '#8fd06a', baseDamage: 2, gold: 1,
         attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
         id: 'normal', name: '床头柜怪', tier: 'normal', species: 'bedside-table', icon: 'enemy-normal',
-        hp: 240, atk: 16, interval: 1.0, speed: 38,
+        hp: 276, atk: 19, interval: 1.0, speed: 38,
         radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
         attackEffect: 'bump', impactColor: '#ffd27a', hitReaction: 'none',
       },
       elite: {
         id: 'elite', name: '沙发精英', tier: 'elite', species: 'sofa', icon: 'enemy-elite',
-        hp: 900, atk: 34, interval: 1.2, speed: 30,
-        radius: 19, color: '#c58ad9', baseDamage: 8, gold: 16,
+        hp: 1035, atk: 41, interval: 1.2, speed: 30,
+        radius: 19, color: '#c58ad9', baseDamage: 8, gold: 12,
         attackEffect: 'bump', impactColor: '#e4a878',
       },
       boss: {
