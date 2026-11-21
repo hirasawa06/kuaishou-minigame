@@ -339,7 +339,10 @@
     S.phase = 'playing';
     S.battleSpeed = 1;
     S.time = 0;
-    S.gold = S.currentLevel === 1 ? C.GOLD_START_FIRST_LEVEL : C.GOLD_START;
+    // ── 首次教学保留专项预算；完成教学后的所有关卡统一20饼干 ──
+    var needsTutorial = S.currentLevel === 1 && A.Profile &&
+      A.Profile.data.tutorialStarComplete !== true;
+    S.gold = needsTutorial ? C.GOLD_START_FIRST_LEVEL : C.GOLD_START;
     S.biscuitTimer = 0;
     S.baseHp = C.BASE_HP;
     S.waveIndex = 0;
