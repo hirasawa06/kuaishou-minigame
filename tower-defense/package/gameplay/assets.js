@@ -125,9 +125,7 @@
     manifest.push(['home-level-nameplate', 'res/Image/ui/components/home-level-nameplate-v3.png']);
     manifest.push(['home-level-lock', 'res/Image/ui/icons/home-level-lock-v1.png']);
     manifest.push(['home-menu-icons', 'res/Image/ui/icons/home-menu-icons-v1.png']);
-    manifest.push(['home-start-paw', 'res/Image/ui/icons/home-start-paw-v1.png']);
     manifest.push(['in-game-background', 'res/Image/ingame/backgrounds/in-game-background-topdown.jpg']);
-    manifest.push(['guardian-photo', 'res/Image/outgame/home/guardian-photo-v1.png']);
     ['grass', 'wood', 'carpet', 'dining', 'corridor'].forEach(function (id) {
       manifest.push(['battle-map-' + id, 'res/Image/ingame/maps/' + id + '-v1.jpg']);
     });
@@ -161,7 +159,6 @@
     manifest.push(['mage-dog-front', 'res/Image/ingame/characters/mage-dog-front.png']);
     manifest.push(['mage-dog-back', 'res/Image/ingame/characters/mage-dog-back.png']);
     manifest.push(['battle-fx-atlas', 'res/Image/ingame/effects/battle-fx-atlas.png']);
-    manifest.push(['hud-panel', 'res/Image/ui/components/hud-panel.png']);
     manifest.push(['shop-tray', 'res/Image/ui/components/shop-tray.png']);
     manifest.push(['shop-button', 'res/Image/ui/components/shop-button.png']);
 
