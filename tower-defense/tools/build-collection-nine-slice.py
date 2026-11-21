@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 root = Path(__file__).resolve().parent.parent
 folder = root / 'package/subpackages/collection-art/res/Image/outgame/collection'
-source = Image.open(folder / 'collection-book.jpg').convert('RGB')
+source = Image.open(root / 'tools/src/collection/book-nine-slice/collection-book.jpg').convert('RGB')
 base = source.copy()
 centers = [249, 514, 801, 1130, 1428]
 mask = Image.new('L', (68, 64))

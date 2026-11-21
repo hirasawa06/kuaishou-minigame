@@ -3,7 +3,7 @@
 from pathlib import Path
 from shutil import copy2
 import argparse
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 MAP = {
@@ -51,12 +51,7 @@ def main():
         source = ROOT / "tools/src/ui/battle/white-bone-source.png"
     destination = ROOT / "package/res/Image/ui/icons/battle/white-bone-v1.png"
     copy2(source, destination)
-    # ── 四角星使用透明小图，按高分辨率绘制后缩小抗锯齿 ──
-    star = Image.new("RGBA", (128, 128))
-    ImageDraw.Draw(star).polygon([(64, 4), (82, 46), (124, 64), (82, 82),
-                                 (64, 124), (46, 82), (4, 64), (46, 46)], fill="#fff5cc")
-    star.resize((32, 32), Image.Resampling.LANCZOS).save(
-        ROOT / "package/res/Image/ui/icons/battle/star-v1.png")
+
 
 
 if __name__ == "__main__":
