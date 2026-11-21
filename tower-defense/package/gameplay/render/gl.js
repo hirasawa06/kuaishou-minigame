@@ -79,7 +79,16 @@
     // ── 主按钮：纯色填充，浅黄色柔光只沿顶部内缘分布 ──
     // ── 模式12：抗锯齿继续三角，直接绘制无需图集 ──
     // ── 模式13：圆润四角星的距离场，圆头和抗锯齿无需图片 ──
-    '  if (vMode > 13.5) {',
+    // ── 狗饼干整体轮廓：圆端与连接杆合并后统一柔边，避免叠加发虚 ──
+    '  if (vMode > 15.5) {',
+    '    vec2 p = (vUV - 0.5) * 2.0 * h;',
+    '    vec2 q = abs(p) - vec2(5.0, 1.0);',
+    '    float body = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 4.0;',
+    '    float ends = length(abs(p) - vec2(7.0, 4.0)) - 5.0;',
+    '    float alpha = 1.0 - smoothstep(-0.35, 0.35, min(body, ends));',
+    '    if (alpha < 0.004) discard;',
+    '    c.a *= alpha;',
+    '  } else if (vMode > 13.5) {',
     '    vec2 p = (vUV - 0.5) * 2.0 * h;',
     '    float r = vShape.z;',
     '    vec2 q = abs(p) - (h - r);',

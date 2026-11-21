@@ -62,15 +62,18 @@
   function drawAction(key, rect, label, cost, enabled) {
     var s = L.ui.battleScale;
     var box = scaled(rect, pressScale(key, enabled));
-    var source = key === 'refresh' ? 'battle-refresh' : 'battle-expand';
+    var source = key === 'refresh' ? 'battle-expand' : 'battle-refresh';
     if (!image(source, box, enabled ? 1 : 0.55)) {
       D.roundRect(box.x, box.y, box.w, box.h, 18 * s, D.color('#e89b37', enabled ? 1 : 0.55));
     }
     var col = D.color('#ffffff', enabled ? 1 : 0.7);
-    D.text(label, box.x + 20 * s, box.y + 13 * s, 16 * s, col, 0);
-    D.text(String(cost), box.x + 63 * s, box.y + 11 * s, 20 * s, col, 0);
-    var paw = { x: box.x + 63 * s + D.textWidth(String(cost), 20 * s) + 2,
-      y: box.y + 13 * s, w: 20 * s, h: 20 * s };
+    // ── 内容整体对齐按钮主体中心，排除底部阴影；横向间距保持 ──
+    var centerY = box.y + box.h / 2 - 3 * s;
+    var costX = box.x + 59 * s, costW = D.textWidth(String(cost), 20 * s);
+    D.centeredText(label, box.x + 36 * s, centerY, 16 * s, col);
+    D.centeredText(String(cost), costX + costW / 2, centerY, 20 * s, col);
+    var paw = { x: costX + costW + 2,
+      y: centerY - 10 * s, w: 20 * s, h: 20 * s };
     if (!image('battle-white-bone', paw, enabled ? 1 : 0.6)) {
       D.circle(paw.x + paw.w / 2, paw.y + paw.h / 2, paw.w * 0.42, D.color('#f5a531'));
     }
@@ -180,6 +183,9 @@
     if (!unit && (!drag || drag.kind !== 'unit' || !drag.active)) return;
     unit = unit || drag.unit;
     var sell = L.ui.sellZone;
+    // ── 底色延展至画布底部；热区与文案仍使用原出售区 ──
+    var bottom = sell.y + sell.h;
+    D.roundRect(sell.x, bottom - 1, sell.w, L.ui.h - bottom + 2, 0, D.color('#874732'));
     // ── 圆弧顶部：同心圆裁切形成3px描边，底部平直铺满出售区 ──
     var rise = sell.h * 0.4, radius = sell.w * sell.w / (8 * rise) + rise / 2;
     var cx = sell.x + sell.w / 2, cy = sell.y + radius;
@@ -196,8 +202,8 @@
     var y = sell.y + sell.h * 0.56;
     D.centeredText(label, x + textW / 2, y, font, D.color('#ffffff'), zoom);
     var ix = x + textW + 4, white = D.color('#ffffff');
-    D.roundRect(ix + 3, y - 5, 18, 10, 4, white);
-    for (var i = 0; i < 4; i++) D.circle(ix + (i < 2 ? 5 : 19), y + (i % 2 ? 4 : -4), 5, white);
+    // ── 保留24×18图标轮廓；外围1px留白容纳抗锯齿 ──
+    A.Render.push(ix - 1, y - 10, 26, 20, white, { mode: 16, hw: 13, hh: 10 });
   }
 
   function drawDragCard(def, rect, index) {

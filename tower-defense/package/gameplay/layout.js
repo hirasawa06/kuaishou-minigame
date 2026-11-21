@@ -212,13 +212,13 @@
     };
     ui.shopBtnH = 48 * battleScale;
     ui.refreshBtn = {
-      x: battleLeft + 160 * battleScale,
+      x: battleLeft + 286 * battleScale,
       y: tray.y + 18 * battleScale,
       w: 114 * battleScale,
       h: 48 * battleScale,
     };
     ui.capBtn = {
-      x: battleLeft + 286 * battleScale,
+      x: battleLeft + 160 * battleScale,
       y: tray.y + 18 * battleScale,
       w: 114 * battleScale,
       h: 48 * battleScale,
@@ -428,6 +428,8 @@
     ui.menu.stamina = figmaRect(navLeft + navSize + 10, navTop, 142, 44);
     ui.menu.card = figmaRect(8.24, 258.5, 373.06, 315);
     ui.menu.start = figmaRect(83.649, 612.48, 221.782, 72.76);
+    // ── 保卫与未解锁共用按钮，距关卡图底边固定16逻辑像素 ──
+    ui.menu.start.y = ui.menu.card.y + ui.menu.card.h + 16;
     ui.menu.levelPrev = { x: ui.menu.card.x + 8, y: ui.menu.card.y + ui.menu.card.h / 2 - 22, w: 44, h: 44 };
     ui.menu.levelNext = { x: ui.menu.card.x + ui.menu.card.w - 52, y: ui.menu.levelPrev.y, w: 44, h: 44 };
     // ── 容器连续两次缩小15%，文字保持原字号 ──────────────
@@ -484,7 +486,7 @@
     var setShareGap = setCompact ? 12 : 20;
     var setBtnH = setCompact ? 42 : 48;
     var setVersionGap = setCompact ? 10 : 16;
-    var setBottomPad = setCompact ? 14 : 18;
+    var setBottomPad = 20;
     var setH = setHead + setTopGap + setRowH * 2 + setRowGap +
       setShareGap + setBtnH + setVersionGap + 18 + setBottomPad;
     var setY = Math.round(contentTop + (contentH - setH) / 2) + dialogOffsetY;
@@ -508,7 +510,7 @@
     };
 
     // 体力弹窗：安全区居中，倒计时与广告入口各占独立一行。
-    var staminaH = Math.min(260, Math.max(1, contentH - 16));
+    var staminaH = Math.min(234, Math.max(1, contentH - 16));
     var staminaY = contentTop + (contentH - staminaH) / 2 + dialogOffsetY;
     var staminaHead = Math.round(Math.max(40, rowH * 0.8));
     ui.stamina = {
@@ -517,8 +519,8 @@
       close: { x: sheetX + sheetW - 44, y: staminaY + 12, w: 32, h: 32 },
       valueY: staminaY + staminaHead + 18,
       timerY: staminaY + staminaHead + 56,
-      noteY: staminaY + staminaH - 30,
-      ad: { x: sheetX + 20, y: staminaY + staminaH - 94, w: sheetW - 40, h: 48 },
+      noteY: staminaY + staminaH - 92,
+      ad: { x: sheetX + 20, y: staminaY + staminaH - 68, w: sheetW - 40, h: 48 },
     };
 
     // 选择头像：标题 + 3×3 网格 + 保存
@@ -569,8 +571,8 @@
     var invGap = Math.round(Math.max(8, Math.min(20, invMaxH * 0.06)));
     var invCopyH = 44;
     var invBodyH = Math.round(Math.max(32, Math.min(140,
-      invMaxH - invHead - 36 - invCopyH - invGap * 4)));
-    var invH = invHead + invBodyH + 36 + invCopyH + invGap * 4;
+      invMaxH - invHead - 36 - invCopyH - invGap * 3 - 20)));
+    var invH = invHead + invBodyH + 36 + invCopyH + invGap * 3 + 20;
     var invY = contentTop + Math.round((contentH - invH) / 2) + dialogOffsetY;
     var invBodyY = invY + invHead + invGap;
     var invTitleY = invBodyY + invBodyH + invGap;
