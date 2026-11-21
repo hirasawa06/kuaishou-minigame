@@ -6,6 +6,50 @@
 
   var WHITE = { r: 1, g: 1, b: 1, a: 1 };
   draw.white = WHITE;
+  // ── 同步变换文字、图片与形状；全屏遮罩保持画布坐标 ──
+  draw.withTransform = function (transform, callback) {
+    var original = GL.push, s = transform.scale;
+    GL.push = function (x, y, w, h, color, opts) {
+      var screen = A.Layout.ui;
+      if (x === 0 && y === 0 && w === screen.w && h === screen.h)
+        return original(x, y, w, h, color, opts);
+      var shape = Object.assign({}, opts || {});
+      ['hw', 'hh', 'r'].forEach(function (key) {
+        if (shape[key] !== undefined) shape[key] *= s;
+      });
+      if (shape.cx !== undefined) shape.cx = shape.cx * s + transform.x;
+      if (shape.cy !== undefined) shape.cy = shape.cy * s + transform.y;
+      return original(x * s + transform.x, y * s + transform.y, w * s, h * s, color, shape);
+    };
+    try { return callback(); }
+    finally { GL.push = original; }
+  };
+  // ── 九宫格纹理：四角等比、边缘单向延展、中间填充 ──
+  draw.nineSlice = function (source, rect, cuts, scale, tint) {
+    var width = cuts.width || source.w, height = source.h;
+    var s = Math.min(scale || 1, rect.w / (cuts.left + cuts.right),
+      rect.h / (cuts.top + cuts.bottom));
+    var sx = [0, cuts.left, width - cuts.right, width];
+    var sy = [0, cuts.top, height - cuts.bottom, height];
+    var dx = [rect.x, rect.x + cuts.left * s, rect.x + rect.w - cuts.right * s, rect.x + rect.w];
+    var dy = [rect.y, rect.y + cuts.top * s, rect.y + rect.h - cuts.bottom * s, rect.y + rect.h];
+    for (var row = 0; row < 3; row++) {
+      for (var col = 0; col < 3; col++) {
+        draw.texture(source.tex, source.w, source.h,
+          sx[col], sy[row], sx[col + 1] - sx[col], sy[row + 1] - sy[row],
+          dx[col], dy[row], dx[col + 1] - dx[col], dy[row + 1] - dy[row], tint || WHITE);
+      }
+    }
+  };
+  // ── 相册九宫格：装订环独立等比绘制，避开左边缘伸缩区域 ──
+  draw.bookNineSlice = function (source, rect, ring) {
+    draw.nineSlice(source, rect, { left: 96, right: 96, top: 96, bottom: 112 }, 0.5);
+    if (!ring) return;
+    [249, 514, 801, 1130, 1428].forEach(function (center) {
+      draw.texture(ring.tex, ring.w, ring.h, 0, 0, ring.w, ring.h,
+        rect.x, rect.y + center / source.h * rect.h - 16, 34, 32);
+    });
+  };
   draw.color = function (hex, a) { return GL.color(hex, a); };
 
   // ── 圆润四角星：统一代码轮廓，不依赖切图 ──

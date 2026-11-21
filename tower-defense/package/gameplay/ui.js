@@ -412,7 +412,7 @@
   function drawCollection(detail) {
     var u = L.ui, g = u.collection;
     var book = A.Assets.entry('collection-book');
-    if (book) D.texture(book.tex, book.w, book.h, 0, 0, book.w, book.h, 0, 0, u.w, u.h);
+    if (book) D.bookNineSlice(book, { x: 0, y: 0, w: u.w, h: u.h }, A.Assets.entry('collection-book-ring'));
     backButton(g.back);
     if (detail) {
       var def = S.heroById(UI.collectionHero);
@@ -739,10 +739,10 @@
   function draw() {
     if (!UI.stack.length) return;
     var name = top();
-    if (name === 'settings') drawSettings();
-    else if (name === 'stamina') drawStamina();
-    else if (name === 'avatars') drawAvatarPick();
-    else if (name === 'invite') drawInvite();
+    if (name === 'settings') L.drawDialog('settings', drawSettings);
+    else if (name === 'stamina') L.drawDialog('stamina', drawStamina);
+    else if (name === 'avatars') L.drawDialog('avatarPick', drawAvatarPick);
+    else if (name === 'invite') L.drawDialog('invite', drawInvite);
     else if (name === 'collection') drawCollection(false);
     else if (name === 'heroDetail') drawCollection(true);
   }

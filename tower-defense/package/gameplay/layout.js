@@ -12,6 +12,78 @@
     return typeof v === 'number' && isFinite(v) ? v : fallback;
   }
 
+  // ── 守卫图与状态整组居中；只缩短血条画面，不改变血量 ──
+  L.alignGuardianInfo = function (u, scale) {
+    var previousX = u.guardian.x + u.guardian.w + 10;
+    var width = Math.max(1, u.safeRight - 12 - previousX) * 0.8;
+    var groupWidth = u.guardian.w + 10 + width;
+    u.guardian.x = u.safeLeft + (u.safeRight - u.safeLeft - groupWidth) / 2;
+    var x = u.guardian.x + u.guardian.w + 10;
+    var height = 10 * scale;
+    var y = u.tray.y - 12 - height;
+    u.guardianBar = { x: x, y: y, w: width, h: height };
+    u.guardianLabel = { x: x, y: y - 22 * scale };
+  };
+
+  // ── 弹窗共用同一变换：设计几何用于绘制，变换后几何用于触摸 ──
+  function dialogValue(value, key, transform) {
+    if (typeof value === 'function') return function () {
+      return dialogValue(value.apply(null, arguments), '', transform);
+    };
+    if (typeof value === 'number') {
+      if (key === 'cols' || key === 'rows') return value;
+      if (key === 'x' || /X$/.test(key)) return value * transform.scale + transform.x;
+      if (key === 'y' || /Y$/.test(key)) return value * transform.scale + transform.y;
+      return value * transform.scale;
+    }
+    if (!value || typeof value !== 'object') return value;
+    var result = {};
+    Object.keys(value).forEach(function (name) {
+      result[name] = dialogValue(value[name], name, transform);
+    });
+    return result;
+  }
+
+  function fitDialog(name, keys, panel, widthRatio) {
+    var safeW = ui.safeRight - ui.safeLeft;
+    // ── 以Pro Max可用区430×836为基准，短屏同时约束宽度和高度 ──
+    var compact = Math.min(1, ui.contentH / (836 * safeW / 430));
+    var scale = Math.min(safeW * widthRatio * compact / panel.w, (ui.contentH - 32) / panel.h);
+    var targetY = ui.contentTop + (ui.contentH - panel.h * scale) / 2 - 24;
+    targetY = Math.max(ui.contentTop + 8, Math.min(targetY, ui.contentBottom - panel.h * scale - 8));
+    var transform = { scale: scale,
+      x: ui.safeLeft + (safeW - panel.w * scale) / 2 - panel.x * scale,
+      y: targetY - panel.y * scale, base: {} };
+    keys.forEach(function (key) {
+      transform.base[key] = ui[key];
+      ui[key] = dialogValue(ui[key], '', transform);
+    });
+    ui.dialogs[name] = transform;
+  }
+
+  function fitDialogs() {
+    ui.dialogs = {};
+    ['settings', 'stamina', 'avatarPick', 'invite'].forEach(function (name) {
+      fitDialog(name, [name], ui[name].sheet, 340 / 430);
+    });
+    fitDialog('pausePanel', ['pausePanel'], ui.pausePanel.panel, 340 / 430);
+    fitDialog('result', ['result', 'resultNext', 'resultRevive', 'resultReplay', 'resultHome',
+      'resultLoseRevive', 'resultLoseReplay', 'resultLoseHome'], ui.result.panel, 340 / 430);
+    var pet = ui.newPet, width = Math.max(pet.card.w, pet.button.w);
+    fitDialog('newPet', ['newPet'], { x: (ui.w - width) / 2, y: pet.titleY,
+      w: width, h: pet.button.y + pet.button.h - pet.titleY }, 0.55);
+  }
+
+  L.drawDialog = function (name, callback) {
+    var actual = L.ui, transform = actual.dialogs && actual.dialogs[name];
+    if (!transform) return callback();
+    var design = Object.create(actual);
+    Object.keys(transform.base).forEach(function (key) { design[key] = transform.base[key]; });
+    L.ui = design;
+    try { return A.Render.draw.withTransform(transform, callback); }
+    finally { L.ui = actual; }
+  };
+
   function systemMetrics(w, h) {
     var info = {};
     if (typeof KwaiBase !== 'undefined' && KwaiBase.getSystemInfo) {
@@ -58,19 +130,18 @@
     // │ 战斗页以 Figma 414×896 为唯一基准；横向按安全区等比缩放。     │
     // │ 交互热区与画面共用同一套几何，避免“看着对、点不到”。          │
     // └──────────────────────────────────────────────────────────────┘
-    // 779 是 Figma 顶部控件到第二排卡片底部的有效高度。
-    // 标准 414×896 不缩放；有刘海/底部安全区时只等比收紧整套战斗 UI。
-    var battleScale = Math.min(safeW / 414, Math.max(0.01, (contentH - 0.5) / 779));
+    // ── 短屏操作台最多缩小15%，给完整地图让出高度；绘制与命中同步 ──
+    var widthScale = safeW / 414;
+    var battleScale = widthScale * Math.max(0.85, Math.min(1, contentH / (800 * widthScale)));
     var battleLeft = metrics.safeLeft + (safeW - 414 * battleScale) / 2;
-    var battleTop = Math.max(contentTop - 96 * battleScale,
-      contentBottom - 896 * battleScale);
+    var battleTop = contentTop - 96 * battleScale;
     var pad = Math.round(Math.max(10, Math.min(22, w * 0.033)));
-    var hudH = Math.max(36, 40 * battleScale);
+    var hudH = Math.max(36, 40 * widthScale);
     var fieldTop = Math.max(contentTop + hudH, battleTop + 136 * battleScale);
-    var trayY = battleTop + 636 * battleScale;
+    var trayY = contentBottom - 260 * battleScale;
     // 极短屏幕优先保证 160px 战场和 136px 托盘，正常机型完全命中 Figma 坐标。
     var fieldReserve = adaptationError ? 1 : 160;
-    var trayReserve = adaptationError ? 1 : 136;
+    var trayReserve = adaptationError ? 1 : 260 * battleScale;
     trayY = Math.max(fieldTop + fieldReserve, Math.min(trayY, contentBottom - trayReserve));
     var trayH = Math.max(1, contentBottom - trayY);
     var fieldBottom = trayY;
@@ -112,6 +183,7 @@
     ui.contentBottom = contentBottom;
     ui.contentH = contentH;
     ui.battleScale = battleScale;
+    ui.hudScale = widthScale;
     ui.battleTop = battleTop;
     // 唯一的交互边界：渲染层可使用整屏，输入层必须先通过这里。
     ui.interactiveRect = { x: metrics.safeLeft, y: contentTop, w: safeW, h: contentH };
@@ -126,10 +198,7 @@
     // 图1：100方框，左8；底边在托盘顶下20，距896屏底240。
     ui.guardian = { x: metrics.safeLeft + 8 * battleScale,
       y: tray.y - 80 * battleScale, w: 100 * battleScale, h: 100 * battleScale };
-    ui.guardianLabel = { x: metrics.safeLeft + 126 * battleScale,
-      y: tray.y - 46 * battleScale };
-    ui.guardianBar = { x: metrics.safeLeft + 122 * battleScale,
-      y: tray.y - 28 * battleScale, w: safeW - 144 * battleScale, h: 14 * battleScale };
+    L.alignGuardianInfo(ui, battleScale);
     ui.trayH = trayH;
     ui.energyBar = energyBar;
     ui.cardGap = gap;
@@ -224,12 +293,14 @@
     ui.placeBottom = base.y - Math.round(baseH * 0.5);
     ui.placeLeft = field.x + 26;
     ui.placeRight = field.x + field.w - 26;
-    ui.wavePlate = { x: metrics.safeLeft + 12 * battleScale,
-      y: battleTop + 96 * battleScale, w: 99 * battleScale, h: 40 * battleScale };
-    ui.pauseBtn = { x: metrics.safeLeft + 360 * battleScale,
-      y: battleTop + 96 * battleScale, w: 40 * battleScale, h: 40 * battleScale };
-    ui.speedBtn = { x: metrics.safeLeft + 12 * battleScale,
-      y: battleTop + 144 * battleScale, w: 40 * battleScale, h: 40 * battleScale };
+    // ── 顶部控件独立于操作台缩放，两侧按安全区保持相同边距 ──
+    var hudMargin = 12 * widthScale;
+    ui.wavePlate = { x: metrics.safeLeft + hudMargin,
+      y: contentTop, w: 99 * widthScale, h: 40 * widthScale };
+    ui.pauseBtn = { x: metrics.safeRight - hudMargin - 40 * widthScale,
+      y: contentTop, w: 40 * widthScale, h: 40 * widthScale };
+    ui.speedBtn = { x: metrics.safeLeft + hudMargin,
+      y: contentTop + 48 * widthScale, w: 40 * widthScale, h: 40 * widthScale };
     ui.hudCenterX = metrics.safeLeft + safeW * 0.47;
     // 主按钮几何：按钮实际绘制在 h*btnY 处，点击判定复用同一份数据
     ui.btnW = 184;
@@ -479,8 +550,9 @@
       grid: { x: gridX, y: gridTop, cell: cellSize, gap: cellGap, cols: 3, rows: 3 },
       save: pickSave,
     };
+    var avatarGrid = ui.avatarPick.grid;
     ui.avatarPick.rect = function (i) {
-      var g = ui.avatarPick.grid;
+      var g = avatarGrid;
       var col = i % g.cols;
       var row = (i - col) / g.cols;
       return {
@@ -561,6 +633,8 @@
       var y = ui.btnY[kind];
       return { x: metrics.safeLeft + (safeW - ui.btnW) / 2, y: y, w: ui.btnW, h: ui.btnH };
     };
+    if (A.BattleWorld) A.BattleWorld.configure(ui);
+    fitDialogs();
     ui.overlayBtn = ui.btnRect('menu');
     ui.ready = true;
     return ui;

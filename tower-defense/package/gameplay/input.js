@@ -119,7 +119,8 @@
         if (unit.dead || unit.hp <= 0) continue;
         if (!allowed('inspect', unit) && !allowed('sell', unit)) continue;
         var hitRadius = Math.max(unit.def.radius, 26);
-        if (S.dist2(px, py, unit.x, unit.y) > hitRadius * hitRadius) continue;
+        var hitPoint = A.BattleWorld ? A.BattleWorld.toWorld(px, py) : { x: px, y: py };
+        if (S.dist2(hitPoint.x, hitPoint.y, unit.x, unit.y) > hitRadius * hitRadius) continue;
         drag = { kind: 'unit', unit: unit, def: unit.def, x: px, y: py,
           startX: px, startY: py, active: false, holdT: 0 };
         S.dragging = drag;

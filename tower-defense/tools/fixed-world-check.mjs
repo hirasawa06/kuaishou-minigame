@@ -1,0 +1,76 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+let reference;
+for (const [w,h,top,bottom] of [[375,667,20,0],[414,896,0,0],[390,844,47,34],[430,932,0,0]]) {
+ const context={AIGCUtils:{Layout:{w,h}},KwaiBase:{getSystemInfo:()=>({safeArea:{left:0,right:w,top,bottom:h-bottom}})}};
+ context.window=context; vm.createContext(context);
+ for(const f of ['config.js','layout.js','battle-world.js']) vm.runInContext(fs.readFileSync(new URL('../package/gameplay/'+f,import.meta.url),'utf8'),context);
+ const A=context.AIGCUtils,u=A.Layout.calc(),W=A.BattleWorld;
+ const world=W.run(()=>({distance:A.Layout.ui.baseStopY-A.Layout.ui.spawnY,width:A.Layout.ui.field.w,height:A.Layout.ui.field.h,place:A.Layout.ui.placeBottom-A.Layout.ui.placeTop}));
+ reference ||= world; assert.deepEqual(world,reference);
+ const p=W.toScreen(207,400),q=W.toWorld(p.x,p.y);
+ assert.ok(Math.abs(q.x-207)<1e-8 && Math.abs(q.y-400)<1e-8);
+ assert.ok(u.field.y>=u.contentTop && u.field.y+u.field.h<=u.tray.y+1e-8);
+ assert.ok(u.field.x>=u.safeLeft && u.field.x+u.field.w<=u.safeRight+1e-8);
+ assert.ok(u.battleScale<=w/414 && u.battleScale>=w/414*0.85,'操作台短屏最多缩小15%');
+ if(h===667) assert.ok(u.battleScale<w/414,'短屏主动让出战场空间');
+ assert.ok(u.guardianLabel.y+16*u.worldScale+4*u.worldScale<=u.guardianBar.y,'名称与血条保留间距');
+ assert.ok(Math.abs(u.guardianBar.x-(u.guardian.x+u.guardian.w+10))<1e-8,'血条距道具右侧10px');
+ assert.equal(u.guardianLabel.x,u.guardianBar.x,'名称与血条左对齐');
+ assert.ok(Math.abs(u.tray.y-u.guardianBar.y-u.guardianBar.h-12)<1e-8,'血条底部距面板12px');
+ assert.ok(u.guardianBar.x+u.guardianBar.w<=u.safeRight,'血条右侧不溢出');
+ const originalGuardian=W.rectToScreen({x:8,y:558,w:88,h:88});
+ const previousWidth=u.safeRight-12-originalGuardian.x-originalGuardian.w-10;
+ assert.ok(Math.abs(u.guardianBar.w-previousWidth*0.8)<1e-8,'血条显示长度缩短20%');
+ assert.ok(Math.abs((u.guardian.x+u.guardianBar.x+u.guardianBar.w)/2-(u.safeLeft+u.safeRight)/2)<1e-8,'道具与名称血条整组居中');
+ const margin=12*w/414;
+ assert.ok(Math.abs(u.wavePlate.x-u.safeLeft-margin)<1e-8);
+ assert.ok(Math.abs(u.safeRight-u.pauseBtn.x-u.pauseBtn.w-margin)<1e-8,'顶部两侧边距一致');
+ assert.equal(u.speedBtn.x,u.wavePlate.x);
+ const textures=[],texts=[];
+ A.State={phase:'playing',currentLevel:1,baseHp:A.Config.BASE_HP};
+ A.Assets={entry:()=>({tex:{},w:414,h:896})};
+ A.Render={setSceneLight(){},draw:{color:()=>0,rect(){},roundRect(){},texture:(...args)=>textures.push(args),text:(...args)=>texts.push(args)}};
+ vm.runInContext(fs.readFileSync(new URL('../package/gameplay/render/scene.js',import.meta.url),'utf8'),context);
+ A.Scene.drawBackground(); A.Scene.drawBase();
+ assert.deepEqual(textures[0].slice(7,11),[0,0,w,h],'地图背景恢复全屏铺满');
+ assert.equal(texts[0][6],u.worldScale,'道具名字形同步缩放');
+ let trayBackground; A.Render.draw.nineSlice=(source,rect)=>trayBackground=rect;
+ vm.runInContext(fs.readFileSync(new URL('../package/gameplay/render/battle-shop.js',import.meta.url),'utf8').replace('A.BattleShopUI = {','A.BattleShopUI = { testTray: drawTray,'),context);
+ A.BattleShopUI.testTray();
+ assert.equal(trayBackground.x,0); assert.equal(trayBackground.w,w,'底部背景左右撑满');
+ assert.equal(trayBackground.y+trayBackground.h,h+20,'底部延伸保持');
+ console.log(`${w}x${h}: 固定路程${world.distance}、部署区、触摸往返及安全边界通过`);
+}
+// ── 使用真实战斗更新，比较到家时间及部署结果 ──
+let arrivalReference;
+for (const [w,h] of [[375,667],[414,896],[430,932]]) {
+ const context={AIGCUtils:{Layout:{w,h}}}; context.window=context;
+ vm.createContext(context);
+ for(const f of ['config.js','layout.js','battle-world.js','state.js']) vm.runInContext(fs.readFileSync(new URL('../package/gameplay/'+f,import.meta.url),'utf8'),context);
+ const A=context.AIGCUtils; A.Layout.calc(); A.State.reset();
+ vm.runInContext(fs.readFileSync(new URL('../package/gameplay/play/battle.js',import.meta.url),'utf8').replace('A.Battle = {','A.Battle = { testEnemies: updateEnemies,'),context);
+ const def=A.Config.ENEMIES.small;
+ A.State.enemies=[{uid:1,def,x:207,y:106,hp:70,maxHp:70,speed:def.speed,atk:def.atk,anim:'move',animT:0,atkTimer:0,spawnT:0,slowT:0,slowFactor:1,pendingHit:-1,pendingTarget:0,pendingKind:'',hitFlash:0}];
+ let frames=0;
+ while(A.State.baseHp===A.Config.BASE_HP && frames<1800){A.Battle.testEnemies(1/60);frames++;}
+ assert.ok(frames<1800,'怪物确实到家并造成伤害');
+ arrivalReference ||= frames; assert.equal(frames,arrivalReference);
+ A.State.enemies=[]; A.State.gold=100;
+ const p=A.BattleWorld.toScreen(207,400);
+ const unit=A.Battle.placeHero(A.State.heroAtStar('arch',1),p.x,p.y,1);
+ assert.ok(Math.abs(unit.x-207)<1e-8 && Math.abs(unit.y-400)<1e-8);
+ A.State.heroCap=20;
+ const shifted=A.Battle.findDeployPoint(unit.def,p.x,p.y);
+ assert.ok(shifted && Math.hypot(shifted.x-p.x,shifted.y-p.y)>0,'部署吸附避开既有角色');
+ const events={};
+ vm.runInContext(fs.readFileSync(new URL('../package/gameplay/input.js',import.meta.url),'utf8'),context);
+ A.Input.bind({getBoundingClientRect:()=>({left:0,top:0,width:w,height:h}),addEventListener:(key,fn)=>events[key]=fn});
+ events.mousedown({clientX:p.x,clientY:p.y});
+ assert.equal(A.Input.getDrag().unit,unit,'真实输入命中缩放后的角色');
+ const sell=A.Layout.ui.sellZone,release={clientX:sell.x+sell.w/2,clientY:sell.y+sell.h/2};
+ events.mousemove(release); events.mouseup(release);
+ assert.ok(!A.State.units.includes(unit),'真实拖动出售成功');
+ console.log(`${w}x${h}: 真实怪物${frames}帧到家、屏幕部署、碰撞及拖动出售一致`);
+}

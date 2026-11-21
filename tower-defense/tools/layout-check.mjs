@@ -85,11 +85,11 @@ function check(name, input, expected) {
   let previousPauseButton = null
   for (const key of ['resume', 'settings', 'restart', 'home']) {
     const button = ui.pausePanel.btn(key)
-    assert(button.x >= pause.x + 12 && button.x + button.w <= pause.x + pause.w - 12 &&
+    assert(button.x >= pause.x + 12 * ui.dialogs.pausePanel.scale && button.x + button.w <= pause.x + pause.w - 12 * ui.dialogs.pausePanel.scale &&
       button.y >= pause.y + ui.pausePanel.headerH &&
-      button.y + button.h <= pause.y + pause.h - 12,
+      button.y + button.h <= pause.y + pause.h - 12 * ui.dialogs.pausePanel.scale,
     `${name}: pause ${key} button outside panel`)
-    if (previousPauseButton) assert(button.y >= previousPauseButton.y + previousPauseButton.h + 6,
+    if (previousPauseButton) assert(button.y >= previousPauseButton.y + previousPauseButton.h + 6 * ui.dialogs.pausePanel.scale,
       `${name}: pause buttons overlap`)
     previousPauseButton = button
   }
@@ -130,11 +130,12 @@ function check(name, input, expected) {
       control.y >= sheet.y + 6 && control.y + control.h <= sheet.y + sheet.h - 6,
     `${name}: settings control outside sheet`)
   }
-  assert(settings.musicRow.y >= sheet.y + settings.head + 8 &&
-    settings.sfxRow.y >= settings.musicRow.y + settings.musicRow.h + 8 &&
-    settings.shareBtn.y >= settings.sfxRow.y + settings.sfxRow.h + 10 &&
-    settings.versionY >= settings.shareBtn.y + settings.shareBtn.h + 8 &&
-    settings.versionY + 18 <= sheet.y + sheet.h - 10,
+  const settingsScale = ui.dialogs.settings.scale
+  assert(settings.musicRow.y >= sheet.y + settings.head + 8 * settingsScale - 0.001 &&
+    settings.sfxRow.y >= settings.musicRow.y + settings.musicRow.h + 8 * settingsScale - 0.001 &&
+    settings.shareBtn.y >= settings.sfxRow.y + settings.sfxRow.h + 10 * settingsScale - 0.001 &&
+    settings.versionY >= settings.shareBtn.y + settings.shareBtn.h + 8 * settingsScale - 0.001 &&
+    settings.versionY + 18 * settingsScale <= sheet.y + sheet.h - 10 * settingsScale + 0.001,
   `${name}: settings rows or version overlap`)
   const m = ui.menu
   const close = (a, b) => Math.abs(a - b) < 0.01

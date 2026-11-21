@@ -9,10 +9,10 @@ for (const [w, h] of [[414, 896], [360, 780], [320, 568]]) {
   for (const file of ['config', 'layout', 'state']) vm.runInContext(read(file), context);
   const A = context.AIGCUtils, S = A.State, L = A.Layout;
   const ui = L.calc(), r = ui.speedBtn;
-  assert.equal(r.w, 40 * ui.battleScale);
+  assert.equal(r.w, 40 * ui.hudScale);
   assert.equal(r.h, r.w);
   assert.equal(r.x, ui.wavePlate.x);
-  assert(Math.abs(r.y - (ui.wavePlate.y + ui.wavePlate.h) - 8 * ui.battleScale) < 1e-8);
+  assert(Math.abs(r.y - (ui.wavePlate.y + ui.wavePlate.h) - 8 * ui.hudScale) < 1e-8);
   assert(r.y + r.h <= ui.contentBottom);
   const game = read('game');
   vm.runInContext('var A = window.AIGCUtils; var S = A.State; ' +

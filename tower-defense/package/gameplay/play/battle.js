@@ -1404,4 +1404,9 @@
     findTarget: findTarget,
     placeHero: placeHero,
   };
+  // ── 对外部署接口接收屏幕坐标，内部战斗始终使用固定地图坐标 ──
+  var screenCoordinates = { tryDeploy: 1, findDeployPoint: 1, deployBlockReason: 1, buyCard: 1, placeHero: 1 };
+  if (A.BattleWorld) Object.keys(A.Battle).forEach(function (key) {
+    A.Battle[key] = A.BattleWorld.wrapBattle(A.Battle[key], screenCoordinates[key], key === 'findDeployPoint');
+  });
 })();

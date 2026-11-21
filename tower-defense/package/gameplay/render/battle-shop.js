@@ -26,12 +26,13 @@
 
   function drawTray() {
     var u = L.ui;
-    var s = u.battleScale;
-    // 切图高于可视区域，底部自然裁剪，保留 Figma 木纹的原始比例。
-    // 图片右侧两列为透明留白，可见414px主体从battleLeft开始对齐。
-    var tray = { x: u.battleLeft, y: u.tray.y, w: 416 * s, h: 296 * s };
-    if (!image('battle-tray', tray)) {
-      D.vGradient(0, u.tray.y, u.w, u.h - u.tray.y,
+    var source = art('battle-tray');
+    // ── 背景底部延伸20px；排除原图右侧透明留白，保持顶部与操作区域 ──
+    var tray = { x: 0, y: u.tray.y, w: u.w, h: u.h - u.tray.y + 20 };
+    if (source) {
+      D.nineSlice(source, tray, { left: 32, right: 32, top: 32, bottom: 16, width: 414 }, 1);
+    } else {
+      D.vGradient(tray.x, tray.y, tray.w, tray.h,
         D.color('#fff0d9'), D.color('#f2c981'), 14);
     }
   }

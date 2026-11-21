@@ -290,8 +290,12 @@
   }
 
   function drawBattle() {
-    var D = A.Render.draw;
     Scene.drawBackground();
+    if (A.BattleWorld) return A.BattleWorld.draw(drawBattleActors);
+    drawBattleActors();
+  }
+
+  function drawBattleActors() {
     Scene.drawFieldGuides();
 
     var i;

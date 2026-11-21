@@ -49,7 +49,7 @@
     var u = L.ui;
     var plate = u.wavePlate;
     var pb = u.pauseBtn;
-    var s = u.battleScale;
+    var s = u.hudScale || u.battleScale;
     var brown = D.color('#80501f');
     var totalWaves = S.getWaves().length;
     var waveNo = Math.min(S.waveIndex + 1, totalWaves);
@@ -461,16 +461,13 @@
     if (!art || !cardArt || !frameOverlayArt || !arrowArt || !disabledArrowArt || !nameplateArt ||
         !lockArt || !frame) { drawMenuFallback(); return; }
 
-    // 原图的 0..45.77 与 45.77..845 连续拼接；上段拉伸到安全区顶部。
-    var split = 45.77 / 845 * art.h;
-    D.texture(art.tex, art.w, art.h, 0, 0, art.w, split,
-      frame.x, 0, frame.w, u.contentTop);
-    D.texture(art.tex, art.w, art.h, 0, split, art.w, art.h - split,
-      frame.x, u.contentTop, frame.w, frame.h - 45.77 * frame.scale);
-    if (frame.x > 0) {
-      D.rect(0, 0, frame.x, u.h, D.color('#f3dec0'));
-      D.rect(frame.x + frame.w, 0, u.w - frame.x - frame.w, u.h, D.color('#f3dec0'));
-    }
+    // ── 背景独立等比铺满画布，居中裁切；控件仍沿用安全区布局 ──
+    var backgroundScale = Math.max(u.w / art.w, u.h / art.h);
+    var sourceW = u.w / backgroundScale;
+    var sourceH = u.h / backgroundScale;
+    D.texture(art.tex, art.w, art.h,
+      (art.w - sourceW) / 2, (art.h - sourceH) / 2, sourceW, sourceH,
+      0, 0, u.w, u.h);
 
     var keys = ['avatar', 'stamina', 'settings', 'collection', 'start'];
     for (var i = 0; i < keys.length; i++) {
@@ -654,6 +651,10 @@
   }
 
   function drawPaused() {
+    return L.drawDialog('pausePanel', drawPausedContent);
+  }
+
+  function drawPausedContent() {
     var u = L.ui, pause = u.pausePanel, panel = pause.panel;
     D.rect(0, 0, u.w, u.h, D.color('#3e2419', 0.44));
     A.ProfileUI.dialogPaper(panel, pause.headerH, '已暂停');
@@ -691,6 +692,12 @@
   }
 
   function drawResult(win) {
+    return L.drawDialog(win && S.newPetPending() ? 'newPet' : 'result', function () {
+      drawResultContent(win);
+    });
+  }
+
+  function drawResultContent(win) {
     if (win && S.newPetPending()) {
       var pet = L.ui.newPet;
       D.rect(0, 0, L.ui.w, L.ui.h, D.color('#3e2419', 0.44));
