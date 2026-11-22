@@ -13,4 +13,5 @@ for(const [id,hp,atk,gold] of [['small',77,10,1],['normal',262,18,6],['elite',98
  assert.equal(C.ENEMIES[id].hp,hp);assert.equal(C.ENEMIES[id].atk,atk);assert.equal(C.ENEMIES[id].gold,gold);
 }
 assert.equal(C.ENEMIES.boss.hp,4200);assert.equal(C.ENEMIES.boss.gold,60);
+assert.equal(C.ENEMIES.small.goldMax,2);
 console.log('首次教学42、其余开局20、小怪血量攻击奖励检查通过');

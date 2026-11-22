@@ -147,7 +147,7 @@
       small: {
         id: 'small', name: '台灯小怪', tier: 'small', icon: 'enemy-small',
         hp: 77, atk: 10, interval: 0.9, speed: 62,
-        radius: 11, color: '#8fd06a', baseDamage: 2, gold: 1,
+        radius: 11, color: '#8fd06a', baseDamage: 2, gold: 1, goldMax: 2,
         attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
