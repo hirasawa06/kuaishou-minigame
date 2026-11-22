@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // 回归：录屏中的基地边缘追击卡死，及统一范围/目标保持规则。
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -13,9 +14,9 @@ for (const name of ['config', 'layout', 'state']) {
   vm.runInContext(fs.readFileSync(root + name + '.js', 'utf8'), sandbox);
 }
 const A = sandbox.AIGCUtils, S = A.State, ui = A.Layout.calc();
-const source = fs.readFileSync(root + 'play/battle.js', 'utf8');
+const source = readBattleSource();
 vm.runInContext(source.replace('A.Battle = {',
-  'A.Battle = { testUnits: updateUnits, testCollisions: resolveBodyCollisions, testRange: attackInRange,'), sandbox);
+  'A.Battle = { testUnits: updateUnits, testCollisions: A.BattleSpatial.resolveBodyCollisions, testRange: A.BattleTargeting.attackInRange,'), sandbox);
 S.addFloat = () => {};
 S.addEffect = () => {};
 

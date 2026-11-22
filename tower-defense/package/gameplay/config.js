@@ -28,7 +28,7 @@
     GOLD_START: 20,
     GOLD_START_FIRST_LEVEL: 42, // 一星镭射7 + 扩建15 + 刷新3 + 二星镭射14 + 余留3
     BISCUIT_INTERVAL: 5, // 战斗有效时间秒数，不随倍速加快
-    BASE_HP: 100,
+    BASE_HP: 300,
     UNIT_CAP_START: 3,      // 初始可上场英雄数
     UNIT_CAP_FIRST_LEVEL: 1, // 第一关初始席位
     UNIT_CAP_MAX: 20,       // 上限
@@ -99,8 +99,8 @@
         icon: 'war-front-idle', cost: 6,
         // 体型扩大后的承伤与输出补偿。
         hp: 504, atk: 50.4, interval: 0.8,
-        // 逻辑直径 43.2；攻击与追击距离同步扩大 1.2 倍。
-        range: 44.16, radius: 21.6, moveSpeed: 52,
+        // 碰撞直径36，显示仍按原半径21.6；攻击与追击距离保持。
+        range: 44.16, radius: 18, visualRadius: 21.6, moveSpeed: 62.4,
         taunt: 0, splash: 0,
         aggro: 312,
         directionRig: { front: 'war-front', back: 'war-back' },
@@ -112,8 +112,8 @@
         icon: 'arch-back-idle', cost: 7,
         // 体型扩大后的承伤与输出补偿。
         hp: 216, atk: 115.2, interval: 1.15,
-        // 逻辑直径 40.8；攻击距离同步扩大 1.2 倍。
-        range: 312, radius: 20.4, moveSpeed: 0,
+        // 逻辑直径40.8；基础射程收紧至260，星级加成沿用。
+        range: 260, radius: 20.4, moveSpeed: 0,
         taunt: 0, splash: 0,
         attackRig: { left: 'arch-left', right: 'arch-right' },
         color: '#3fbf78',
@@ -146,35 +146,36 @@
     ENEMIES: {
       small: {
         id: 'small', name: '台灯小怪', tier: 'small', icon: 'enemy-small',
-        hp: 77, atk: 10, interval: 0.9, speed: 62,
+        hp: 143, atk: 17, interval: 0.9, speed: 62,
         radius: 11, color: '#8fd06a', baseDamage: 2, gold: 1, goldMax: 2,
         attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
         id: 'normal', name: '床头柜怪', tier: 'normal', species: 'bedside-table', icon: 'enemy-normal',
-        hp: 262, atk: 18, interval: 1.0, speed: 38,
+        hp: 317, atk: 30, interval: 1.0, speed: 38,
         radius: 15, color: '#d9a05a', baseDamage: 4, gold: 6,
         attackEffect: 'bump', impactColor: '#ffd27a', hitReaction: 'none',
       },
       elite: {
         id: 'elite', name: '沙发精英', tier: 'elite', species: 'sofa', icon: 'enemy-elite',
-        hp: 983, atk: 39, interval: 1.2, speed: 30,
+        hp: 1189, atk: 65, interval: 1.2, speed: 30,
         radius: 19, color: '#c58ad9', baseDamage: 8, gold: 12,
         attackEffect: 'bump', impactColor: '#e4a878',
       },
       boss: {
         id: 'boss', name: '双开门冰箱怪', tier: 'boss', species: 'double-door-fridge', icon: 'enemy-boss',
-        hp: 4200, atk: 70, interval: 1.35, speed: 21,
+        hp: 5082, atk: 116, interval: 1.35, speed: 21,
         radius: 25, color: '#e04e6e', baseDamage: 14, gold: 60, splash: 90,
       },
     },
 
-    // 每波敌人血量 / 攻击成长
-    waveHpScale: 1.13,
+    // 每两波提升一档的敌人血量 / 攻击倍率
+    waveHpScale: 1.15,
     waveAtkScale: 1.08,
     spawnBatchMin: 1,
-    spawnBatchMax: 3,
-    spawnBatchGap: 1.5,
+    spawnBatchMax: 5,
+    spawnBatchGapMin: 1,
+    spawnBatchGapMax: 2,
     waveGap: 6.0,
     firstWaveDelay: 5.0,
 
@@ -205,9 +206,9 @@
       { groups: [['normal', 6], ['small', 6]] },
       { groups: [['elite', 1], ['small', 13]] },
       { groups: [['normal', 15], ['elite', 1]] },
-      { groups: [['elite', 2], ['small', 12], ['normal', 4]] },
-      { groups: [['normal', 10], ['elite', 2], ['small', 8]] },
-      { groups: [['boss', 1], ['elite', 3], ['normal', 10], ['small', 8]] },
+      { groups: [['elite', 2], ['small', 16], ['normal', 6]] },
+      { groups: [['normal', 18], ['elite', 2], ['small', 16]] },
+      { groups: [['boss', 1], ['elite', 3], ['normal', 22], ['small', 22]] },
     ],
   };
 

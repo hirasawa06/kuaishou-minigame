@@ -129,8 +129,9 @@
     ['grass', 'wood', 'carpet', 'dining', 'corridor'].forEach(function (id) {
       manifest.push(['battle-map-' + id, 'res/Image/ingame/maps/' + id + '-v1.jpg']);
     });
+    var guardianVersions = { food: 2, toy: 2 };
     ['bed', 'food', 'toy', 'photo'].forEach(function (id) {
-      manifest.push(['battle-guardian-' + id, 'res/Image/ingame/guardians/' + id + '-v1.png']);
+      manifest.push(['battle-guardian-' + id, 'res/Image/ingame/guardians/' + id + '-v' + (guardianVersions[id] || 1) + '.png']);
     });
     manifest.push(['collection-book', 'res/Image/outgame/collection/collection-book-base-v2.jpg']);
     manifest.push(['collection-book-ring', 'res/Image/outgame/collection/collection-book-ring-v2.png']);

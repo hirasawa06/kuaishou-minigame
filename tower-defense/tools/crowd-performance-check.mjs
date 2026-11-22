@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -7,8 +8,8 @@ c.window = c; vm.createContext(c);
 for (const file of ['config','layout','state']) vm.runInContext(fs.readFileSync(new URL(file+'.js', root),'utf8'),c);
 const A=c.AIGCUtils, S=A.State;A.Layout.calc();
 c.pairChecks=0;
-const source=fs.readFileSync(new URL('play/battle.js',root),'utf8');
-vm.runInContext(source.replace('A.Battle = {','A.Battle = { testCollisions: resolveBodyCollisions,').replace('function separateBodies(a, b) {','function separateBodies(a, b) { pairChecks++;'),c);
+const source=readBattleSource();
+vm.runInContext(source.replace('A.Battle = {','A.Battle = { testCollisions: A.BattleSpatial.resolveBodyCollisions,').replace('function separateBodies(a, b) {','function separateBodies(a, b) { pairChecks++;'),c);
 S.units=[];
 S.enemies=Array.from({length:120},(_,i)=>({uid:i+1,def:A.Config.ENEMIES.small,x:60+(i%3)*120,y:-1800+Math.floor(i/3)*60}));
 const before=S.enemies.map(e=>[e.x,e.y]);

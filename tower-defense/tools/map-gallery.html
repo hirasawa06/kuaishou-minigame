@@ -16,13 +16,14 @@
 <script>window.AIGCUtils={};</script>
 <script src="../package/gameplay/config.js?v=map-level-match-1119-1914"></script>
 <script>
-const root='../package/res/Image/ingame/';
+const root='../package/subpackages/battle-art/res/Image/ingame/';
+const versions={food:2,toy:2};
 const maps={grass:'草地庭院',wood:'阳光木地板',carpet:'红色地毯',dining:'餐厅瓷砖',corridor:'走廊'};
 const props={bed:'宠物的窝',food:'宠物粮',toy:'宠物玩具',photo:'合照'};
-function gallery(target,entries,folder,ext){for(const [id,name] of Object.entries(entries)){const figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');img.src=root+folder+'/'+id+'-v1.'+ext;img.alt=name;link.href=img.src;link.target='_blank';link.append(img);caption.textContent=name;figure.append(link,caption);document.getElementById(target).append(figure);}}
+function gallery(target,entries,folder,ext){for(const [id,name] of Object.entries(entries)){const figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');img.src=root+folder+'/'+id+'-v'+(versions[id]||1)+'.'+ext;img.alt=name;link.href=img.src;link.target='_blank';link.append(img);caption.textContent=name;figure.append(link,caption);document.getElementById(target).append(figure);}}
 gallery('maps',maps,'maps','jpg');gallery('props',props,'guardians','png');
 const levels=window.AIGCUtils.Config.LEVELS;
-function select(index){const level=levels[index];document.getElementById('scene').style.backgroundImage='url('+root+'maps/'+level.map+'-v1.jpg)';document.getElementById('guardian').src=root+'guardians/'+level.guardian+'-v1.png';document.getElementById('caption').textContent=level.guardianName;document.getElementById('title').textContent='第'+(index+1)+'关 · '+level.name;document.querySelectorAll('#levels button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));}
+function select(index){const level=levels[index];document.getElementById('scene').style.backgroundImage='url('+root+'maps/'+level.map+'-v1.jpg)';document.getElementById('guardian').src=root+'guardians/'+level.guardian+'-v'+(versions[level.guardian]||1)+'.png';document.getElementById('caption').textContent=level.guardianName;document.getElementById('title').textContent='第'+(index+1)+'关 · '+level.name;document.querySelectorAll('#levels button').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));}
 levels.forEach((level,i)=>{const button=document.createElement('button');button.textContent=(i+1)+'. '+level.name+' · '+maps[level.map]+' / '+props[level.guardian];button.onclick=()=>select(i);document.getElementById('levels').append(button);});select(0);
 </script>
 </html>

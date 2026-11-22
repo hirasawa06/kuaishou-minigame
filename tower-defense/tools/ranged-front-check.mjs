@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // ── 远程扇形：边界、目标保持、出手及飞行中绕后、范围伤害隔离 ──
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -12,8 +13,8 @@ for (const name of ['config.js', 'layout.js', 'state.js']) {
 }
 const A = context.AIGCUtils, S = A.State;
 A.Layout.calc();
-vm.runInContext(fs.readFileSync(new URL('play/battle.js', root), 'utf8').replace(
-  'A.Battle = {', 'A.Battle = { testTaunt: updateTaunt, testRange: attackInRange, testUnits: updateUnits, testProjectiles: updateProjectiles, testSplash: applySplash,'), context);
+vm.runInContext(readBattleSource().replace(
+  'A.Battle = {', 'A.Battle = { testTaunt: updateTaunt, testRange: A.BattleTargeting.attackInRange, testUnits: updateUnits, testProjectiles: A.BattleCombat.updateProjectiles, testSplash: A.BattleCombat.applySplash,'), context);
 S.addEffect = S.addFloat = () => {};
 const enemy = (uid, x, y) => ({ uid, def: A.Config.ENEMIES.normal, x, y, hp: 10000, maxHp: 10000 });
 for (const id of ['arch', 'mage']) {

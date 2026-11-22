@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // ── 击败奖励：随机边界、固定奖励、飘字与重复结算 ──
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -10,8 +11,8 @@ const root = new URL('../package/gameplay/', import.meta.url);
 for (const file of ['config.js', 'state.js']) {
   vm.runInContext(fs.readFileSync(new URL(file, root), 'utf8'), context);
 }
-vm.runInContext(fs.readFileSync(new URL('play/battle.js', root), 'utf8').replace(
-  'A.Battle = {', 'A.Battle = { testDamage: damageEnemy,'), context);
+vm.runInContext(readBattleSource().replace(
+  'A.Battle = {', 'A.Battle = { testDamage: A.BattleDamage.damageEnemy,'), context);
 const { State: S, Config: C, Battle: B } = context.AIGCUtils;
 S.addEffect = () => {};
 for (const [roll, expected] of [[0, 1], [0.4999, 1], [0.5, 2], [0.9999, 2]]) {

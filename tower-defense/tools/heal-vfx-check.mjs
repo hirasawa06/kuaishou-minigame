@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -41,7 +42,7 @@ for (const life of [0, 0.5]) {
 const game = fs.readFileSync(new URL('game.js', root), 'utf8');
 assert.ok(game.indexOf('Scene.drawGroundEffects()') < game.indexOf('Scene.drawEnemy(actors'), '治疗层在所有角色之前');
 assert.ok(game.indexOf('Scene.drawEffects()') > game.indexOf('Scene.drawUnit(actors'), '十字在全部角色之后绘制');
-const battle = fs.readFileSync(new URL('play/battle.js', root), 'utf8');
+const battle = readBattleSource();
 assert.match(battle, /r: target.def.radius, life: 0\.5, max: 0\.5/);
 // ── 不同角色和入场缩放：光环中心必须落在脚底支点，而非贴图底边 ──
 state.effects[0].life = 0.25;

@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // ── 密集攻击回归：接触宠物时沿原方向退让，不吸到同一排队点 ──
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -14,8 +15,8 @@ for (const name of ['config', 'layout', 'state']) {
 }
 const A = sandbox.AIGCUtils, S = A.State;
 A.Layout.calc();
-vm.runInContext(fs.readFileSync(root + 'play/battle.js', 'utf8').replace(
-  'A.Battle = {', 'A.Battle = { testCollisions: resolveBodyCollisions,'), sandbox);
+vm.runInContext(readBattleSource().replace(
+  'A.Battle = {', 'A.Battle = { testCollisions: A.BattleSpatial.resolveBodyCollisions,'), sandbox);
 const defender = { uid: 1, def: S.heroAtStar('tank', 1), x: 207, y: 350 };
 const def = A.Config.ENEMIES.small;
 const distance = defender.def.radius + def.radius + A.Config.ACTOR_BODY_GAP + 0.5;

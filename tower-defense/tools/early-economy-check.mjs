@@ -9,9 +9,10 @@ for(const complete of [false,true])for(const level of [1,2,10]){
  A.Profile.data.tutorialStarComplete=complete;S.currentLevel=level;S.reset();
  assert.equal(S.gold,!complete&&level===1?42:20);
 }
-for(const [id,hp,atk,gold] of [['small',77,10,1],['normal',262,18,6],['elite',983,39,12]]){
+for(const [id,hp,atk,gold] of [['small',143,17,1],['normal',317,30,6],['elite',1189,65,12]]){
  assert.equal(C.ENEMIES[id].hp,hp);assert.equal(C.ENEMIES[id].atk,atk);assert.equal(C.ENEMIES[id].gold,gold);
 }
-assert.equal(C.ENEMIES.boss.hp,4200);assert.equal(C.ENEMIES.boss.gold,60);
+assert.equal(C.ENEMIES.boss.hp,5082);assert.equal(C.ENEMIES.boss.atk,116);assert.equal(C.ENEMIES.boss.gold,60);
+assert.equal(C.waveHpScale,1.15);assert.equal(C.waveAtkScale,1.08);
 assert.equal(C.ENEMIES.small.goldMax,2);
 console.log('首次教学42、其余开局20、小怪血量攻击奖励检查通过');

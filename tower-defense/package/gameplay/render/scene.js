@@ -6,6 +6,9 @@
   var L = A.Layout;
   var D = A.Render.draw;
   var Assets = A.Assets;
+
+  // ── 显示尺寸独立于脚底碰撞占地 ──
+  function visualRadius(def) { return def.visualRadius || def.radius; }
   var SMOKE_FRAMES = ['fx-smoke', 'fx-smoke-2', 'fx-smoke-3'];
   // 正视立绘的可见边界（纹理像素）；统一卡牌、详情与拖拽中的角色视觉大小。
   var CARD_ART = {
@@ -192,7 +195,7 @@
   }
 
   function drawEnemy(e) {
-    var r = e.def.radius;
+    var r = visualRadius(e.def);
     var spawn = e.spawnT > 0 ? 1 - e.spawnT / 0.35 : 1;
     var scale = 0.7 + 0.3 * spawn;
     var rr = r * scale;
@@ -245,7 +248,7 @@
   };
 
   function actorGround(actor, isEnemy) {
-    var r = actor.def.radius;
+    var r = visualRadius(actor.def);
     var duration = isEnemy ? 0.35 : 0.3;
     var spawn = actor.spawnT > 0 ? Math.max(0, 1 - actor.spawnT / duration) : 1;
     var rig = A.Rigs && A.Rigs[actor.rigId || actor.def.id];
@@ -382,7 +385,7 @@
     var t = clamp01(1 - e.life / e.max);
     var alpha = Math.sin(Math.PI * t);
     if (t === 0 || t === 1) alpha = 0;
-    var r = target.def.radius;
+    var r = visualRadius(target.def);
     var rig = A.Rigs && A.Rigs[target.rigId || target.def.id];
     var spawn = target.spawnT > 0 ? 1 - target.spawnT / 0.3 : 1;
     var size = rig ? r * 3.05 * (rig.scale || 1) * (0.86 + 0.14 * spawn)
@@ -444,7 +447,7 @@
 
   function drawUnit(un) {
     var d = un.def;
-    var r = d.radius;
+    var r = visualRadius(d);
     var draggingOriginal = S.dragging && S.dragging.active &&
       S.dragging.kind === 'unit' && S.dragging.unit === un;
     var spawn = un.spawnT > 0 ? 1 - un.spawnT / 0.3 : 1;
@@ -653,14 +656,18 @@
     var field = u.field;
     var drag = S.dragging || (A.Input && A.Input.getDrag && A.Input.getDrag());
     if (!drag || !drag.active || !drag.def || drag.y >= u.tray.y) return;
-    var top = Math.max(field.y - 24, u.interactiveRect.y);
-    var bottom = Math.min(u.base.y + 10, u.tray.y - 4,
+    var padding = 6;
+    var left = Math.max(field.x - padding, u.interactiveRect.x);
+    var right = Math.min(field.x + field.w + padding,
+      u.interactiveRect.x + u.interactiveRect.w);
+    var top = Math.max(field.y - 24 - padding, u.interactiveRect.y);
+    var bottom = Math.min(u.base.y + 10 + padding, u.tray.y - 4,
       u.interactiveRect.y + u.interactiveRect.h);
     var h = bottom - top;
     if (h <= 0) return;
     // 部署是连续坐标，不绘制虚假的格子。
-    D.roundRect(field.x, top, field.w, h, 8, D.color('#73e5a0', 0.13));
-    D.strokeRect(field.x, top, field.w, h, 2, D.color('#eaffbd', 0.8));
+    D.roundRect(left, top, right - left, h, 8, D.color('#73e5a0', 0.13));
+    D.strokeRect(left, top, right - left, h, 1, D.color('#eaffbd', 0.8));
   }
 
   function drawDragGhost() {
@@ -674,8 +681,8 @@
       if (!unit || unit.dead || unit.hp <= 0 || S.units.indexOf(unit) < 0) return;
       // 原位角色保持不透明，仅拖动副本半透明；售价统一显示在出售区。
       var ghostRig = A.Rigs && A.Rigs[unit.rigId || def.id];
-      var ghostSize = ghostRig ? def.radius * 3.05 * (ghostRig.scale || 1) : def.radius * 2.35;
-      var ghostY = ghostRig ? drag.y - def.radius * 0.15 : drag.y;
+      var ghostSize = ghostRig ? visualRadius(def) * 3.05 * (ghostRig.scale || 1) : visualRadius(def) * 2.35;
+      var ghostY = ghostRig ? drag.y - visualRadius(def) * 0.15 : drag.y;
       if (ghostRig) {
         A.Anim.draw(ghostRig, unit, drag.x, ghostY, ghostSize, { alpha: 0.7 });
       } else if (def.cls === 'healer') {
@@ -716,11 +723,11 @@
     }
     // 落点预览复用正式角色待机美术，避免再次露出旧图集的职业符号。
     var rig = A.Rigs && A.Rigs[def.id];
-    var previewSize = rig ? def.radius * 3.05 * (rig.scale || 1) : def.radius * 2.35;
-    var spriteY = rig ? y - def.radius * 0.15 : y;
+    var previewSize = rig ? visualRadius(def) * 3.05 * (rig.scale || 1) : visualRadius(def) * 2.35;
+    var spriteY = rig ? y - visualRadius(def) * 0.15 : y;
     var shadowY = spriteY + previewSize * 0.42;
     var previewAlpha = ok ? 0.88 : 0.56;
-    drawGroundShadow(x, shadowY, def.radius * 0.70, ok ? 0.32 : 0.20);
+    drawGroundShadow(x, shadowY, visualRadius(def) * 0.70, ok ? 0.32 : 0.20);
     if (rig && Assets.tex('game')) {
       A.Anim.draw(rig, { anim: 'idle', animT: S.time, hitFlash: 0 },
         x, spriteY, previewSize, { alpha: previewAlpha });
