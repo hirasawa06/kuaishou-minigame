@@ -339,6 +339,10 @@
       e.dieT = deathDuration(e);
       S.kills++;
       var g = e.def.gold || 2;
+      // ── 配置了奖励上限时，每次击败等概率抽取区间内整数 ──
+      if (e.def.goldMax !== undefined) {
+        g += Math.floor(Math.random() * (e.def.goldMax - g + 1));
+      }
       S.gold += g;
       S.goldEarned += g;
       S.addFloat(e.x, e.y - e.def.radius - 20, String(g), '#ffd166', 'kill-reward');
