@@ -118,7 +118,8 @@
     manifest.push(['home-level-card-no-banner', 'res/Image/outgame/home/home-level-card-no-banner-v1.png']);
     manifest.push(['home-level-frame-overlay', 'res/Image/ui/components/home-level-frame-overlay-v1.png']);
     for (var level = 1; level <= A.Config.LEVELS.length; level++) {
-      manifest.push(['level-cover-' + level, 'res/Image/outgame/level-covers/level-' + level + '.jpg']);
+      var version = level === 5 || level === 7 ? '-v2' : '';
+      manifest.push(['level-cover-' + level, 'res/Image/outgame/level-covers/level-' + level + version + '.jpg']);
     }
     manifest.push(['level-cover-construction', 'res/Image/outgame/level-covers/construction-v2.png']);
     manifest.push(['share-invite', 'res/Image/outgame/home/share-invite-v1.png']);
