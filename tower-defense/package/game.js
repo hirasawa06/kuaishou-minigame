@@ -81,6 +81,12 @@ require("./gameplay/assets.js"); // 纹理加载
 require("./gameplay/audio.js"); // 音效
 require("./gameplay/anim/rig.js"); // 分件关键帧动画
 require("./gameplay/anim/defs.js"); // 单位动画表
+require("./gameplay/play/battle/animation.js"); // 动画状态与命中特效
+require("./gameplay/play/battle/targeting.js"); // 攻击范围与目标优先级
+require("./gameplay/play/battle/spatial.js"); // 碰撞求解与避障寻路
+require("./gameplay/play/battle/damage.js"); // 受伤、死亡与击败奖励
+require("./gameplay/play/battle/combat.js"); // 攻击结算与投射物
+require("./gameplay/play/battle/deployment.js"); // 部署、购买与出售
 require("./gameplay/play/battle.js"); // 核心玩法
 require("./gameplay/rewards.js"); // 激励奖励业务门禁（禁止占位/H5 假奖励）
 require("./gameplay/input.js"); // 触摸输入

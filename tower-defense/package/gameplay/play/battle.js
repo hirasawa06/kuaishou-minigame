@@ -5,13 +5,43 @@
   var S = A.State;
   var L = A.Layout;
 
+  // ---- 模块装配：按依赖顺序加载，保留战斗公共接口 ----
+  var enterAnimation = A.BattleAnimation.enterAnimation;
+  var finishTransientAnimation = A.BattleAnimation.finishTransientAnimation;
+  var selectAttackRig = A.BattleAnimation.selectAttackRig;
+  var selectVerticalRig = A.BattleAnimation.selectVerticalRig;
+  var attackHitTime = A.BattleAnimation.attackHitTime;
+  var deathSmoke = A.BattleAnimation.deathSmoke;
+  var enemyImpactEffect = A.BattleAnimation.enemyImpactEffect;
+  var warriorTarget = A.BattleTargeting.warriorTarget;
+  var attackInRange = A.BattleTargeting.attackInRange;
+  var findTarget = A.BattleTargeting.findTarget;
+  var resolveBodyCollisions = A.BattleSpatial.resolveBodyCollisions;
+  var returnRoute = A.BattleSpatial.returnRoute;
+  var damageUnit = A.BattleDamage.damageUnit;
+  var resolveAttack = A.BattleCombat.resolveAttack;
+  var updateProjectiles = A.BattleCombat.updateProjectiles;
+  var placeHero = A.BattleDeployment.placeHero;
+  var canAfford = A.BattleDeployment.canAfford;
+  var getUpgradePreview = A.BattleDeployment.getUpgradePreview;
+  var upgradeUnit = A.BattleDeployment.upgradeUnit;
+  var sellPrice = A.BattleDeployment.sellPrice;
+  var sellUnit = A.BattleDeployment.sellUnit;
+  var findDeployPoint = A.BattleDeployment.findDeployPoint;
+  var deployBlockReason = A.BattleDeployment.deployBlockReason;
+  var tryDeploy = A.BattleDeployment.tryDeploy;
+  var buyCard = A.BattleDeployment.buyCard;
+  var buyCardAtCenter = A.BattleDeployment.buyCardAtCenter;
+
   // ── 波次 ───────────────────────────────────────────────────
   function buildWave(index) {
     var wave = S.getWaves()[index];
     if (!wave) return false;
     var queue = [];
-    var hpScale = Math.pow(C.waveHpScale, index);
-    var atkScale = Math.pow(C.waveAtkScale, index);
+    // ── 每两波提升一档：1/2波基础，3/4波一档，依次递增 ──
+    var growthTier = Math.floor(index / 2);
+    var hpScale = Math.pow(C.waveHpScale, growthTier);
+    var atkScale = Math.pow(C.waveAtkScale, growthTier);
     for (var gi = 0; gi < wave.groups.length; gi++) {
       var g = wave.groups[gi];
       for (var n = 0; n < g[1]; n++) {
@@ -22,7 +52,9 @@
     S.spawnQueue = interleave(queue);
     S.spawnTimer = 0;
     S.waveState = 'spawning';
-    S.toastMsg('第 ' + (index + 1) + ' 波来袭', 1.6);
+    var strengthens = index > 0 && index % 2 === 0;
+    S.toastMsg(strengthens ? '家具们变强了' : '第 ' + (index + 1) + ' 波来袭',
+      strengthens ? 2 : 1.6);
     A.GameAudio && A.GameAudio.play('wave');
   }
 
@@ -107,412 +139,20 @@
   }
 
   // 各实例保留独立的 1 星配置母版，实际属性由统一星级接口派生。
-  function copyDef(value) {
-    if (!value || typeof value !== 'object') return value;
-    var out = Array.isArray(value) ? [] : {};
-    for (var key in value) {
-      if (Object.prototype.hasOwnProperty.call(value, key)) out[key] = copyDef(value[key]);
-    }
-    return out;
-  }
-
-  function placeHero(card, x, y, star) {
-    if (!card) return null;
-    if (star === undefined) star = card.star === undefined ? 1 : card.star;
-    if (!S.isHeroUnlocked(card.id)) return null;
-    var base = S.heroById(card.id);
-    card = S.heroAtStar(card.id, star);
-    if (!base || !card || typeof x !== 'number' || !isFinite(x) ||
-        typeof y !== 'number' || !isFinite(y)) return null;
-    var point = findDeployPoint(card, x, y);
-    if (!point) return null;
-    x = point.x;
-    y = point.y;
-    var baseDef = copyDef(base);
-    var unit = {
-      uid: S.uid++,
-      def: card,
-      baseDef: baseDef,
-      star: star,
-      level: star, // 兼容旧绘制字段；星级只在购买前的商店合成改变。
-      x: x,
-      y: y,
-      homeX: x,
-      homeY: y,
-      rigId: card.id,
-      facing: 1,
-      hp: card.hp,
-      maxHp: card.hp,
-      purchaseCost: card.cost,
-      spentGold: card.cost, // 兼容字段；只记录真实购入价，没有局内饼干升级。
-      atkTimer: card.cls === 'healer' ? card.interval : 0.3,
-      hitFlash: 0,
-      slowT: 0,
-      spawnT: 0.3,
-      dead: false,
-      anim: 'idle',
-      animT: 0,
-      pendingHit: -1,
-      pendingTarget: 0,
-    };
-    S.units.push(unit);
-    return unit;
-  }
-
-  function canAfford(def) { return S.gold >= def.cost; }
 
   // 旧 UI 兼容出口：直接饼干升级已移除，不提供可用升级预览。
-  function getUpgradePreview() { return null; }
-  function upgradeUnit() { return false; }
 
   // 接受仍在场上的所有存活角色；不读取会随平衡调整改变的 def.cost。
-  function canSellUnit(unit) {
-    return !!(unit && !unit.dead && unit.hp > 0 && unit.def &&
-      S.units.indexOf(unit) >= 0 && unit.maxHp > 0 &&
-      typeof unit.purchaseCost === 'number' && isFinite(unit.purchaseCost) && unit.purchaseCost >= 0);
-  }
-
-  function sellPrice(unit) {
-    if (!canSellUnit(unit)) return 0;
-    var cost = unit.purchaseCost;
-    var ratio = unit.hp / unit.maxHp;
-    if (ratio >= 0.6) return Math.floor(cost * 0.5);
-    if (ratio >= 0.3) return Math.floor(cost * 0.3);
-    return 1;
-  }
-
-  function sellUnit(unit) {
-    if (S.phase !== 'playing' || !canSellUnit(unit)) return false;
-    var price = sellPrice(unit);
-    unit.pendingHit = -1;
-    unit.pendingTarget = 0;
-    // 不走死亡流程，不产生击杀、死亡烟雾或奖励；立即释放部署席位。
-    S.units.splice(S.units.indexOf(unit), 1);
-    for (var i = 0; i < S.enemies.length; i++) {
-      var enemy = S.enemies[i];
-      if (enemy.pendingTarget !== unit.uid) continue;
-      enemy.pendingHit = -1;
-      enemy.pendingTarget = 0;
-      if (!enemy.dead && enemy.anim === 'atk') enterAnimation(enemy, 'idle');
-    }
-    // 当前飞弹只追踪敌人，但仍清掉任何指向出售单位的飞弹，避免悬空目标。
-    for (var pi = S.projectiles.length - 1; pi >= 0; pi--) {
-      if (S.projectiles[pi].targetUid === unit.uid) S.projectiles.splice(pi, 1);
-    }
-    S.gold += price;
-    S.addFloat(unit.x, unit.y - unit.def.radius - 14, '+' + price, '#ffd166');
-    A.GameAudio && A.GameAudio.play('sell');
-    S.notifyAction('sell', { unit: unit, price: price });
-    return true;
-  }
-
 
   // 只检测脚底圆形占地，不把高大贴图的遮挡区域作为碰撞范围。
-  function findDeployPoint(card, x, y) {
-    var u = L.ui;
-    if (!card || !isFinite(x) || !isFinite(y)) return null;
-    var left = u.field.x + card.radius + 4;
-    var right = u.field.x + u.field.w - card.radius - 4;
-    var top = u.placeTop, bottom = u.placeBottom;
-    if (left > right || top > bottom) return null;
-    x = S.clamp(x, left, right);
-    y = S.clamp(y, top, bottom);
-    function free(px, py) {
-      var groups = [S.units, S.enemies];
-      for (var gi = 0; gi < groups.length; gi++) {
-        for (var i = 0; i < groups[gi].length; i++) {
-          var actor = groups[gi][i];
-          if (actor.dead) continue;
-          var gap = card.radius + actor.def.radius + C.ACTOR_BODY_GAP + 0.5;
-          if (gi === 0) gap = Math.max(C.UNIT_MIN_GAP, gap);
-          if (S.dist2(px, py, actor.x, actor.y) < gap * gap) return false;
-        }
-      }
-      return true;
-    }
-    if (free(x, y)) return { x: x, y: y };
-    // 在手指周围小范围吸附；先横向/北侧避让，不移动已有角色或怪物。
-    for (var radius = 8; radius <= 72; radius += 8) {
-      for (var step = 0; step < 24; step++) {
-        var angle = -Math.PI / 2 + step * Math.PI * 2 / 24;
-        var px = x + Math.cos(angle) * radius;
-        var py = y + Math.sin(angle) * radius;
-        if (px < left || px > right || py < top || py > bottom) continue;
-        if (free(px, py)) return { x: px, y: py };
-      }
-    }
-    return null;
-  }
-
-  function deployBlockReason(card, x, y) {
-    if (!card || typeof x !== 'number' || !isFinite(x) ||
-        typeof y !== 'number' || !isFinite(y)) return 'outside';
-    var u = L.ui;
-    var interactive = u.interactiveRect;
-    if (x < interactive.x || x > interactive.x + interactive.w ||
-        y < interactive.y || y > interactive.y + interactive.h) return 'outside';
-    if (x < u.field.x || x > u.field.x + u.field.w) return 'outside';
-    if (y < u.field.y - 24 || y > u.base.y + 10) return 'outside';
-    if (!canAfford(card)) return 'gold';
-    if (S.liveUnits() >= S.heroCap) return 'cap';
-    if (!findDeployPoint(card, x, y)) return 'occupied';
-    return null;
-  }
-
-  function tryDeploy(card, x, y, star) {
-    if (S.phase !== 'playing' || !card) return false;
-    if (star === undefined) star = 1;
-    if (!S.isHeroUnlocked(card.id)) {
-      S.toastMsg('角色尚未解锁', 1.0);
-      return false;
-    }
-    // 星级、售价和战斗属性只取当前配置，避免调用方传入过时的卡牌对象。
-    card = S.heroAtStar(card.id, star);
-    if (!card) return false;
-    var reason = deployBlockReason(card, x, y);
-    if (reason === 'outside') return false;
-    if (reason === 'occupied') {
-      S.toastMsg('附近没有可放下的位置', 1.0);
-      return false;
-    }
-    if (reason === 'gold') {
-      S.toastMsg('饼干不足', 0.9);
-      return false;
-    }
-    // 死亡动画中的英雄不算占位
-    if (reason === 'cap') {
-      S.toastMsg('上场席位已满（' + S.heroCap + '），可花饼干扩建', 1.3);
-      return false;
-    }
-    var unit = placeHero(card, x, y, star);
-    if (!unit) {
-      S.toastMsg('这里没有可放下的位置', 1.0);
-      return false;
-    }
-    S.gold -= card.cost;
-    S.cardsPlaced++;
-    S.addEffect({ type: 'ring', x: unit.x, y: unit.y, r: card.radius + 4, r2: card.radius + 26, life: 0.36, max: 0.36, color: card.color });
-    S.addFloat(unit.x, unit.y - card.radius - 14, '-' + card.cost, '#ffd166');
-    S.notifyAction('deploy', { unit: unit, cardId: card.id, star: star, cost: unit.purchaseCost });
-    return true;
-  }
 
   // 从卡池买下第 i 张：成功返回 true，卡位留空等刷新
-  function buyCard(index, x, y) {
-    if (typeof index !== 'number' || Math.floor(index) !== index ||
-        index < 0 || index >= C.cardCount) return false;
-    var slot = S.shop[index];
-    if (!slot || slot.sold) return false;
-    var def = S.heroAtStar(slot.cardId, slot.star);
-    if (!def || S.shopCost(slot) !== def.cost) return false;
-    if (!tryDeploy(def, x, y, slot.star)) return false;
-    slot.sold = true;
-    slot.locked = false;
-    return true;
-  }
 
   // 点卡（不拖拽）时直接以卡为中心落地放
-  function buyCardAtCenter(index) {
-    var slot = S.shop[index];
-    if (!slot || slot.sold) return false;
-    var u = L.ui;
-    var rect = L.shopRect(index);
-    var x = u.field.x + u.field.w * 0.5;
-    var y = u.placeBottom - 10;
-    return buyCard(index, x, y);
-  }
 
   // ── 伤害 ───────────────────────────────────────────────────
-  function damageEnemy(e, dmg, isSplash) {
-    if (e.dead) return;
-    e.hp -= dmg;
-    var reactsToHit = e.def.hitReaction !== 'none';
-    e.hitFlash = reactsToHit ? 0.12 : 0;
-    if (reactsToHit && e.anim !== 'die' && e.anim !== 'atk') enterAnimation(e, 'hurt');
-    if (!isSplash) {
-      S.addFloat(e.x + (Math.random() - 0.5) * 10, e.y - e.def.radius - 8,
-        String(Math.round(dmg)), '#ffe9a8');
-    }
-    if (e.hp <= 0) {
-      e.dead = true;
-      enterAnimation(e, 'die');
-      e.dieT = deathDuration(e);
-      S.kills++;
-      var g = e.def.gold || 2;
-      // ── 配置了奖励上限时，每次击败等概率抽取区间内整数 ──
-      if (e.def.goldMax !== undefined) {
-        g += Math.floor(Math.random() * (e.def.goldMax - g + 1));
-      }
-      S.gold += g;
-      S.goldEarned += g;
-      S.addFloat(e.x, e.y - e.def.radius - 20, String(g), '#ffd166', 'kill-reward');
-      if (e.def.tier === 'boss') onBossDeath(e);
-      else A.GameAudio && A.GameAudio.play('enemyDeath');
-    }
-  }
-
-  function onBossDeath(e) {
-    S.shake = 0.5;
-    S.addEffect({ type: 'ring', x: e.x, y: e.y, r: 24, r2: 132, life: 0.9, max: 0.9, color: '#ffd166' });
-    for (var i = 0; i < 16; i++) {
-      var a = Math.PI * 2 * i / 16;
-      S.addEffect({
-        type: 'spark', x: e.x, y: e.y,
-        vx: Math.cos(a) * (120 + Math.random() * 140),
-        vy: Math.sin(a) * (120 + Math.random() * 140),
-        life: 0.6 + Math.random() * 0.4, max: 1,
-        color: i % 2 ? '#ffd166' : '#ff7aa2',
-      });
-    }
-    A.GameAudio && A.GameAudio.play('boss');
-  }
-
-  function damageUnit(u, dmg) {
-    if (u.dead) return;
-    u.hp -= dmg * (1 - (u.def.damageReduction || 0));
-    u.hitFlash = 0.14;
-    if (u.anim !== 'die' && u.anim !== 'atk') {
-      u.anim = 'hurt';
-      u.animT = 0;
-    }
-    if (u.hp <= 0) {
-      u.dead = true;
-      enterAnimation(u, 'die');
-      u.dieT = deathDuration(u);
-    }
-  }
 
   // ── 投射物 ─────────────────────────────────────────────────
-  function entityRig(entity) {
-    return A.Rigs && A.Rigs[entity.rigId || entity.def.id];
-  }
-
-  function activeRig(unit) {
-    return entityRig(unit);
-  }
-
-  function stateDuration(entity, stateName, fallback) {
-    var rig = entityRig(entity);
-    var state = rig && rig.states && rig.states[stateName];
-    return state && state.dur ? state.dur : fallback;
-  }
-
-  function enterAnimation(entity, stateName) {
-    if (entity.anim === stateName) return;
-    // ── 战士待机继承上一动作朝向，避免攻击结束后强制回头 ──
-    if (stateName === 'idle' && entity.def.directionRig && entity.def.cls !== 'warrior') {
-      entity.rigId = entity.def.directionRig.back;
-    }
-    entity.anim = stateName;
-    entity.animT = 0;
-  }
-
-  function finishTransientAnimation(entity, fallback) {
-    if (entity.anim === 'idle' || entity.anim === 'move' || entity.anim === 'die') return;
-    if (entity.animT >= stateDuration(entity, entity.anim, fallback)) {
-      enterAnimation(entity, 'idle');
-    }
-  }
-
-  function selectAttackRig(unit, target) {
-    var rigs = unit.def.attackRig;
-    if (rigs) {
-      unit.rigId = target.x < unit.x ? rigs.left : rigs.right;
-      return;
-    }
-    selectVerticalRig(unit, target.y);
-  }
-
-  function selectVerticalRig(unit, targetY) {
-    var rigs = unit.def.directionRig;
-    if (rigs) unit.rigId = targetY < unit.y ? rigs.back : rigs.front;
-  }
-
-  function attackHitTime(unit, fallback, stateName) {
-    var rig = entityRig(unit);
-    var state = rig && rig.states && rig.states[stateName || 'atk'];
-    return state && state.hit !== undefined ? state.hit : fallback;
-  }
-
-  function deathDuration(unit) {
-    return stateDuration(unit, 'die', unit.def.deathDuration || 0.28);
-  }
-
-  function deathSmoke(unit) {
-    S.addEffect({
-      type: 'smoke', x: unit.x, y: unit.y, r: unit.def.radius,
-      life: 0.25, max: 0.25, color: '#ffffff',
-    });
-  }
-
-  function enemyImpactEffect(enemy, target) {
-    A.GameAudio && A.GameAudio.play('enemyHit');
-    var color = enemy.def.impactColor || '#ff9a9a';
-    if (enemy.def.attackEffect === 'bump') {
-      S.addEffect({
-        type: 'pop', x: target.x, y: target.y - 2, r: 8,
-        life: 0.14, max: 0.14, color: color,
-      });
-      return;
-    }
-    S.addEffect({
-      type: 'glow', x: target.x, y: target.y - 2, r: 7,
-      life: 0.14, max: 0.14, color: color,
-    });
-  }
-
-  function projectileOrigin(unit) {
-    var rig = activeRig(unit);
-    var muzzle = rig && rig.muzzle;
-    return {
-      x: unit.x + (muzzle ? muzzle[0] : 0),
-      y: unit.y + (muzzle ? muzzle[1] : -6),
-    };
-  }
-
-  function fireProjectile(unit, target, damageRatio, delay) {
-    var def = unit.def;
-    var origin = projectileOrigin(unit);
-    var projectile = {
-      x: origin.x, y: origin.y,
-      tx: target.x, ty: target.y,
-      targetUid: target.uid,
-      sourceUnit: unit,
-      speed: def.cls === 'archer' ? 680 : 420,
-      kind: def.cls === 'archer' ? 'light' : def.cls === 'mage' ? 'magic' : 'fire',
-      dmg: def.atk * (damageRatio === undefined ? 1 : damageRatio),
-      delay: delay || 0,
-      echoRatio: def.echoRatio || 0,
-      splash: def.splash || 0,
-      slow: def.slow || null,
-      color: def.color,
-      life: 1.6,
-    };
-    S.projectiles.push(projectile);
-    return projectile;
-  }
-
-  function applySplash(p, cx, cy, primary) {
-    var r2 = p.splash * p.splash;
-    for (var i = 0; i < S.enemies.length; i++) {
-      var e = S.enemies[i];
-      if (e.dead) continue;
-      if (e !== primary && !attackInFront(p.sourceUnit, e)) continue;
-      if (S.dist2(e.x, e.y, cx, cy) > r2) continue;
-      if (p.slow) {
-        e.slowT = Math.max(e.slowT, p.slow.duration);
-        e.slowFactor = Math.min(e.slowFactor, p.slow.factor);
-      }
-      damageEnemy(e, p.dmg, true);
-    }
-    // 法师有自己的贴地饼干扩散，不再叠一层通用正面圆环。
-    if (p.kind !== 'magic') {
-      S.addEffect({
-        type: 'ring', x: cx, y: cy, r: p.splash * 0.35, r2: p.splash,
-        life: 0.34, max: 0.34, color: p.color,
-      });
-    }
-  }
 
   // ── 卡池（固定 4 格，不再滚动）──────────────────────────────
   function updateShop(dt) {
@@ -574,159 +214,6 @@
   // 现有 radius 是“脚底占地”的逻辑半径。这里把它落实为圆形体积：
   // 固定部署的宠物不被挤走；移动中的怪物、主动出击的战士负责退让。
   // 这不会影响攻击距离、嘲讽距离或贴图尺寸。
-  function resolveBodyCollisions() {
-    var actors = [];
-    var i;
-    for (i = 0; i < S.units.length; i++) {
-      if (!S.units[i].dead) actors.push({ actor: S.units[i], kind: 'unit' });
-    }
-    for (i = 0; i < S.enemies.length; i++) {
-      if (!S.enemies[i].dead) actors.push({ actor: S.enemies[i], kind: 'enemy' });
-    }
-
-    // ── 按纵向占地分桶；移动后立即更新，保留原有配对顺序与连锁退让 ──
-    var cell = 1, rows = Object.create(null);
-    for (i = 0; i < actors.length; i++)
-      cell = Math.max(cell, actors[i].actor.def.radius * 2 + C.ACTOR_BODY_GAP + 0.5);
-    function updateRow(index) {
-      var body = actors[index], row = Math.floor(body.actor.y / cell);
-      if (body.row === row) return;
-      if (body.row !== undefined) {
-        var old = rows[body.row];
-        old.splice(old.indexOf(index), 1);
-      }
-      body.row = row;
-      (rows[row] || (rows[row] = [])).push(index);
-    }
-    function candidates(index, after) {
-      var found = [], row = actors[index].row;
-      for (var offset = -1; offset <= 1; offset++) {
-        var list = rows[row + offset] || [];
-        for (var k = 0; k < list.length; k++)
-          if (list[k] > after) found.push(list[k]);
-      }
-      return found.sort(function (a, b) { return a - b; });
-    }
-    for (i = 0; i < actors.length; i++) updateRow(i);
-    // 多轮清开同一帧的连锁挤压；没有重叠时立即退出，密集阵位才会用满上限。
-    for (var pass = 0; pass < 24; pass++) {
-      var adjusted = false;
-      for (i = 0; i < actors.length; i++) {
-        var nearby = candidates(i, i);
-        for (var next = 0; next < nearby.length; next++) {
-          var j = nearby[next], aa = actors[i].actor, bb = actors[j].actor;
-          var reach = aa.def.radius + bb.def.radius + C.ACTOR_BODY_GAP + 0.5;
-          if (Math.abs(aa.x - bb.x) >= reach || Math.abs(aa.y - bb.y) >= reach) continue;
-          if (!separateBodies(actors[i], actors[j])) continue;
-          adjusted = true;
-          updateRow(i); updateRow(j);
-          nearby = candidates(i, j);
-          next = -1;
-        }
-      }
-      if (!adjusted) break;
-    }
-  }
-
-  function separateBodies(a, b) {
-    var aa = a.actor;
-    var bb = b.actor;
-    var minDistance = aa.def.radius + bb.def.radius + C.ACTOR_BODY_GAP;
-    // 求解后额外留出半个逻辑像素，避免多组连锁挤压在浮点误差下留下细缝重叠。
-    var targetDistance = minDistance + 0.5;
-    var dx = bb.x - aa.x;
-    var dy = bb.y - aa.y;
-    var distance2 = dx * dx + dy * dy;
-    if (distance2 >= targetDistance * targetDistance) return false;
-    var dist = Math.sqrt(distance2);
-
-    // 完全重合时使用 uid 生成稳定方向，不能用随机数，否则画面会抖动。
-    if (dist < 0.001) {
-      var angle = ((aa.uid * 37 + bb.uid * 53) % 360) * Math.PI / 180;
-      dx = Math.cos(angle);
-      dy = Math.sin(angle);
-      dist = 1;
-    }
-    var nx = dx / dist;
-    var ny = dy / dist;
-    var overlap = targetDistance - dist;
-    var moveA = bodyMoveWeight(a, b);
-    var moveB = bodyMoveWeight(b, a);
-    var total = moveA + moveB;
-    if (total <= 0) return false;
-
-    // 只有一方可移动（怪物撞固定宠物、战士撞固定宠物）时，优先为移动方
-    // 寻找能完整落在场地内的接触点，避免被边界夹住后仍然重叠。
-    if ((moveA === 0) !== (moveB === 0)) {
-      var movable = moveA > 0 ? a : b;
-      var fixed = moveA > 0 ? b : a;
-      // ── 保留接触方向：北侧怪物各自退让，避免反复聚拢到同一点 ──
-      var queueNorth = movable.kind === 'enemy' && fixed.kind === 'unit';
-      var direction = moveA > 0 ? Math.atan2(-ny, -nx) : Math.atan2(ny, nx);
-      if (queueNorth && movable.actor.y >= fixed.actor.y) direction = -Math.PI / 2;
-      return placeOutsideBody(movable, fixed, targetDistance, direction, queueNorth);
-    }
-
-    aa.x -= nx * overlap * moveA / total;
-    aa.y -= ny * overlap * moveA / total;
-    bb.x += nx * overlap * moveB / total;
-    bb.y += ny * overlap * moveB / total;
-    clampBody(a);
-    clampBody(b);
-    return true;
-  }
-
-  function placeOutsideBody(movable, fixed, targetDistance, startAngle, keepFirstFit) {
-    var mover = movable.actor;
-    var anchor = fixed.actor;
-    var oldX = mover.x;
-    var oldY = mover.y;
-    var best = null;
-    // 从原本的退让方向开始，左右逐步寻找；这样正常情况下不会横跳。
-    for (var i = 0; i < 16; i++) {
-      var step = i === 0 ? 0 : Math.ceil(i / 2) * (i % 2 ? 1 : -1);
-      var angle = startAngle + step * Math.PI / 12;
-      mover.x = anchor.x + Math.cos(angle) * targetDistance;
-      mover.y = anchor.y + Math.sin(angle) * targetDistance;
-      clampBody(movable);
-      if (Math.sqrt(S.dist2(mover.x, mover.y, anchor.x, anchor.y)) + 0.02 < targetDistance) continue;
-      var cost = S.dist2(oldX, oldY, mover.x, mover.y);
-      if (keepFirstFit) {
-        best = { x: mover.x, y: mover.y, cost: cost };
-        break;
-      }
-      if (!best || cost < best.cost) best = { x: mover.x, y: mover.y, cost: cost };
-    }
-    if (best) {
-      mover.x = best.x;
-      mover.y = best.y;
-      return true;
-    } else {
-      mover.x = oldX;
-      mover.y = oldY;
-      return false;
-    }
-  }
-
-  function bodyMoveWeight(body, other) {
-    // 固定宠物保留部署阵位；战士与怪物接触时由战士退让，不能把攻击变成推怪。
-    // 只改变敌人/战士这一对：怪物之间、怪物撞固定盾位仍沿用原来的分离规则。
-    if (body.kind === 'unit') return body.actor.def.cls === 'warrior' ? 1 : 0;
-    if (other.kind === 'unit' && other.actor.def.cls === 'warrior') return 0;
-    return 1;
-  }
-
-  function clampBody(body) {
-    var u = L.ui;
-    var actor = body.actor;
-    var r = actor.def.radius;
-    actor.x = S.clamp(actor.x, u.field.x + r, u.field.x + u.field.w - r);
-    if (body.kind === 'unit') {
-      actor.y = S.clamp(actor.y, u.placeTop, u.placeBottom);
-    } else if (actor.y > u.baseStopY) {
-      actor.y = u.baseStopY;
-    }
-  }
 
   // 本局结果写入本地存档，排行榜与名片共用同一份最高关卡
   function recordRun(won) {
@@ -750,7 +237,8 @@
           * (C.spawnBatchMax - C.spawnBatchMin + 1));
         batchSize = Math.min(batchSize, S.spawnQueue.length);
         for (var bi = 0; bi < batchSize; bi++) spawnEnemy(S.spawnQueue.shift());
-        S.spawnTimer = C.spawnBatchGap;
+        S.spawnTimer = C.spawnBatchGapMin + Math.random()
+          * (C.spawnBatchGapMax - C.spawnBatchGapMin);
       }
       if (S.spawnQueue.length === 0) S.waveState = 'fighting';
       return;
@@ -772,26 +260,39 @@
   }
 
   // ── 嘲讽 ───────────────────────────────────────────────────
-  // 盾位不输出，但会把范围内的敌人拉向自己，为后排创造输出窗口
+  function tauntCandidates() {
+    return S.units.filter(function (un) {
+      return !un.dead && !(un.hp <= 0) && un.def.cls === 'tank' && un.def.taunt;
+    });
+  }
+
+  function tauntTarget(e, tanks) {
+    var best = null, bestD = Infinity;
+    for (var j = 0; j < tanks.length; j++) {
+      var un = tanks[j];
+      if (un.dead || un.hp <= 0 || un.def.cls !== 'tank' || !un.def.taunt || e.y > un.y) continue;
+      var d2 = S.dist2(un.x, un.y, e.x, e.y);
+      if (d2 <= un.def.taunt * un.def.taunt && d2 < bestD) { bestD = d2; best = un; }
+    }
+    return best;
+  }
+
+  function enemyCanReach(e, unit) {
+    var dy = unit.y - e.y;
+    return dy >= 0 && dy <= e.def.radius + unit.def.radius + 26 &&
+      Math.abs(unit.x - e.x) <= e.def.radius + unit.def.radius + 16;
+  }
+
+  // ── 移动和攻击共用嘲讽目标，避免前排近战角色抢走攻击 ──
   function updateTaunt(dt) {
+    var tanks = tauntCandidates();
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
       if (e.dead) continue;
-      var best = null;
-      var bestD = Infinity;
-      for (var j = 0; j < S.units.length; j++) {
-        var un = S.units[j];
-        if (un.dead || un.def.cls !== 'tank' || !un.def.taunt) continue;
-        // ── 嘲讽朝上方180度生效，左右水平边界包含 ──
-        if (e.y > un.y) continue;
-        var d2 = S.dist2(un.x, un.y, e.x, e.y);
-        if (d2 <= un.def.taunt * un.def.taunt && d2 < bestD) {
-          bestD = d2;
-          best = un;
-        }
-      }
+      var best = tauntTarget(e, tanks);
       if (best) {
         e.taunted = Math.max(e.taunted, 0.4);
+        if (e.tauntRoute && e.tauntRoute.length > 1) continue;
         // 向盾位方向横向吸附，纵向仍朝基地推进，避免被卡死在原地
         var dx = best.x - e.x;
         var dy = best.y - e.y;
@@ -806,67 +307,6 @@
   }
 
   // 返位路径按宠物碰撞圆绕行，保留原来的home坐标而不是穿过队友。
-  function returnRoute(unit, target) {
-    var goalX = target ? target.x : unit.homeX;
-    var goalY = target ? target.y : unit.homeY;
-    var reach = target ? Math.max(0, attackReach(unit, target) - C.ATTACK_CHASE_INSET) : 0;
-    var distance = Math.sqrt(S.dist2(unit.x, unit.y, goalX, goalY)) || 1;
-    var directX = target ? goalX + (unit.x - goalX) / distance * reach : goalX;
-    var directY = target ? goalY + (unit.y - goalY) / distance * reach : goalY;
-    var ui = L.ui, radius = unit.def.radius, grid = 16;
-    var left = ui.field.x + radius, right = ui.field.x + ui.field.w - radius;
-    var top = ui.placeTop, bottom = ui.placeBottom;
-    var cols = Math.ceil((right - left) / grid) + 1;
-    var rows = Math.ceil((bottom - top) / grid) + 1;
-    var obstacles = S.units.filter(function (other) { return other !== unit && !other.dead; });
-    function clear(ax, ay, bx, by) {
-      var dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
-      for (var i = 0; i < obstacles.length; i++) {
-        var other = obstacles[i];
-        var t = length2 ? S.clamp(((other.x - ax) * dx + (other.y - ay) * dy) / length2, 0, 1) : 0;
-        var clearance = radius + other.def.radius + C.ACTOR_BODY_GAP + 1;
-        if (S.dist2(ax + t * dx, ay + t * dy, other.x, other.y) < clearance * clearance) {
-          // 已贴住队友的起点允许向外脱离，不能因安全余量把自己锁死。
-          if (t === 0 && S.dist2(bx, by, other.x, other.y) > S.dist2(ax, ay, other.x, other.y)) continue;
-          return false;
-        }
-      }
-      return true;
-    }
-    if (clear(unit.x, unit.y, directX, directY)) return [{ x: directX, y: directY }];
-    function point(index) {
-      return { x: Math.min(right, left + (index % cols) * grid),
-        y: Math.min(bottom, top + Math.floor(index / cols) * grid) };
-    }
-    var queue = [], parent = {}, end = -1;
-    // 从角色附近能直达的网格开始，避免把起点强行挪进障碍。
-    for (var index = 0; index < cols * rows; index++) {
-      var p = point(index);
-      if (S.dist2(unit.x, unit.y, p.x, p.y) <= grid * grid * 2 && clear(unit.x, unit.y, p.x, p.y)) {
-        queue.push(index); parent[index] = -1;
-      }
-    }
-    for (var q = 0; q < queue.length; q++) {
-      var current = queue[q], at = point(current);
-      if (target ? S.dist2(at.x, at.y, goalX, goalY) <= reach * reach :
-          S.dist2(at.x, at.y, goalX, goalY) <= grid * grid * 2 &&
-          clear(at.x, at.y, goalX, goalY)) { end = current; break; }
-      for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) {
-        if (!ox && !oy) continue;
-        var nx = current % cols + ox, ny = Math.floor(current / cols) + oy;
-        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
-        var next = ny * cols + nx;
-        if (parent[next] !== undefined) continue;
-        var destination = point(next);
-        if (!clear(at.x, at.y, destination.x, destination.y)) continue;
-        parent[next] = current; queue.push(next);
-      }
-    }
-    if (end < 0) return [];
-    var route = target ? [] : [{ x: goalX, y: goalY }];
-    while (end >= 0) { route.unshift(point(end)); end = parent[end]; }
-    return route;
-  }
 
   function updateUnits(dt) {
     updateTaunt(dt);
@@ -1045,98 +485,13 @@
     return target;
   }
 
-  function warriorTarget(un) {
-    var range = un.def.aggro || 240;
-    for (var i = 0; i < S.enemies.length; i++) {
-      var e = S.enemies[i];
-      if (e.uid !== un.pendingTarget || e.dead) continue;
-      if (un.anim === 'atk' || un.pendingHit >= 0) return e;
-    }
-    return homePriorityEnemy(un) || homePriorityEnemy(un, range);
-  }
-
   // ── 无交战目标时：离家最近，其次离自己最近，平局按uid稳定 ──
-  function homePriorityEnemy(un, maxRange) {
-    var best = null;
-    var bestHome = Infinity, bestD = Infinity;
-    var bar = L.ui.guardianBar;
-    for (var i = 0; i < S.enemies.length; i++) {
-      var e = S.enemies[i];
-      if (e.dead) continue;
-      var d2 = S.dist2(un.x, un.y, e.x, e.y);
-      var eligible = maxRange === undefined ? attackInRange(un, e, e.uid === un.pendingTarget)
-        : d2 <= maxRange * maxRange;
-      if (!eligible) continue;
-      var home = S.dist2(e.x, e.y, S.clamp(e.x, bar.x, bar.x + bar.w), L.ui.baseStopY);
-      if (home > bestHome || (home === bestHome && d2 > bestD)) continue;
-      if (best && home === bestHome && d2 === bestD && e.uid >= best.uid) continue;
-      best = e; bestHome = home; bestD = d2;
-    }
-    return best;
-  }
 
   // 攻击距离独立于脚底碰撞；所有阶段共用中心距与目标半径口径。
-  function attackReach(unit, target) {
-    return unit.def.range + target.def.radius;
-  }
 
   // ── 远程前方180度：朝屏幕上方，左右边界包含，背后不命中 ──
-  function attackInFront(unit, target) {
-    if (!unit || (unit.def.cls !== 'archer' && unit.def.cls !== 'mage')) return true;
-    return target.y <= unit.y;
-  }
-
-  function attackInRange(unit, target, retained) {
-    if (!target || target.dead) return false;
-    if (!attackInFront(unit, target)) return false;
-    var reach = attackReach(unit, target) + C.ATTACK_DISTANCE_EPSILON +
-      (retained ? C.ATTACK_RELEASE_MARGIN : 0);
-    return S.dist2(unit.x, unit.y, target.x, target.y) <= reach * reach;
-  }
-
-  function findTarget(un) {
-    // 可攻击目标第一优先，其内部按离家距离、自身距离依次排序。
-    return homePriorityEnemy(un);
-  }
-
-  function resolveAttack(un, best) {
-    var def = un.def;
-    if (def.cls === 'healer' || def.cls === 'tank') return;
-    if (def.cls === 'warrior') {
-      damageEnemy(best, def.atk, false);
-      if (def.cleaveRatio) applyMeleeCleave(un, best);
-      var mx = (un.x + best.x) / 2, my = (un.y + best.y) / 2;
-      S.addEffect({
-        type: 'slash', x: un.x, y: un.y, tx: best.x, ty: best.y,
-        life: 0.18, max: 0.18, color: def.color,
-      });
-      S.addEffect({
-        type: 'glow', x: mx, y: my, r: 7, life: 0.15, max: 0.15, color: def.color,
-      });
-      S.hitstop = Math.max(S.hitstop, 0.04);
-    } else {
-      var projectile = fireProjectile(un, best);
-      if (def.extraShotRatio) fireProjectile(un, best, def.extraShotRatio, 0.12);
-      S.addEffect({
-        type: 'glow', x: projectile.x, y: projectile.y, r: def.cls === 'archer' ? 7 : 8,
-        life: 0.12, max: 0.12, color: def.color,
-      });
-    }
-    A.GameAudio && A.GameAudio.play(def.cls === 'archer' ? 'arrow' : def.cls === 'mage' ? 'magic' : 'hit');
-  }
 
   // ── 三星近战连带：仅伤害主目标附近且仍在自身近战范围内的其他怪 ──
-  function applyMeleeCleave(unit, primary) {
-    var def = unit.def;
-    for (var i = 0; i < S.enemies.length; i++) {
-      var e = S.enemies[i];
-      if (e === primary || e.dead || !attackInRange(unit, e, false)) continue;
-      if (S.dist2(e.x, e.y, primary.x, primary.y) > def.cleaveRange * def.cleaveRange) continue;
-      damageEnemy(e, def.atk * def.cleaveRatio, true);
-      S.addEffect({ type: 'slash', x: primary.x, y: primary.y, tx: e.x, ty: e.y,
-        life: 0.18, max: 0.18, color: def.color });
-    }
-  }
 
   function resolveBaseHit(e, goalX, baseY) {
     S.baseHp -= e.def.baseDamage;
@@ -1162,9 +517,38 @@
     }
   }
 
+  // ── 被嘲讽家具绕过非目标队友，不能被挡成永久无伤卡怪 ──
+  function moveToTaunt(e, target, dt) {
+    e.tauntRouteT = (e.tauntRouteT || 0) - dt;
+    if (!e.tauntRoute || e.tauntRouteT <= 0 || e.tauntRouteUid !== target.uid) {
+      e.tauntRoute = returnRoute(e, target, e.def.radius + target.def.radius + 12);
+      e.tauntRouteT = 0.35;
+      e.tauntRouteUid = target.uid;
+    }
+    while (e.tauntRoute.length && S.dist2(e.x, e.y,
+      e.tauntRoute[0].x, e.tauntRoute[0].y) < 9) e.tauntRoute.shift();
+    if (!e.tauntRoute.length) return;
+    var point = e.tauntRoute[0], dx = point.x - e.x, dy = point.y - e.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    var step = Math.min(distance, e.speed * (e.slowT > 0 ? e.slowFactor : 1) * dt);
+    e.x += dx / distance * step;
+    e.y += dy / distance * step;
+  }
+
+  function moveToBase(e, goalX, dt) {
+    var u = L.ui;
+    var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
+    if (e.y >= u.baseStopY - 100) {
+      var stepX = sp * dt * 0.85;
+      e.x += S.clamp(goalX - e.x, -stepX, stepX);
+    }
+    e.y += sp * dt;
+  }
+
   function updateEnemies(dt) {
     var u = L.ui;
     var alive = [];
+    var tanks = tauntCandidates();
     for (var i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
       if (e.dead) {
@@ -1199,8 +583,9 @@
             e.pendingKind = '';
             resolveBossGroundHit(e);
           } else {
-            var hitUnit = null;
-            for (var hu = 0; hu < S.units.length; hu++) {
+            var preferred = tauntTarget(e, tanks);
+            var hitUnit = preferred && enemyCanReach(e, preferred) ? preferred : null;
+            for (var hu = 0; !preferred && hu < S.units.length; hu++) {
               if (S.units[hu].uid === e.pendingTarget && !S.units[hu].dead) {
                 hitUnit = S.units[hu];
                 break;
@@ -1215,9 +600,10 @@
         }
       }
 
-      var blocker = null;
+      var taunt = tauntTarget(e, tanks);
+      var blocker = taunt && enemyCanReach(e, taunt) ? taunt : null;
       var bestDy = Infinity;
-      for (var j = 0; j < S.units.length; j++) {
+      for (var j = 0; !taunt && j < S.units.length; j++) {
         var un = S.units[j];
         if (un.dead) continue;
         var dy = un.y - e.y;
@@ -1266,13 +652,11 @@
           }
         }
       } else {
-        var sp = e.speed * (e.slowT > 0 ? e.slowFactor : 1);
-        if (e.y >= u.baseStopY - 100) {
-          var dx = goalX - e.x;
-          var stepX = sp * dt * 0.85;
-          e.x += S.clamp(dx, -stepX, stepX);
+        if (taunt && e.y >= u.placeTop) {
+          moveToTaunt(e, taunt, dt);
+        } else {
+          moveToBase(e, goalX, dt);
         }
-        e.y += sp * dt;
         if (e.y > u.baseStopY) e.y = u.baseStopY;
         if (e.anim === 'idle' || e.anim === 'move') enterAnimation(e, 'move');
       }
@@ -1280,69 +664,6 @@
       alive.push(e);
     }
     if (alive.length !== S.enemies.length) S.enemies = alive;
-  }
-
-  function updateProjectiles(dt) {
-    var alive = [];
-    for (var i = 0; i < S.projectiles.length; i++) {
-      var p = S.projectiles[i];
-      if (p.delay > 0) {
-        p.delay -= dt;
-        if (p.delay > 0) { alive.push(p); continue; }
-      }
-      if (p.echo) {
-        applySplash(p, p.x, p.y);
-        S.addEffect({ type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
-          life: 0.6, max: 0.6, color: p.color });
-        continue;
-      }
-      p.life -= dt;
-      var target = null;
-      for (var j = 0; j < S.enemies.length; j++) {
-        if (S.enemies[j].uid === p.targetUid && !S.enemies[j].dead) {
-          target = S.enemies[j];
-          break;
-        }
-      }
-      // 发射后锁定存活目标，不再因目标离开角色范围或绕后取消命中。
-      if (target) { p.tx = target.x; p.ty = target.y; }
-      var dx = p.tx - p.x, dy = p.ty - p.y;
-      var d = Math.sqrt(dx * dx + dy * dy) || 1;
-      var step = p.speed * dt;
-      var hit = d <= step || d < 6;
-      if (hit) {
-        p.x = p.tx;
-        p.y = p.ty;
-        // ── 范围弹只通过爆炸结算，主目标不再重复吃直接伤害 ──
-        if (p.splash) applySplash(p, p.x, p.y, target);
-        else if (target) damageEnemy(target, p.dmg, false);
-        if (p.echoRatio) alive.push({ x: p.x, y: p.y, splash: p.splash,
-          dmg: p.dmg * p.echoRatio, sourceUnit: p.sourceUnit, color: p.color,
-          kind: 'magic', echo: true, delay: 0.2 });
-        if (p.kind === 'magic') {
-          S.addEffect({
-            type: 'mage-biscuit-impact', x: p.x, y: p.y, r: 34,
-            life: 0.6, max: 0.6, color: p.color,
-          });
-        }
-        else if (p.slow && target) {
-          target.slowT = Math.max(target.slowT, p.slow.duration);
-          target.slowFactor = p.slow.factor;
-          S.addEffect({ type: 'ring', x: p.x, y: p.y, r: 6, r2: 26, life: 0.24, max: 0.24, color: p.color });
-        }
-        if (p.kind === 'light') {
-          S.addEffect({
-            type: 'spark', x: p.x, y: p.y,
-            vx: -dx / d * 70, vy: -dy / d * 70, life: 0.16, max: 0.16, color: '#d9ffcf',
-          });
-        }
-      } else if (p.life > 0) {
-        p.x += dx / d * step;
-        p.y += dy / d * step;
-        alive.push(p);
-      }
-    }
-    S.projectiles = alive;
   }
 
   function updateEffects(dt) {

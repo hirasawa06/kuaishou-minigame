@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -50,7 +51,7 @@ for (const [w,h] of [[375,667],[414,896],[430,932]]) {
  vm.createContext(context);
  for(const f of ['config.js','layout.js','battle-world.js','state.js']) vm.runInContext(fs.readFileSync(new URL('../package/gameplay/'+f,import.meta.url),'utf8'),context);
  const A=context.AIGCUtils; A.Layout.calc(); A.State.reset();
- vm.runInContext(fs.readFileSync(new URL('../package/gameplay/play/battle.js',import.meta.url),'utf8').replace('A.Battle = {','A.Battle = { testEnemies: updateEnemies,'),context);
+ vm.runInContext(readBattleSource().replace('A.Battle = {','A.Battle = { testEnemies: updateEnemies,'),context);
  const def=A.Config.ENEMIES.small;
  A.State.enemies=[{uid:1,def,x:207,y:106,hp:70,maxHp:70,speed:def.speed,atk:def.atk,anim:'move',animT:0,atkTimer:0,spawnT:0,slowT:0,slowFactor:1,pendingHit:-1,pendingTarget:0,pendingKind:'',hitFlash:0}];
  let frames=0;

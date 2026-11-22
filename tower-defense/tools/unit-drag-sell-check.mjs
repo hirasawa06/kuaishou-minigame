@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ const ctx = { window: null }; ctx.window = ctx;
 const A = ctx.AIGCUtils = { Layout: { w: 414, h: 896, safeTop: 0, usableH: 896 } };
 vm.createContext(ctx);
 for (const file of ['config.js', 'layout.js', 'state.js', 'play/battle.js']) {
-  vm.runInContext(fs.readFileSync(new URL(file, root), 'utf8'), ctx);
+  vm.runInContext(file === 'play/battle.js' ? readBattleSource() : fs.readFileSync(new URL(file, root), 'utf8'), ctx);
 }
 vm.runInContext(fs.readFileSync(new URL('input.js', root), 'utf8').replace(
   'A.Input = {', 'A.Input = { testDown: onDown, testMove: onMove, testUp: onUp,'), ctx);
@@ -64,3 +65,11 @@ for (const id of ['war', 'arch', 'tank', 'mage', 'healer']) {
   assert.equal(S.gold, 0, '死亡角色不返还饼干');
 }
 console.log('五类角色拖动绘制、出售、取消、暂停、死亡及重复抬手检查通过');
+
+// ── 出售血量门槛：60%含边界，低于门槛统一1块 ──
+for (const [hp, expected] of [[100, 5], [60, 5], [59.999, 1], [30, 1], [1, 1], [0, 0]]) {
+  const unit = { def: S.heroAtStar('arch', 1), hp, maxHp: 100, purchaseCost: 10 };
+  S.units = [unit];
+  assert.equal(A.Battle.sellPrice(unit), expected, '血量' + hp + '%的出售价格');
+}
+console.log('60%出售价格边界及低血统一1块通过');

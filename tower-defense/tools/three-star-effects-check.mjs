@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // ── 三星机制回归：低星隔离、伤害比例、目标去重与延迟结算 ──
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -10,8 +11,8 @@ for (const file of ['config.js', 'layout.js', 'state.js']) {
   vm.runInContext(fs.readFileSync(new URL(file, root), 'utf8'), ctx);
 }
 A.Layout.calc();
-vm.runInContext(fs.readFileSync(new URL('play/battle.js', root), 'utf8').replace(
-  'A.Battle = {', 'A.Battle = { testDamage: damageUnit, testAttack: resolveAttack, testHeal: healAllies, testProjectiles: updateProjectiles,'), ctx);
+vm.runInContext(readBattleSource().replace(
+  'A.Battle = {', 'A.Battle = { testDamage: A.BattleDamage.damageUnit, testAttack: A.BattleCombat.resolveAttack, testHeal: healAllies, testProjectiles: A.BattleCombat.updateProjectiles,'), ctx);
 const S = A.State; S.addEffect = S.addFloat = () => {};
 const makeUnit = (id, star, uid = 1) => ({ uid, def: S.heroAtStar(id, star),
   x: 207, y: 350, hp: 1000, maxHp: 1000, anim: 'idle', animT: 0 });

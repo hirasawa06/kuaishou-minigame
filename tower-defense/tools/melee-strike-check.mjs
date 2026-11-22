@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // ── 近战起手回归：移动目标不因延迟结算连续落空，包围时一刀锁一个目标 ──
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -11,7 +12,7 @@ for (const name of ['config.js', 'layout.js', 'state.js']) {
   vm.runInContext(fs.readFileSync(new URL(name, root), 'utf8'), ctx);
 }
 A.Layout.calc();
-vm.runInContext(fs.readFileSync(new URL('play/battle.js', root), 'utf8').replace(
+vm.runInContext(readBattleSource().replace(
   'A.Battle = {', 'A.Battle = { testUnits: updateUnits,'), ctx);
 const S = A.State;
 S.addEffect = S.addFloat = () => {};

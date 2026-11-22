@@ -1,3 +1,4 @@
+import { readBattleSource } from './lib/battle-source.mjs';
 // ── 守家目标回归：家门距离、自身距离、死亡/范围过滤及旧目标切换 ──
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -11,8 +12,8 @@ for (const file of ['config.js', 'layout.js', 'state.js']) {
   vm.runInContext(fs.readFileSync(new URL(file, root), 'utf8'), ctx);
 }
 A.Layout.calc();
-vm.runInContext(fs.readFileSync(new URL('play/battle.js', root), 'utf8').replace(
-  'A.Battle = {', 'A.Battle = { testPriority: homePriorityEnemy, testUnits: updateUnits,'), ctx);
+vm.runInContext(readBattleSource().replace(
+  'A.Battle = {', 'A.Battle = { testPriority: A.BattleTargeting.homePriorityEnemy, testUnits: updateUnits,'), ctx);
 const S = A.State;
 for (const star of [1, 2, 3]) {
   const unit = { uid: 1, def: S.heroAtStar('war', star), x: 207, y: 400, pendingTarget: 0 };
