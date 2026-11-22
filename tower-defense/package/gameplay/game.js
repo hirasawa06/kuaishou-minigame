@@ -79,6 +79,11 @@
 
   function start() {
     if (S.adBusy || (A.Rewards && A.Rewards.isBusy())) return false;
+    // ---- 施工卡只供预览，不扣体力、不映射到最后一关 ----
+    if (S.selectedLevel > C.LEVELS.length) {
+      S.toastMsg('施工中...', 1.4);
+      return false;
+    }
     var level = S.clamp(S.selectedLevel | 0, 1, C.LEVELS.length);
     if (A.Profile && !A.Profile.isLevelUnlocked(level)) {
       S.toastMsg('请先通过第 ' + (level - 1) + ' 关', 1.4);
@@ -170,7 +175,7 @@
 
   function selectLevel(delta, releaseOffset) {
     if (S.phase !== 'menu' || S.menuStartDelay > 0 || S.menuSlide) return false;
-    var target = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length);
+    var target = S.clamp(S.selectedLevel + delta, 1, C.LEVELS.length + 1);
     var cardW = L.ui.menu && L.ui.menu.card ? L.ui.menu.card.w : 300;
     var offset = releaseOffset || 0;
     if (target === S.selectedLevel && Math.abs(offset) < 1) return false;

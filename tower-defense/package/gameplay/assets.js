@@ -117,9 +117,11 @@
     manifest.push(['home-background-clean', 'res/Image/outgame/home/home-background-clean-v2.jpg']);
     manifest.push(['home-level-card-no-banner', 'res/Image/outgame/home/home-level-card-no-banner-v1.png']);
     manifest.push(['home-level-frame-overlay', 'res/Image/ui/components/home-level-frame-overlay-v1.png']);
-    for (var level = 1; level <= 10; level++) {
+    for (var level = 1; level <= A.Config.LEVELS.length; level++) {
       manifest.push(['level-cover-' + level, 'res/Image/outgame/level-covers/level-' + level + '.jpg']);
     }
+    manifest.push(['level-cover-construction', 'res/Image/outgame/level-covers/construction-v2.png']);
+    manifest.push(['share-invite', 'res/Image/outgame/home/share-invite-v1.png']);
     manifest.push(['home-level-arrows', 'res/Image/ui/icons/home-level-arrows-v2.png']);
     manifest.push(['home-level-arrows-disabled', 'res/Image/ui/icons/home-level-arrows-disabled-v2.png']);
     manifest.push(['home-level-nameplate', 'res/Image/ui/components/home-level-nameplate-v3.png']);
