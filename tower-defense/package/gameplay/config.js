@@ -146,19 +146,19 @@
     ENEMIES: {
       small: {
         id: 'small', name: '台灯小怪', tier: 'small', icon: 'enemy-small',
-        hp: 81, atk: 10, interval: 0.9, speed: 62,
+        hp: 77, atk: 10, interval: 0.9, speed: 62,
         radius: 11, color: '#8fd06a', baseDamage: 2, gold: 1,
         attackEffect: 'bump', impactColor: '#ffd27a',
       },
       normal: {
         id: 'normal', name: '床头柜怪', tier: 'normal', species: 'bedside-table', icon: 'enemy-normal',
-        hp: 276, atk: 19, interval: 1.0, speed: 38,
-        radius: 15, color: '#d9a05a', baseDamage: 4, gold: 5,
+        hp: 262, atk: 18, interval: 1.0, speed: 38,
+        radius: 15, color: '#d9a05a', baseDamage: 4, gold: 6,
         attackEffect: 'bump', impactColor: '#ffd27a', hitReaction: 'none',
       },
       elite: {
         id: 'elite', name: '沙发精英', tier: 'elite', species: 'sofa', icon: 'enemy-elite',
-        hp: 1035, atk: 41, interval: 1.2, speed: 30,
+        hp: 983, atk: 39, interval: 1.2, speed: 30,
         radius: 19, color: '#c58ad9', baseDamage: 8, gold: 12,
         attackEffect: 'bump', impactColor: '#e4a878',
       },
