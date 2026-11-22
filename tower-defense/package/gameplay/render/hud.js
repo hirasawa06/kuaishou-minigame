@@ -503,7 +503,7 @@
       if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy) * 1.3) {
         offset = Math.max(-card.w * 0.85, Math.min(card.w * 0.85, dx));
         if ((dx > 0 && S.selectedLevel === 1) ||
-            (dx < 0 && S.selectedLevel === C.LEVELS.length)) offset *= 0.25;
+            (dx < 0 && S.selectedLevel === C.LEVELS.length + 1)) offset *= 0.25;
       }
     }
     var moving = Math.abs(offset) > 0.5;
@@ -522,9 +522,11 @@
         Math.round(card.w * sx), Math.round((clipY + clipH - scissorTop) * sy));
     }
     function drawLevelCard(levelNo, shift) {
-      if (levelNo < 1 || levelNo > C.LEVELS.length) return;
+      if (levelNo < 1 || levelNo > C.LEVELS.length + 1) return;
       // 先绘封面，再叠加顶部关卡信息条。
-      var cover = A.Assets.entry('level-cover-' + levelNo);
+      // ---- 末尾施工卡共用封面，新增正式关卡后自动后移 ----
+      var construction = levelNo === C.LEVELS.length + 1;
+      var cover = A.Assets.entry(construction ? 'level-cover-construction' : 'level-cover-' + levelNo);
       if (cover) A.Render.setMaskTexture(frameOverlayArt.tex);
       D.texture(cardArt.tex, cardArt.w, cardArt.h, 46, 266, 1107, 928,
         card.x + shift, clipY, card.w, clipH, undefined, cover ? { alphaCutout: true } : undefined);
@@ -535,10 +537,11 @@
         radius: card.w * 85 / 1107 + 10,
       };
       var unlocked = A.Profile.isLevelUnlocked(levelNo);
-      var blur = levelNo >= A.Profile.data.completedLevel + 3;
+      var blur = !construction && levelNo >= A.Profile.data.completedLevel + 3;
       if (cover) D.roundTexture(cover.tex, container.x, container.y,
-        container.w, container.h, container.radius, !unlocked, blur);
-      if (!unlocked) {
+        container.w, container.h, container.radius, !construction && !unlocked, blur,
+        construction ? { w: cover.w, h: cover.h } : undefined);
+      if (!construction && !unlocked) {
         // 锁定遮罩由 WebGL 圆角几何绘制；略伸入框内，再以原卡图像素重绘画框。
         // 这样场景四角被遮住，外部背景不会出现随卡片移动的黑色矩形。
         var maskX = cover ? container.x : card.x + shift + card.w * LEVEL_CARD_MASK.insetX;
@@ -571,7 +574,7 @@
       var textCenterY = status.y + status.h * 0.55;
       D.centeredText(String(levelNo), medallionX, status.y + status.h * 220 / 404,
         24, D.color('#784323'));
-      D.text(C.LEVELS[levelNo - 1].name,
+      D.text(levelNo > C.LEVELS.length ? '施工中...' : C.LEVELS[levelNo - 1].name,
         nameX, textCenterY - 10, 20, D.color('#784323'), 1);
     }
     drawLevelCard(S.selectedLevel, offset);
@@ -585,7 +588,7 @@
     var nav = [m.levelPrev, m.levelNext];
     for (var ni = 0; ni < nav.length; ni++) {
       var nr = nav[ni];
-      var enabled = !slide && (ni === 0 ? S.selectedLevel > 1 : S.selectedLevel < C.LEVELS.length);
+      var enabled = !slide && (ni === 0 ? S.selectedLevel > 1 : S.selectedLevel < C.LEVELS.length + 1);
       var pressed = S.menuPressed === (ni === 0 ? 'levelPrev' : 'levelNext');
       var size = nr.w * (pressed ? 1.08 : 1);
       var arrowSprite = enabled ? arrowArt : disabledArrowArt;
@@ -594,7 +597,8 @@
         nr.x + (nr.w - size) / 2, nr.y + (nr.h - size) / 2, size, size);
     }
     if (!unlocked) {
-      drawMenuStartButton(m.start, 1, true, '尚未解锁');
+      drawMenuStartButton(m.start, 1, true,
+        S.selectedLevel > C.LEVELS.length ? '施工中...' : '尚未解锁');
     }
     if (S.toast) {
       var toastAlpha = Math.min(1, S.toast.life / 0.3);

@@ -146,13 +146,21 @@
   };
 
   // --- 完整图片放进圆角容器，圆角不写入素材 ---
-  draw.roundTexture = function (tex, x, y, w, h, radius, grayscale, blur) {
+  draw.roundTexture = function (tex, x, y, w, h, radius, grayscale, blur, source) {
     if (!tex || w <= 0 || h <= 0) return;
     GL.setTexture(tex);
+    // ---- 原图等比铺满：裁切多余边缘，圆角按容器坐标计算 ----
+    var scale = source ? Math.max(w / source.w, h / source.h) : 1;
+    var uw = source ? w / (source.w * scale) : 1;
+    var vh = source ? h / (source.h * scale) : 1;
+    if (source) GL.setClipRect({ x: x, y: y, w: w, h: h }, radius);
     GL.push(x, y, w, h, WHITE, {
-      mode: grayscale ? 6 + (blur ? 0.25 : 0) : 5, hw: w / 2, hh: h / 2,
-      r: Math.min(radius, w / 2, h / 2),
+      u0: (1 - uw) / 2, u1: (1 + uw) / 2,
+      v0: (1 - vh) / 2, v1: (1 + vh) / 2,
+      mode: source ? 1 : grayscale ? 6 + (blur ? 0.25 : 0) : 5,
+      hw: w / 2, hh: h / 2, r: Math.min(radius, w / 2, h / 2),
     });
+    if (source) GL.setClipRect(null);
   };
 
   // 从图集绘制（sx/sy/sw/sh 为纹理像素）

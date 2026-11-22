@@ -572,11 +572,13 @@
     var invCopyH = 44;
     var invBodyH = Math.round(Math.max(32, Math.min(140,
       invMaxH - invHead - 36 - invCopyH - invGap * 3 - 20)));
-    var invH = invHead + invBodyH + 36 + invCopyH + invGap * 3 + 20;
+    // ---- 间距以放大后的图片边缘和28px文字行框计算 ----
+    var invImageH = Math.min((sheetW - 48) / 510, invBodyH / 350) * 1.2 * 350;
+    var invH = invHead + invGap + (invBodyH + invImageH) / 2 + 12 + 28 + 16 + invCopyH + 20;
     var invY = contentTop + Math.round((contentH - invH) / 2) + dialogOffsetY;
     var invBodyY = invY + invHead + invGap;
-    var invTitleY = invBodyY + invBodyH + invGap;
-    var invCopyY = invTitleY + 36 + invGap;
+    var invTitleY = invBodyY + (invBodyH + invImageH) / 2 + 12;
+    var invCopyY = invTitleY + 28 + 16;
     ui.invite = {
       sheet: { x: sheetX, y: invY, w: sheetW, h: invH },
       head: invHead,

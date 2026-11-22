@@ -46,7 +46,7 @@
     var m = L.ui.menu;
     if (!m || !inInteractiveArea(x, y) || S.menuSlide) return null;
     if (S.selectedLevel > 1 && hitControl(m.levelPrev, x, y, 0)) return 'levelPrev';
-    if (S.selectedLevel < C.LEVELS.length && hitControl(m.levelNext, x, y, 0)) return 'levelNext';
+    if (S.selectedLevel < C.LEVELS.length + 1 && hitControl(m.levelNext, x, y, 0)) return 'levelNext';
     if (A.Profile.isLevelUnlocked(S.selectedLevel) && hitControl(m.start, x, y, 12)) return 'start';
     if (hitControl(m.stamina, x, y, 0)) return 'stamina';
     if (hitControl(m.collection, x, y, 0)) return 'collection';
@@ -197,7 +197,7 @@
         down = false;
         var horizontal = Math.abs(dx) > Math.abs(dy) * 1.3;
         var cardW = L.ui.menu.card.w;
-        var edge = dx < 0 ? S.selectedLevel === C.LEVELS.length : S.selectedLevel === 1;
+        var edge = dx < 0 ? S.selectedLevel === C.LEVELS.length + 1 : S.selectedLevel === 1;
         var offset = horizontal ? Math.max(-cardW * 0.85, Math.min(cardW * 0.85, dx)) : 0;
         if (edge) offset *= 0.25;
         if (horizontal && Math.abs(dx) >= 36 && !edge) {

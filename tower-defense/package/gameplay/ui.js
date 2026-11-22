@@ -297,11 +297,14 @@
     whiteClose(g.close);
 
     var b = g.body;
-    D.roundRect(b.x, b.y, b.w, b.h, 20, col('#f9e8cd'), col('#f8dfba'));
-    var av = Math.round(Math.min(b.h * 0.5, b.w * 0.26));
-    var cy = b.y + b.h / 2;
-    drawAvatar(0, b.x + b.w / 2 - av * 0.52, cy, av);
-    drawAvatar(4, b.x + b.w / 2 + av * 0.52, cy, av);
+    // ---- 邀请预览使用正式分享图，等比完整展示 ----
+    var share = A.Assets.entry('share-invite');
+    if (share) {
+      var scale = Math.min(b.w / share.w, b.h / share.h) * 1.2;
+      var w = share.w * scale, h = share.h * scale;
+      D.roundTexture(share.tex,
+        b.x + (b.w - w) / 2, b.y + (b.h - h) / 2, w, h, 16, false, false);
+    }
 
     D.text('萌宠集结，一起出击！', g.sheet.x + g.sheet.w / 2, g.titleY, 28,
       col(COLOR.brownDeep), 1);
